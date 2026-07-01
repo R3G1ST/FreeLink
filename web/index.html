@@ -560,7 +560,7 @@ a{text-decoration:none;color:inherit}
             </div>
         </div>
     </div>
-    <div class="ftr">© 2026 FreeLink. Все права защищены.<br>Офис: Cayman Islands, George Town, 123 Main Street</div>
+    <div class="ftr" id="footerText"></div>
 </div>
 
 <!-- MODAL -->
@@ -779,6 +779,7 @@ node_seen:{ru:'Видел',en:'Seen'},
 node_server_region:{ru:'Основной сервер',en:'Main server'},
 msg_deployed:{ru:'Сервер развёрнут!',en:'Server deployed!'},
 msg_node_id:{ru:'Node ID',en:'Node ID'},
+footer_text:{ru:'© 2026 FreeLink. Все права защищены.<br>Офис: Cayman Islands, George Town, 123 Main Street',en:'© 2026 FreeLink. All rights reserved.<br>Office: Cayman Islands, George Town, 123 Main Street'},
 msg_qr_title:{ru:'QR-код',en:'QR Code'},
 msg_qr_scan:{ru:'Отсканируйте в FreeLink',en:'Scan in FreeLink'},
 msg_token_service:{ru:'Токен сервиса',en:'Service Token'},
@@ -845,6 +846,9 @@ function applyLang(){
     // Set language dropdown
     const langSelect=document.getElementById('langSelect');
     if(langSelect)langSelect.value=currentLang;
+    // Set footer text
+    const footer=document.getElementById('footerText');
+    if(footer)footer.innerHTML=t('footer_text');
 }
 
 /* ===== THEME ===== */
