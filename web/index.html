@@ -445,9 +445,9 @@ a{text-decoration:none;color:inherit}
             <!-- TRAFFIC -->
             <div class="pg" id="p-traffic">
                 <div class="pg-title"><i class="fas fa-chart-area"></i> <span data-i18n="page_analytics_title">Аналитика</span></div>
-                <div class="card chrt"><div class="ch"><div class="ct"><i class="fas fa-chart-line" style="color:var(--ac2)"></i> Трафик</div><div class="cpd"><button class="on" onclick="lCh(1,this)">1ч</button><button onclick="lCh(6,this)">6ч</button><button onclick="lCh(24,this)">24ч</button><button onclick="lCh(72,this)">3д</button></div></div><div class="cw"><canvas id="cC2"></canvas></div></div>
-                <div class="tbar"><button class="btn btn-n" onclick="loadLive()"><i class="fas fa-sync"></i> Обновить</button><span style="font-size:11px;color:var(--t4);margin-left:8px" id="wsStatus"><i class="fas fa-circle" style="color:#64748b;font-size:8px"></i> WebSocket: отключён</span></div>
-                <div class="card" id="liveTable" style="padding:20px;color:var(--t4)">Загрузка...</div>
+                <div class="card chrt"><div class="ch"><div class="ct"><i class="fas fa-chart-line" style="color:var(--ac2)"></i> <span data-i18n="chart_traffic_title">Трафик</span></div><div class="cpd"><button class="on" onclick="lCh(1,this)"><span data-i18n="period_1h">1ч</span></button><button onclick="lCh(6,this)"><span data-i18n="period_6h">6ч</span></button><button onclick="lCh(24,this)"><span data-i18n="period_24h">24ч</span></button><button onclick="lCh(72,this)"><span data-i18n="period_3d">3д</span></button></div></div><div class="cw"><canvas id="cC2"></canvas></div></div>
+                <div class="tbar"><button class="btn btn-n" onclick="loadLive()"><i class="fas fa-sync"></i> <span data-i18n="btn_refresh">Обновить</span></button><span style="font-size:11px;color:var(--t4);margin-left:8px" id="wsStatus"><i class="fas fa-circle" style="color:#64748b;font-size:8px"></i> WebSocket: <span data-i18n="ws_disconnected">отключён</span></span></div>
+                <div class="card" id="liveTable" style="padding:20px;color:var(--t4)"><span data-i18n="loading_data">Загрузка...</span></div>
             </div>
 
             <!-- PLANS -->
@@ -467,7 +467,7 @@ a{text-decoration:none;color:inherit}
                 <div id="nodesList"></div>
                 <!-- Deploy Modal -->
                 <div class="card" id="deployCard" style="display:none;margin-top:12px">
-                    <div class="ct" style="font-size:14px;font-weight:700;margin-bottom:14px"><i class="fas fa-rocket" style="color:var(--ac2)"></i> Новый сервер</div>
+                    <div class="ct" style="font-size:14px;font-weight:700;margin-bottom:14px"><i class="fas fa-rocket" style="color:var(--ac2)"></i> <span data-i18n="new_server">Новый сервер</span></div>
                     <div class="field-row">
                         <div class="field"><label><span data-i18n="node_name">Имя ноды</span></label><input type="text" id="dName" placeholder="Germany-1"></div>
                         <div class="field"><label><span data-i18n="node_region">Регион</span></label><input type="text" id="dRegion" placeholder="Germany"></div>
@@ -507,7 +507,7 @@ a{text-decoration:none;color:inherit}
                 </div>
                 <div id="configStatus"></div>
                 <div class="card config-editor" style="padding:4px">
-                    <textarea id="configText" placeholder="Загрузка конфигурации..." spellcheck="false"></textarea>
+                    <textarea id="configText" placeholder="Загрузка конфигурации..." data-i18n-placeholder="loading_config" spellcheck="false"></textarea>
                 </div>
             </div>
 
@@ -515,14 +515,14 @@ a{text-decoration:none;color:inherit}
             <div class="pg" id="p-logs">
                 <div class="pg-title"><i class="fas fa-scroll"></i> <span data-i18n="page_logs">Логи</span></div>
                 <div class="tbar"><button class="btn btn-n" onclick="lLg()"><i class="fas fa-sync"></i> <span data-i18n="btn_refresh">Обновить</span></button></div>
-                <div class="logs card" id="lB" style="padding:20px">Загрузка...</div>
+                <div class="logs card" id="lB" style="padding:20px"><span data-i18n="loading_data">Загрузка...</span></div>
             </div>
 
             <!-- AUDIT -->
             <div class="pg" id="p-audit">
                 <div class="pg-title"><i class="fas fa-shield-alt"></i> <span data-i18n="page_audit">Аудит</span></div>
                 <div class="tbar"><button class="btn btn-n" onclick="lAudit()"><i class="fas fa-sync"></i> <span data-i18n="btn_refresh">Обновить</span></button></div>
-                <div class="logs card" id="aB" style="padding:20px">Загрузка...</div>
+                <div class="logs card" id="aB" style="padding:20px"><span data-i18n="loading_data">Загрузка...</span></div>
             </div>
 
             <!-- SETTINGS -->
@@ -741,6 +741,31 @@ msg_expired:{ru:'Истекло',en:'Expired'},
 msg_selected:{ru:'выбрано',en:'selected'},
 table_created:{ru:'Создан',en:'Created'},
 table_progress:{ru:'Прогресс подписки',en:'Subscription progress'},
+chart_traffic_title:{ru:'Трафик',en:'Traffic'},
+ws_disconnected:{ru:'отключён',en:'disconnected'},
+ws_connected:{ru:'подключён',en:'connected'},
+loading_config:{ru:'Загрузка конфигурации...',en:'Loading configuration...'},
+loading_data:{ru:'Загрузка...',en:'Loading...'},
+new_server:{ru:'Новый сервер',en:'New server'},
+period_1h:{ru:'1ч',en:'1h'},
+period_6h:{ru:'6ч',en:'6h'},
+period_24h:{ru:'24ч',en:'24h'},
+period_3d:{ru:'3д',en:'3d'},
+plan_days:{ru:'дн',en:'days'},
+plan_unlimited:{ru:'∞ Безлимит',en:'∞ Unlimited'},
+plan_limit:{ru:'Лимит (МБ)',en:'Limit (MB)'},
+plan_zero_unlimited:{ru:'0 = безлимит',en:'0 = unlimited'},
+plan_days_label:{ru:'Дней',en:'Days'},
+traffic_section:{ru:'Трафик',en:'Traffic'},
+traffic_total:{ru:'Всего',en:'Total'},
+traffic_limit:{ru:'Лимит',en:'Limit'},
+traffic_unlimited:{ru:'∞ Безлимит',en:'∞ Unlimited'},
+unit_mbps_speed:{ru:'МБ/с',en:'MB/s'},
+svc_authorization:{ru:'Авторизация',en:'Authorization'},
+svc_traffic:{ru:'Трафик',en:'Traffic'},
+svc_telegram_bot:{ru:'Telegram-бот',en:'Telegram Bot'},
+svc_online:{ru:'Онлайн',en:'Online'},
+svc_history:{ru:'История',en:'History'},
 sys_network:{ru:'Сеть',en:'Network'},
 chart_status:{ru:'Статус пользователей',en:'User Status'},
 chart_top_traffic:{ru:'Топ по трафику',en:'Top by Traffic'},
@@ -1005,9 +1030,9 @@ function renderUserModal(u){
     <div class="field-row"><div class="field"><label>Лимит скорости</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;font-weight:600;color:${spd>0?'var(--or)':'var(--t2)'}">${spdText}</div></div><div class="field"><label>IP-адрес</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;color:var(--t3)">${u.ip||'—'}</div></div></div>
     </div>
     <div style="padding:14px;background:var(--g1);border:1px solid var(--b1);border-radius:8px;margin-top:12px">
-    <div style="font-size:10px;color:var(--t3);text-transform:uppercase;font-weight:600;letter-spacing:.5px;margin-bottom:10px">Трафик</div>
-    <div class="field-row"><div class="field"><label>TX</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;color:var(--bl);font-weight:600">${tr.tx_mb||0} МБ</div></div><div class="field"><label>RX</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;color:var(--ac2);font-weight:600">${tr.rx_mb||0} МБ</div></div></div>
-    <div class="field-row"><div class="field"><label>Всего</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;font-weight:600">${tr.total_mb||0} МБ</div></div><div class="field"><label>Лимит</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;font-weight:600">${isUn?'∞ Безлимит':u.traffic_limit+' МБ'}</div></div></div>
+    <div style="font-size:10px;color:var(--t3);text-transform:uppercase;font-weight:600;letter-spacing:.5px;margin-bottom:10px">${t('traffic_section')}</div>
+    <div class="field-row"><div class="field"><label>TX</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;color:var(--bl);font-weight:600">${tr.tx_mb||0} ${t('units_mb')}</div></div><div class="field"><label>RX</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;color:var(--ac2);font-weight:600">${tr.rx_mb||0} ${t('units_mb')}</div></div></div>
+    <div class="field-row"><div class="field"><label>${t('traffic_total')}</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;font-weight:600">${tr.total_mb||0} ${t('units_mb')}</div></div><div class="field"><label>${t('traffic_limit')}</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;font-weight:600">${isUn?t('traffic_unlimited'):u.traffic_limit+' '+t('units_mb')}</div></div></div>
     ${!isUn?`<div style="background:var(--g2);border-radius:4px;height:5px;overflow:hidden;margin-top:6px"><div style="height:100%;width:${up}%;background:${bc};border-radius:4px"></div></div>`:''}
     <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:10px">
     <button class="btn btn-n btn-sm" onclick="setLimit(10240)">10 ГБ</button>
@@ -1019,7 +1044,7 @@ function renderUserModal(u){
     const subUrl=u.service_token?location.origin+'/sub/'+u.service_token:'';
     $('umFoot').innerHTML=`<button class="btn btn-a btn-sm" onclick="copySubUrlAuto()"><i class="fas fa-share-alt"></i> Подписка</button><button class="btn btn-b btn-sm" onclick="copyUserLink()"><i class="fas fa-link"></i> Ссылка</button><button class="btn btn-n btn-sm" onclick="showQRModal()"><i class="fas fa-qrcode"></i> QR</button><button class="btn btn-g btn-sm" onclick="extendUserModal()"><i class="fas fa-clock"></i> Продлить</button><button class="btn btn-o btn-sm" onclick="toggleUserModal()"><i class="fas fa-exchange-alt"></i> Вкл/Выкл</button><button class="btn btn-r btn-sm" onclick="deleteUserModal()"><i class="fas fa-trash"></i> Удалить</button>`;
 }
-function setLimit(mb){if(!CUid)return;fetch('/api/user/set-limit/'+CUid+'?limit_mb='+mb,{method:'POST'}).then(()=>{toast('Лимит: '+(mb?mb+' МБ':'∞'));refreshUserModal()})}
+function setLimit(mb){if(!CUid)return;fetch('/api/user/set-limit/'+CUid+'?limit_mb='+mb,{method:'POST'}).then(()=>{toast(t('traffic_limit')+': '+(mb?mb+' '+t('units_mb'):t('traffic_unlimited')));refreshUserModal()})}
 function resetTraffic(){if(!CUid)return;confirmModal(t('msg_confirm_reset'),()=>{fetch('/api/user/reset-traffic/'+CUid,{method:'POST'}).then(()=>{toast(t('msg_traffic_reset'));refreshUserModal()})})}
 function copyUserLink(){if(CUd?.link){navigator.clipboard.writeText(CUd.link).then(()=>toast(t('msg_copied')))}}
 function copySubUrl(url){if(!url){toast(t('msg_no_token'));return}navigator.clipboard.writeText(url).then(()=>toast(t('msg_sub_copied')))}
@@ -1236,7 +1261,7 @@ async function lCh(hours,el){
         return{label:n,data,borderColor:cols[i%cols.length],backgroundColor:cols[i%cols.length]+'10',tension:.4,fill:true,pointRadius:0,borderWidth:2};
     });
     if(chart)chart.destroy();
-    chart=new Chart($(canvasId),{type:'line',data:{labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'},plugins:{legend:{labels:{color:'rgba(248,250,252,.4)',font:{family:'Inter',size:10},usePointStyle:true,pointStyle:'circle'}}},scales:{x:{ticks:{color:'rgba(248,250,252,.18)',font:{family:'Inter',size:9},maxTicksLimit:10},grid:{color:'rgba(255,255,255,.02)'},border:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'rgba(248,250,252,.18)',font:{family:'Inter',size:9},callback:v=>v+' МБ'},grid:{color:'rgba(255,255,255,.02)'},border:{color:'rgba(255,255,255,.04)'}}}}});
+    chart=new Chart($(canvasId),{type:'line',data:{labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'},plugins:{legend:{labels:{color:'rgba(248,250,252,.4)',font:{family:'Inter',size:10},usePointStyle:true,pointStyle:'circle'}}},scales:{x:{ticks:{color:'rgba(248,250,252,.18)',font:{family:'Inter',size:9},maxTicksLimit:10},grid:{color:'rgba(255,255,255,.02)'},border:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'rgba(248,250,252,.18)',font:{family:'Inter',size:9},callback:v=>v+' '+t('units_mb')},grid:{color:'rgba(255,255,255,.02)'},border:{color:'rgba(255,255,255,.04)'}}}}});
 }
 
 async function loadLive(){
@@ -1277,12 +1302,12 @@ async function lPl(){
     const d=await r.json();
     const el=$('pL');
     if(!d.plans.length){el.innerHTML='<div class="emp card" style="padding:48px"><i class="fas fa-tags"></i><p>Нет планов</p></div>';return}
-    el.innerHTML=d.plans.map(p=>`<div class="card svc" style="margin-bottom:8px"><div><div style="font-size:14px;font-weight:700">${p.name}</div><div style="font-size:11px;color:var(--t3);margin-top:3px">${p.days} дн · ${p.traffic_limit_mb>0?p.traffic_limit_mb+' МБ':'∞'}${p.price?' · '+p.price:''}</div></div><button class="sb" onclick="deletePlan('${p.id}')" style="color:var(--rd)"><i class="fas fa-trash"></i></button></div>`).join('');
+    el.innerHTML=d.plans.map(p=>`<div class="card svc" style="margin-bottom:8px"><div><div style="font-size:14px;font-weight:700">${p.name}</div><div style="font-size:11px;color:var(--t3);margin-top:3px">${p.days} ${t('plan_days')} · ${p.traffic_limit_mb>0?p.traffic_limit_mb+' '+t('units_mb'):t('plan_unlimited')}${p.price?' · '+p.price:''}</div></div><button class="sb" onclick="deletePlan('${p.id}')" style="color:var(--rd)"><i class="fas fa-trash"></i></button></div>`).join('');
 }
 function showCreatePlan(){
     setModal('tags','green','Новый тариф','Настройте параметры',`
     <div class="field"><label>Название</label><input type="text" id="cpName" placeholder="Базовый"></div>
-    <div class="field-row"><div class="field"><label>Дней</label><input type="number" id="cpDays" value="30"></div><div class="field"><label>Лимит (МБ)</label><input type="number" id="cpLimit" value="10240"><div class="hint">0 = безлимит</div></div></div>
+    <div class="field-row"><div class="field"><label>${t('plan_days_label')}</label><input type="number" id="cpDays" value="30"></div><div class="field"><label>${t('plan_limit')}</label><input type="number" id="cpLimit" value="10240"><div class="hint">${t('plan_zero_unlimited')}</div></div></div>
     <div class="field"><label>Цена</label><input type="text" id="cpPrice" placeholder="Необязательно"></div>
     `,'<button class="btn btn-n" onclick="closeModal()">Отмена</button><button class="btn btn-g" id="cpBtn">Создать</button>');
     $('cpBtn').onclick=async()=>{const n=$('cpName')?.value||'План',d=parseInt($('cpDays')?.value)||30,t=parseInt($('cpLimit')?.value)||0,p=$('cpPrice')?.value||'';closeModal();await fetch('/api/plans',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,days:d,traffic_limit_mb:t,price:p})}).then(()=>{toast('Создан');lPl()})};
@@ -1294,7 +1319,7 @@ function deletePlan(id){confirmModal('Удалить план?',()=>{fetch('/api
 async function lSv(){
     const r=await fetch('/api/services');
     const d=await r.json();
-    const nm={'hysteria-server':'Hysteria 2 VPN','vpnbot-api':'API','vpnbot-auth':'Авторизация','vpnbot-traffic':'Трафик','vpnbot-bot':'Telegram-бот','vpnbot-online':'Онлайн','vpnbot-history':'История'};
+    const nm={'hysteria-server':'Hysteria 2 VPN','vpnbot-api':'API','vpnbot-auth':t('svc_authorization'),'vpnbot-traffic':t('svc_traffic'),'vpnbot-bot':t('svc_telegram_bot'),'vpnbot-online':t('svc_online'),'vpnbot-history':t('svc_history')};
     $('sL').innerHTML=d.services.map(s=>`<div class="card svc"><div class="sn"><span class="sd" style="background:${s.active?'var(--gn)':'var(--rd)'}"></span> ${nm[s.name]||s.name}</div><button class="sb" onclick="restartService('${s.name}')"><i class="fas fa-sync"></i></button></div>`).join('');
 }
 function restartService(n){confirmModal('Перезапустить '+n+'?',()=>{fetch('/api/services/'+n+'/restart',{method:'POST'}).then(()=>{toast(n+' OK');setTimeout(lSv,2000)})})}
