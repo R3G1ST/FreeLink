@@ -666,6 +666,42 @@ msg_no_traffic:{ru:'Нет активного трафика',en:'No active traf
 msg_no_notifications:{ru:'Нет уведомлений',en:'No notifications'},
 msg_confirm_delete:{ru:'Удалить?',en:'Delete?'},
 msg_confirm_restart:{ru:'Перезапустить Hysteria 2?',en:'Restart Hysteria 2?'},
+msg_done:{ru:'Готово',en:'Done'},
+msg_value:{ru:'Значение',en:'Value'},
+msg_min_chars:{ru:'Мин. 2 символа',en:'Min. 2 characters'},
+msg_sub_copied:{ru:'Ссылка подписки скопирована!',en:'Subscription URL copied!'},
+msg_token_created:{ru:'Токен создан и ссылка скопирована!',en:'Token created and URL copied!'},
+msg_token_error:{ru:'Ошибка генерации токена',en:'Token generation error'},
+msg_qr_error:{ru:'Ошибка загрузки QR',en:'QR load error'},
+msg_no_token:{ru:'Нет токена',en:'No token'},
+msg_deleted_count:{ru:'Удалено',en:'Deleted'},
+msg_ok:{ru:'OK',en:'OK'},
+msg_extended_to:{ru:'До',en:'Until'},
+msg_traffic_reset:{ru:'Сброшено',en:'Reset'},
+msg_confirm_clear:{ru:'Удалить просроченных?',en:'Delete expired?'},
+msg_confirm_reset:{ru:'Сбросить трафик?',en:'Reset traffic?'},
+msg_config_saved:{ru:'Конфиг сохранён!',en:'Config saved!'},
+msg_restarted:{ru:'Перезапущен!',en:'Restarted!'},
+msg_plan_created:{ru:'Создан',en:'Created'},
+msg_plan_deleted:{ru:'Удалён',en:'Deleted'},
+msg_confirm_delete_plan:{ru:'Удалить план?',en:'Delete plan?'},
+msg_password_changed:{ru:'Пароль изменён!',en:'Password changed!'},
+msg_login_changed:{ru:'Логин изменён! Войдите заново.',en:'Login changed! Please login again.'},
+msg_admin_created:{ru:'Создан!',en:'Created!'},
+msg_updated:{ru:'Обновлено!',en:'Updated!'},
+msg_domain_updated:{ru:'Домен обновлён',en:'Domain updated'},
+msg_name_updated:{ru:'Название обновлено',en:'Name updated'},
+msg_enter_password:{ru:'Введите пароль',en:'Enter password'},
+msg_node_fixed:{ru:'Нода исправлена!',en:'Node fixed!'},
+msg_enter_host:{ru:'Введите хост',en:'Enter host'},
+msg_enter_login:{ru:'Введите логин',en:'Enter login'},
+msg_node_added:{ru:'Нода добавлена!',en:'Node added!'},
+msg_node_deleted:{ru:'Нода удалена',en:'Node deleted'},
+msg_user_assigned:{ru:'Пользователь назначен',en:'User assigned'},
+msg_qr_unavailable:{ru:'QR-код недоступен',en:'QR code unavailable'},
+msg_qr_load_error:{ru:'Ошибка получения QR-кода',en:'QR code fetch error'},
+msg_no_link:{ru:'Нет ссылки',en:'No link'},
+msg_token_generated:{ru:'Токен сгенерирован!',en:'Token generated!'},
 msg_search:{ru:'Поиск...',en:'Search...'},
 msg_new_user:{ru:'Новый пользователь',en:'New user'},
 msg_new_node:{ru:'Новый сервер',en:'New server'},
@@ -736,7 +772,7 @@ function setModal(icon,iconClass,title,desc,body,footer){
     openModal();
 }
 function showModal(msg,icon='check-circle',iconClass='green'){
-    setModal(icon,iconClass,'Готово',msg,'<div style="text-align:center"></div>','<button class="btn btn-g" onclick="closeModal()">OK</button>');
+    setModal(icon,iconClass,t('msg_done'),msg,'<div style="text-align:center"></div>','<button class="btn btn-g" onclick="closeModal()">OK</button>');
 }
 function confirmModal(msg,onConfirm){
     setModal('question-circle','orange','Подтверждение',msg,'','<button class="btn btn-n" onclick="closeModal()">Отмена</button><button class="btn btn-r" id="confirmBtn">Да</button>');
@@ -855,16 +891,16 @@ function tS(id){if(sel.has(id))sel.delete(id);else sel.add(id);uB();rU()}
 function tAll(){const c=$('sA').checked;sel.clear();if(c)CU.forEach(u=>sel.add(u.id));uB();rU()}
 function cSel(){sel.clear();$('sA').checked=false;uB();rU()}
 function uB(){const n=sel.size;$('bulk').classList.toggle('show',n>0);$('bulkN').textContent=n+' выбрано'}
-async function bD(){if(!sel.size)return;confirmModal('Удалить '+sel.size+' пользователей?',async()=>{await fB('/api/users/bulk-delete',{ids:[...sel]});toast('Удалено');sel.clear();uB();loadAll()})}
-async function bT(){if(!sel.size)return;await fB('/api/users/bulk-toggle',{ids:[...sel]});toast('OK');sel.clear();uB();loadAll()}
-async function bE(){if(!sel.size)return;showPromptModal('Продление','Дней:','30',async v=>{await fB('/api/users/bulk-extend',{ids:[...sel],days:parseInt(v)});toast('Продлено');sel.clear();uB();loadAll()})}
+async function bD(){if(!sel.size)return;confirmModal(t('msg_confirm_delete')+' '+sel.size+'?',async()=>{await fB('/api/users/bulk-delete',{ids:[...sel]});toast(t('msg_deleted_count'));sel.clear();uB();loadAll()})}
+async function bT(){if(!sel.size)return;await fB('/api/users/bulk-toggle',{ids:[...sel]});toast(t('msg_ok'));sel.clear();uB();loadAll()}
+async function bE(){if(!sel.size)return;showPromptModal(t('btn_extend'),t('time_day')+':','30',async v=>{await fB('/api/users/bulk-extend',{ids:[...sel],days:parseInt(v)});toast(t('msg_extended'));sel.clear();uB();loadAll()})}
 async function fB(u,b){return fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)})}
-function cpL(id){fetch('/api/users').then(r=>r.json()).then(d=>{const u=d.users.find(x=>x.id===id);if(u&&u.link){navigator.clipboard.writeText(u.link).then(()=>toast('Скопировано!'))}})}
-function tU(id){fetch('/api/user/toggle/'+id,{method:'POST'}).then(()=>{toast('OK');loadAll()})}
-function dU(id){confirmModal('Удалить пользователя?',()=>{fetch('/api/user/'+id,{method:'DELETE'}).then(()=>{toast('Удалён');loadAll()})})}
+function cpL(id){fetch('/api/users').then(r=>r.json()).then(d=>{const u=d.users.find(x=>x.id===id);if(u&&u.link){navigator.clipboard.writeText(u.link).then(()=>toast(t('msg_copied')))}})}
+function tU(id){fetch('/api/user/toggle/'+id,{method:'POST'}).then(()=>{toast(t('msg_ok'));loadAll()})}
+function dU(id){confirmModal(t('msg_confirm_delete'),()=>{fetch('/api/user/'+id,{method:'DELETE'}).then(()=>{toast(t('msg_deleted'));loadAll()})})}
 function eU(id){showPromptModal('Продление','Дней:','30',v=>{fetch('/api/user/extend/'+id+'?days='+v,{method:'POST'}).then(r=>r.json()).then(d=>{toast('До '+d.new_expire);loadAll()})})}
 function clExp(){confirmModal('Удалить просроченных?',()=>{fetch('/api/clean',{method:'POST'}).then(r=>r.json()).then(d=>{toast('Удалено: '+d.deleted);loadAll()})})}
-function restSrv(){confirmModal('Перезапустить Hysteria 2?',()=>{fetch('/api/restart').then(()=>{toast('Перезапущен');setTimeout(loadAll,3000)})})}
+function restSrv(){confirmModal(t('msg_confirm_restart'),()=>{fetch('/api/restart').then(()=>{toast(t('msg_restarted'));setTimeout(loadAll,3000)})})}
 function expU(){window.open('/api/export?fmt=json','_blank')}
 function downloadReport(){window.open('/api/report?fmt=csv','_blank')}
 
@@ -876,9 +912,9 @@ function showCreateUser(){
         <div class="field"><label>Дней (если свой)</label><input type="number" id="cuDays" value="30" min="1"></div>
     `,'<button class="btn btn-n" onclick="closeModal()">Отмена</button><button class="btn btn-g" id="cuBtn">Создать</button>');
     fetch('/api/plans').then(r=>r.json()).then(d=>{const sel=$('cuPlan');(d.plans||[]).forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=`${p.name} — ${p.days}дн`;sel.appendChild(o)})});
-    $('cuBtn').onclick=async()=>{const n=$('cuName')?.value?.trim();if(!n||n.length<2){toast('Мин. 2 символа');return}const pid=$('cuPlan')?.value;const d=parseInt($('cuDays')?.value)||30;closeModal();
-        if(pid){await fB('/api/user/create-with-plan',{name:n,plan_id:pid}).then(r=>r.json()).then(d=>{if(d.id)toast('Создан!');else toast('Ошибка')})}
-        else{await fetch('/api/user/create?name='+encodeURIComponent(n)+'&days='+d,{method:'POST'}).then(r=>r.json()).then(d=>{if(d.id)toast('Создан!');else toast('Ошибка')})}
+    $('cuBtn').onclick=async()=>{const n=$('cuName')?.value?.trim();if(!n||n.length<2){toast(t('msg_min_chars'));return}const pid=$('cuPlan')?.value;const d=parseInt($('cuDays')?.value)||30;closeModal();
+        if(pid){await fB('/api/user/create-with-plan',{name:n,plan_id:pid}).then(r=>r.json()).then(d=>{if(d.id)toast(t('msg_created'));else toast(t('msg_error'))})}
+        else{await fetch('/api/user/create?name='+encodeURIComponent(n)+'&days='+d,{method:'POST'}).then(r=>r.json()).then(d=>{if(d.id)toast(t('msg_created'));else toast(t('msg_error'))})}
         loadAll()};
     setTimeout(()=>$('cuName')?.focus(),100);
 }
@@ -886,7 +922,7 @@ function showCreateUser(){
 /* ===== USER MODAL ===== */
 function openUserModal(id){CUid=id;$('userBg').classList.add('open');refreshUserModal()}
 function closeUserModal(){$('userBg').classList.remove('open');CUid=null;CUd=null}
-async function refreshUserModal(){if(!CUid)return;try{const r=await fetch('/api/user/'+CUid);CUd=await r.json();renderUserModal(CUd)}catch{toast('Ошибка')}}
+async function refreshUserModal(){if(!CUid)return;try{const r=await fetch('/api/user/'+CUid);CUd=await r.json();renderUserModal(CUd)}catch{toast(t('msg_error'))}}
 function renderUserModal(u){
     const isEx=u.expire_date&&u.expire_date!=='Не указан'&&new Date(u.expire_date)<new Date();
     const now=new Date(),exp=new Date(u.expire_date),dl=Math.ceil((exp-now)/864e5);
@@ -921,9 +957,9 @@ function renderUserModal(u){
     $('umFoot').innerHTML=`<button class="btn btn-a btn-sm" onclick="copySubUrlAuto()"><i class="fas fa-share-alt"></i> Подписка</button><button class="btn btn-b btn-sm" onclick="copyUserLink()"><i class="fas fa-link"></i> Ссылка</button><button class="btn btn-n btn-sm" onclick="showQRModal()"><i class="fas fa-qrcode"></i> QR</button><button class="btn btn-g btn-sm" onclick="extendUserModal()"><i class="fas fa-clock"></i> Продлить</button><button class="btn btn-o btn-sm" onclick="toggleUserModal()"><i class="fas fa-exchange-alt"></i> Вкл/Выкл</button><button class="btn btn-r btn-sm" onclick="deleteUserModal()"><i class="fas fa-trash"></i> Удалить</button>`;
 }
 function setLimit(mb){if(!CUid)return;fetch('/api/user/set-limit/'+CUid+'?limit_mb='+mb,{method:'POST'}).then(()=>{toast('Лимит: '+(mb?mb+' МБ':'∞'));refreshUserModal()})}
-function resetTraffic(){if(!CUid)return;confirmModal('Сбросить трафик?',()=>{fetch('/api/user/reset-traffic/'+CUid,{method:'POST'}).then(()=>{toast('Сброшено');refreshUserModal()})})}
-function copyUserLink(){if(CUd?.link){navigator.clipboard.writeText(CUd.link).then(()=>toast('Скопировано!'))}}
-function copySubUrl(url){if(!url){toast('Нет токена');return}navigator.clipboard.writeText(url).then(()=>toast('Ссылка подписки скопирована!'))}
+function resetTraffic(){if(!CUid)return;confirmModal(t('msg_confirm_reset'),()=>{fetch('/api/user/reset-traffic/'+CUid,{method:'POST'}).then(()=>{toast(t('msg_traffic_reset'));refreshUserModal()})})}
+function copyUserLink(){if(CUd?.link){navigator.clipboard.writeText(CUd.link).then(()=>toast(t('msg_copied')))}}
+function copySubUrl(url){if(!url){toast(t('msg_no_token'));return}navigator.clipboard.writeText(url).then(()=>toast(t('msg_sub_copied')))}
 function copySubUrlAuto(){
     if(!CUid)return;
     if(CUd?.service_token){
@@ -1096,7 +1132,7 @@ async function saveConfig(){
         if(!r.ok){const e=await r.json().catch(()=>({error:'HTTP '+r.status}));throw new Error(e.error||'HTTP '+r.status)}
         const d=await r.json();
         statusEl.innerHTML='<div class="config-status success"><i class="fas fa-check-circle"></i> Конфигурация сохранена'+(d.message?' — '+d.message:'')+'</div>';
-        toast('Конфиг сохранён!');
+        toast(t('msg_config_saved'));
         setTimeout(()=>{statusEl.innerHTML=''},4000);
     }catch(e){
         statusEl.innerHTML='<div class="config-status error"><i class="fas fa-times-circle"></i> Ошибка сохранения: '+e.message+'</div>';
@@ -1111,7 +1147,7 @@ function restartHysteria(){
             const r=await fetch('/api/config/restart',{method:'POST'});
             if(!r.ok)throw new Error('HTTP '+r.status);
             statusEl.innerHTML='<div class="config-status success"><i class="fas fa-check-circle"></i> Сервис перезапущен</div>';
-            toast('Перезапущен!');
+            toast(t('msg_restarted'));
             setTimeout(()=>{statusEl.innerHTML='';loadAll()},3000);
         }catch(e){
             statusEl.innerHTML='<div class="config-status error"><i class="fas fa-times-circle"></i> Ошибка перезапуска: '+e.message+'</div>';
