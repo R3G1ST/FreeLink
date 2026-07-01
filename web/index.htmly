@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hysteria 2 Manager</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#0a0e27; color:#fff; min-height:100vh; padding:20px; background-image:radial-gradient(ellipse at top,#1a1a3e 0%,#0a0e27 70%); }
+        .container { max-width:1400px; margin:0 auto; }
+        .header { display:flex; justify-content:space-between; align-items:center; padding:20px 0; border-bottom:1px solid rgba(255,255,255,0.05); margin-bottom:30px; flex-wrap:wrap; }
+        .header h1 { font-size:28px; background:linear-gradient(135deg,#6c63ff,#4a00e0); -webkit-background-clip:text; -webkit-text-fill-color:transparent; display:flex; align-items:center; gap:10px; }
+        .header h1 i { -webkit-text-fill-color:initial; color:#6c63ff; }
+        .header .server-info { background:rgba(255,255,255,0.05); padding:8px 16px; border-radius:20px; font-size:14px; color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.05); }
+        .header .server-info i { color:#4ade80; margin-right:6px; }
+        .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin-bottom:30px; }
+        .stat-card { background:rgba(255,255,255,0.03); border-radius:16px; padding:20px 24px; border:1px solid rgba(255,255,255,0.05); transition:all 0.3s ease; backdrop-filter:blur(10px); }
+        .stat-card:hover { transform:translateY(-2px); border-color:rgba(108,99,255,0.3); background:rgba(255,255,255,0.06); }
+        .stat-card .label { font-size:13px; color:rgba(255,255,255,0.5); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; }
+        .stat-card .value { font-size:28px; font-weight:700; }
+        .stat-card .value i { margin-right:8px; font-size:20px; }
+        .stat-card .sub { font-size:13px; color:rgba(255,255,255,0.4); margin-top:4px; }
+        .stat-card.green .value { color:#4ade80; }
+        .stat-card.red .value { color:#f87171; }
+        .stat-card.blue .value { color:#60a5fa; }
+        .stat-card.purple .value { color:#a78bfa; }
+        .stat-card.orange .value { color:#fbbf24; }
+        .stat-card.cyan .value { color:#22d3ee; }
+        .actions-panel { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:24px; }
+        .actions-panel .btn { padding:10px 20px; border:none; border-radius:10px; cursor:pointer; font-size:14px; font-weight:600; transition:all 0.3s ease; display:inline-flex; align-items:center; gap:8px; }
+        .actions-panel .btn:hover { transform:translateY(-2px); box-shadow:0 8px 25px rgba(108,99,255,0.3); }
+        .btn-primary { background:linear-gradient(135deg,#6c63ff,#4a00e0); color:#fff; }
+        .btn-success { background:linear-gradient(135deg,#22c55e,#16a34a); color:#fff; }
+        .btn-danger { background:linear-gradient(135deg,#ef4444,#dc2626); color:#fff; }
+        .btn-warning { background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff; }
+        .btn-info { background:linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; }
+        .btn-outline { background:rgba(255,255,255,0.05); color:#fff; border:1px solid rgba(255,255,255,0.1); }
+        .btn-outline:hover { background:rgba(255,255,255,0.1); }
+        .users-table { background:rgba(255,255,255,0.02); border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,0.05); }
+        .users-table table { width:100%; border-collapse:collapse; }
+        .users-table th { background:rgba(255,255,255,0.04); padding:14px 16px; text-align:left; font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:rgba(255,255,255,0.4); font-weight:600; }
+        .users-table td { padding:14px 16px; border-top:1px solid rgba(255,255,255,0.03); font-size:14px; vertical-align:middle; }
+        .users-table tr:hover td { background:rgba(255,255,255,0.02); }
+        .status-badge { display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:500; }
+        .status-badge.active { background:rgba(74,222,128,0.15); color:#4ade80; }
+        .status-badge.inactive { background:rgba(248,113,113,0.15); color:#f87171; }
+        .status-badge.expired { background:rgba(251,191,36,0.15); color:#fbbf24; }
+        .status-badge i { font-size:8px; }
+        .link-cell { max-width:280px; word-break:break-all; font-size:12px; background:rgba(255,255,255,0.03); padding:6px 10px; border-radius:6px; font-family:"Courier New",monospace; color:rgba(255,255,255,0.6); display:flex; align-items:center; gap:8px; }
+        .link-cell .copy-btn { background:rgba(108,99,255,0.2); border:none; color:#a78bfa; padding:4px 10px; border-radius:6px; cursor:pointer; font-size:12px; transition:all 0.3s; white-space:nowrap; }
+        .link-cell .copy-btn:hover { background:rgba(108,99,255,0.4); }
+        .action-btns { display:flex; gap:6px; flex-wrap:wrap; }
+        .action-btns .btn-sm { padding:6px 12px; border:none; border-radius:8px; cursor:pointer; font-size:13px; transition:all 0.3s; background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.7); }
+        .action-btns .btn-sm:hover { transform:scale(1.05); background:rgba(255,255,255,0.1); }
+        .action-btns .btn-sm.green:hover { background:rgba(34,197,94,0.3); color:#4ade80; }
+        .action-btns .btn-sm.blue:hover { background:rgba(96,165,250,0.3); color:#60a5fa; }
+        .action-btns .btn-sm.red:hover { background:rgba(239,68,68,0.3); color:#f87171; }
+        .action-btns .btn-sm.purple:hover { background:rgba(167,139,250,0.3); color:#a78bfa; }
+        .action-btns .btn-sm.cyan:hover { background:rgba(34,211,238,0.3); color:#22d3ee; }
+        .loading { text-align:center; padding:60px; color:rgba(255,255,255,0.3); }
+        .loading i { font-size:32px; margin-bottom:16px; display:block; }
+        .pulse { animation:pulse 1.5s ease-in-out infinite; }
+        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+        .empty-state { text-align:center; padding:60px; color:rgba(255,255,255,0.3); }
+        .empty-state i { font-size:48px; margin-bottom:16px; display:block; opacity:0.5; }
+        .online-dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; }
+        .online-dot.online { background:#4ade80; box-shadow:0 0 12px rgba(74,222,128,0.6); animation:onlinePulse 1.5s ease-in-out infinite; }
+        .online-dot.offline { background:#f87171; }
+        @keyframes onlinePulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.5; transform:scale(0.8); } }
+        .online-text { font-size:12px; font-weight:500; }
+        .online-text.online { color:#4ade80; }
+        .online-text.offline { color:#f87171; }
+        .btn-info:hover { transform:translateY(-2px); box-shadow:0 8px 25px rgba(59,130,246,0.3); }
+
+        /* ========== МОДАЛЬНЫЕ ОКНА ========== */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            animation: fadeIn 0.3s ease;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: #1a1a3e;
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 450px;
+            width: 90%;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            animation: slideUp 0.3s ease;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        .modal-box-wide {
+            background: #1a1a3e;
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 750px;
+            width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            animation: slideUp 0.3s ease;
+            position: relative;
+        }
+        /* Кнопки в правом верхнем углу */
+        .modal-close-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            display: flex;
+            gap: 8px;
+        }
+        .modal-close-btn .btn-icon {
+            background: rgba(255,255,255,0.05);
+            border: none;
+            color: rgba(255,255,255,0.5);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-close-btn .btn-icon:hover {
+            background: rgba(108,99,255,0.2);
+            color: #a78bfa;
+            transform: scale(1.05);
+        }
+        .modal-close-btn .btn-icon.close:hover {
+            background: rgba(239,68,68,0.2);
+            color: #f87171;
+        }
+        .modal-box-wide::-webkit-scrollbar,
+        .modal-box::-webkit-scrollbar {
+            width: 6px;
+        }
+        .modal-box-wide::-webkit-scrollbar-track,
+        .modal-box::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.05);
+            border-radius: 3px;
+        }
+        .modal-box-wide::-webkit-scrollbar-thumb,
+        .modal-box::-webkit-scrollbar-thumb {
+            background: rgba(108,99,255,0.4);
+            border-radius: 3px;
+        }
+        .modal-box-wide::-webkit-scrollbar-thumb:hover,
+        .modal-box::-webkit-scrollbar-thumb:hover {
+            background: rgba(108,99,255,0.6);
+        }
+        .modal-box .modal-icon { font-size: 48px; text-align: center; margin-bottom: 16px; }
+        .modal-box h3 { text-align: center; font-size: 20px; margin-bottom: 12px; }
+        .modal-box p { text-align: center; color: rgba(255,255,255,0.7); margin-bottom: 24px; line-height: 1.6; white-space: pre-line; }
+        .modal-box .modal-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+        .modal-box .modal-btns .btn {
+            padding: 10px 28px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .modal-box .modal-btns .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(108,99,255,0.3); }
+        .modal-box .modal-btns .btn-primary { background: linear-gradient(135deg, #6c63ff, #4a00e0); color: #fff; }
+        .modal-box .modal-btns .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); color: #fff; }
+        .modal-box .modal-btns .btn-secondary { background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.1); }
+        .modal-box .modal-btns .btn-secondary:hover { background: rgba(255,255,255,0.15); }
+        .modal-box .modal-btns .btn-success { background: linear-gradient(135deg, #22c55e, #16a34a); color: #fff; }
+        .modal-box .modal-btns .btn-warning { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; }
+        .modal-box input, .modal-box select {
+            width: 100%;
+            padding: 10px 14px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        .modal-box input:focus, .modal-box select:focus { outline: none; border-color: #6c63ff; }
+        .modal-box .modal-label { color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 4px; display: block; }
+        .modal-box input[type="date"] { color-scheme: dark; cursor: pointer; }
+        .modal-box input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+
+        .live-traffic-table {
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+        .live-traffic-table table { width:100%; border-collapse:collapse; font-size:13px; }
+        .live-traffic-table th { text-align:left; padding:8px 12px; color:rgba(255,255,255,0.5); border-bottom:1px solid rgba(255,255,255,0.1); }
+        .live-traffic-table td { padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.03); }
+        .live-traffic-table code { background:rgba(255,255,255,0.05); padding:2px 8px; border-radius:4px; font-size:12px; }
+
+        /* ========== ВКЛАДКИ ========== */
+        .tab-btn {
+            background: rgba(255,255,255,0.05);
+            color: rgba(255,255,255,0.5);
+            border: 1px solid rgba(255,255,255,0.05);
+            padding: 6px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .tab-btn.active {
+            background: rgba(108,99,255,0.2);
+            color: #a78bfa;
+            border-color: #6c63ff;
+        }
+        .tab-btn:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        .user-progress {
+            width: 100%;
+            height: 8px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+        .user-progress .fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        .user-progress .fill.green { background: linear-gradient(90deg, #22c55e, #4ade80); }
+        .user-progress .fill.yellow { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+        .user-progress .fill.red { background: linear-gradient(90deg, #ef4444, #f87171); }
+        .user-progress .fill.blue { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+        .user-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 12px 0;
+        }
+        .user-info-item {
+            background: rgba(255,255,255,0.03);
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .user-info-item .label {
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .user-info-item .value {
+            font-size: 15px;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+        .device-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.05);
+            margin-bottom: 6px;
+        }
+        .device-item .ip { font-family: monospace; font-size: 13px; }
+        .device-item .status { font-size: 12px; font-weight: 500; }
+        .device-item .status.online { color: #4ade80; }
+        .device-item .status.offline { color: #f87171; }
+        .user-modal-content {
+            min-height: 350px;
+            max-height: 450px;
+            overflow-y: auto;
+            padding: 4px 0;
+        }
+        .user-modal-content .user-info-grid {
+            min-height: 200px;
+        }
+        /* Уменьшенные поля в настройках */
+        .settings-small input {
+            padding: 6px 10px;
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+        .settings-small .modal-label {
+            font-size: 11px;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        @media (max-width:768px) {
+            .stats-grid { grid-template-columns:repeat(2,1fr); }
+            .users-table { overflow-x:auto; }
+            .header h1 { font-size:20px; }
+            .header .server-info { font-size:12px; padding:6px 12px; }
+            .link-cell { max-width:150px; font-size:10px; }
+            .modal-box-wide { max-width: 95%; padding:20px; }
+            .user-info-grid { grid-template-columns:1fr; }
+            .user-modal-content { min-height: 300px; max-height: 400px; }
+        }
+        @media (max-width:480px) {
+            .stats-grid { grid-template-columns:1fr; }
+            .actions-panel .btn { flex:1; justify-content:center; }
+            .modal-box { padding:20px; }
+            .modal-box-wide { padding:16px; }
+            .tab-btn { font-size:11px; padding:4px 10px; }
+            .user-modal-content { min-height: 250px; max-height: 350px; }
+            .modal-close-btn .btn-icon { width: 28px; height: 28px; font-size: 13px; }
+        }
+        @keyframes fadeInUp { from { opacity:0; transform:translateX(-50%) translateY(20px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+        .toast { position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:rgba(10,14,39,0.95); color:#fff; padding:14px 28px; border-radius:12px; border:1px solid rgba(255,255,255,0.1); font-size:14px; z-index:9999; backdrop-filter:blur(10px); box-shadow:0 8px 40px rgba(0,0,0,0.5); max-width:90%; text-align:center; animation:fadeInUp 0.3s ease; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1><i class="fas fa-bolt"></i> Hysteria 2 Manager</h1>
+        <div class="server-info">
+            <i class="fas fa-circle"></i> Сервер: Польша <span style="opacity:0.4;margin:0 6px;">|</span> <span id="serverStatus">Загрузка...</span>
+        </div>
+    </div>
+    <div id="loading" class="loading pulse">
+        <i class="fas fa-spinner fa-spin"></i>
+        Загрузка данных...
+    </div>
+    <div id="content" style="display:none;">
+        <div class="stats-grid" id="stats"></div>
+        <div class="actions-panel">
+            <button class="btn btn-success" onclick="createUser()"><i class="fas fa-plus"></i> Создать</button>
+            <button class="btn btn-danger" onclick="cleanExpired()"><i class="fas fa-trash"></i> Очистить</button>
+            <button class="btn btn-warning" onclick="restartServer()"><i class="fas fa-sync"></i> Перезапуск</button>
+            <button class="btn btn-info" onclick="openLiveTraffic()"><i class="fas fa-chart-line"></i> Live</button>
+            <button class="btn btn-outline" onclick="loadData()"><i class="fas fa-refresh"></i> Обновить</button>
+        </div>
+        <div class="users-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Статус</th>
+                        <th>Имя</th>
+                        <th>ID</th>
+                        <th>Порт</th>
+                        <th>Действует до</th>
+                        <th>Онлайн</th>
+                        <th>Трафик (МБ)</th>
+                        <th>Ссылка</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody id="usersList"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ========== ОСНОВНОЕ МОДАЛЬНОЕ ОКНО ========== -->
+<div class="modal-overlay" id="modalOverlay" style="z-index:10001;">
+    <div class="modal-box" id="modalBox">
+        <div class="modal-close-btn">
+            <button class="btn-icon close" onclick="closeModal()" title="Закрыть"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-icon" id="modalIcon">ℹ️</div>
+        <h3 id="modalTitle">Заголовок</h3>
+        <p id="modalMessage">Сообщение</p>
+        <div id="modalInputs"></div>
+        <div class="modal-btns" id="modalButtons">
+            <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+            <button class="btn btn-primary" id="modalConfirmBtn" onclick="confirmModal()">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== LIVE TRAFFIC МОДАЛЬНОЕ ОКНО ========== -->
+<div class="modal-overlay" id="liveTrafficModal" onclick="if(event.target===this)closeLiveTraffic()">
+    <div class="modal-box-wide">
+        <div class="modal-close-btn">
+            <button class="btn-icon close" onclick="closeLiveTraffic()" title="Закрыть"><i class="fas fa-times"></i></button>
+            <button class="btn-icon" onclick="refreshLiveTraffic()" title="Обновить"><i class="fas fa-sync-alt"></i></button>
+        </div>
+        <div class="modal-icon" style="font-size: 32px;">📊</div>
+        <h3>Live Traffic</h3>
+        <div id="liveTrafficContent">
+            <div style="text-align: center; padding: 20px; color: rgba(255,255,255,0.5);">
+                <i class="fas fa-spinner fa-spin"></i> Загрузка данных...
+            </div>
+        </div>
+        <div class="modal-btns">
+            <button class="btn btn-secondary" onclick="closeLiveTraffic()">Закрыть</button>
+            <button class="btn btn-primary" onclick="refreshLiveTraffic()"><i class="fas fa-sync-alt"></i> Обновить</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== ПОЛЬЗОВАТЕЛЬСКОЕ МОДАЛЬНОЕ ОКНО ========== -->
+<div class="modal-overlay" id="userModal" onclick="if(event.target===this)closeUserModal()" style="z-index:10000;">
+    <div class="modal-box-wide">
+        <div class="modal-close-btn">
+            <button class="btn-icon close" onclick="closeUserModal()" title="Закрыть"><i class="fas fa-times"></i></button>
+            <button class="btn-icon" onclick="refreshUserModal()" title="Обновить"><i class="fas fa-sync-alt"></i></button>
+        </div>
+        <div class="modal-icon" style="font-size: 32px;">👤</div>
+        <h3 id="userModalTitle">Пользователь</h3>
+        
+        <div style="display:flex; gap:8px; justify-content:center; margin:16px 0; flex-wrap:wrap;">
+            <button class="btn tab-btn active" data-tab="info" onclick="switchTab('info')">📋 Инфо</button>
+            <button class="btn tab-btn" data-tab="traffic" onclick="switchTab('traffic')">📊 Трафик</button>
+            <button class="btn tab-btn" data-tab="devices" onclick="switchTab('devices')">📱 Устройства</button>
+            <button class="btn tab-btn" data-tab="settings" onclick="switchTab('settings')">⚙️ Настройки</button>
+        </div>
+        
+        <div id="userModalContent" class="user-modal-content">
+            <div style="text-align:center;padding:40px;color:rgba(255,255,255,0.5);">
+                <i class="fas fa-spinner fa-spin"></i> Загрузка...
+            </div>
+        </div>
+        
+        <div class="modal-btns" style="margin-top:16px;">
+            <button class="btn btn-secondary" onclick="closeUserModal()">Закрыть</button>
+            <button class="btn btn-primary" onclick="refreshUserModal()"><i class="fas fa-sync-alt"></i> Обновить</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ========== ПЕРЕМЕННЫЕ ==========
+let tempUserName = '';
+let modalCallback = null;
+let onlineData = { online: 0, users: [] };
+let trafficData = {};
+let liveTrafficInterval = null;
+let currentUserUid = null;
+let currentTab = 'info';
+
+// ========== МОДАЛЬНЫЕ ОКНА ==========
+function showModal(title, message, icon = 'ℹ️', autoClose = true) {
+    const overlay = document.getElementById('modalOverlay');
+    document.getElementById('modalIcon').textContent = icon;
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalMessage').textContent = message;
+    document.getElementById('modalButtons').style.display = 'flex';
+    document.getElementById('modalInputs').innerHTML = '';
+    overlay.classList.add('active');
+    if (autoClose) {
+        setTimeout(() => closeModal(), 4000);
+    }
+}
+
+function showConfirm(title, message, callback, icon = '❓') {
+    const overlay = document.getElementById('modalOverlay');
+    document.getElementById('modalIcon').textContent = icon;
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalMessage').textContent = message;
+    document.getElementById('modalButtons').innerHTML = `
+        <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+        <button class="btn btn-danger" onclick="confirmModal()">Да, удалить</button>
+    `;
+    document.getElementById('modalInputs').innerHTML = '';
+    overlay.classList.add('active');
+    modalCallback = callback;
+}
+
+function showPromptModal(title, message, defaultValue, callback) {
+    const overlay = document.getElementById('modalOverlay');
+    document.getElementById('modalIcon').textContent = '✏️';
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalMessage').textContent = message;
+    document.getElementById('modalInputs').innerHTML = `<input type="text" id="modalInput" value="${defaultValue || ''}" placeholder="Введите значение">`;
+    document.getElementById('modalButtons').innerHTML = `
+        <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+        <button class="btn btn-success" onclick="confirmPromptModal()">OK</button>
+    `;
+    overlay.classList.add('active');
+    window._promptCallback = callback;
+    setTimeout(() => document.getElementById('modalInput')?.focus(), 100);
+}
+
+function confirmPromptModal() {
+    const value = document.getElementById('modalInput')?.value || '';
+    if (window._promptCallback) {
+        window._promptCallback(value);
+    }
+    closeModal();
+}
+
+function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('active');
+    modalCallback = null;
+}
+
+function confirmModal() {
+    if (modalCallback) {
+        modalCallback(true);
+    }
+    closeModal();
+}
+
+// ========== ПОЛЬЗОВАТЕЛЬСКОЕ МОДАЛЬНОЕ ОКНО ==========
+function openUserModal(uid) {
+    currentUserUid = uid;
+    document.getElementById('userModal').classList.add('active');
+    document.getElementById('userModalTitle').textContent = '👤 Пользователь';
+    refreshUserModal();
+}
+
+function closeUserModal() {
+    document.getElementById('userModal').classList.remove('active');
+    currentUserUid = null;
+}
+
+async function refreshUserModal() {
+    if (!currentUserUid) return;
+    try {
+        const res = await fetch(`/api/user/${currentUserUid}`);
+        const user = await res.json();
+        renderUserModal(user);
+    } catch(e) {
+        document.getElementById('userModalContent').innerHTML = `
+            <div style="text-align:center;padding:40px;color:#f87171;">
+                ❌ Ошибка загрузки: ${e.message}
+            </div>
+        `;
+    }
+}
+
+function renderUserModal(user) {
+    const content = document.getElementById('userModalContent');
+    let html = '';
+    
+    // Вкладка: Инфо
+    if (currentTab === 'info') {
+        const isExpired = user.expire_date && user.expire_date !== 'Не указан' && new Date(user.expire_date) < new Date();
+        const statusText = isExpired ? 'Просрочен' : (user.active ? 'Активен' : 'Неактивен');
+        const statusColor = isExpired ? 'orange' : (user.active ? 'green' : 'red');
+        
+        const now = new Date();
+        const expire = new Date(user.expire_date);
+        const daysLeft = Math.ceil((expire - now) / (1000 * 60 * 60 * 24));
+        const progress = user.expire_date && user.expire_date !== 'Не указан' ? Math.min(100, Math.max(0, (daysLeft / 30) * 100)) : 0;
+        
+        html = `
+            <div class="user-info-grid">
+                <div class="user-info-item">
+                    <div class="label">📛 ID</div>
+                    <div class="value"><code>${user.id}</code></div>
+                </div>
+                <div class="user-info-item">
+                    <div class="label">👤 Имя</div>
+                    <div class="value">${user.name}</div>
+                </div>
+                <div class="user-info-item">
+                    <div class="label">📊 Статус</div>
+                    <div class="value" style="color:${statusColor === 'green' ? '#4ade80' : (statusColor === 'orange' ? '#fbbf24' : '#f87171')}">
+                        <i class="fas fa-circle" style="font-size:12px;"></i> ${statusText}
+                    </div>
+                </div>
+                <div class="user-info-item">
+                    <div class="label">📅 Создан</div>
+                    <div class="value">${user.created}</div>
+                </div>
+                <div class="user-info-item">
+                    <div class="label">📅 Истекает</div>
+                    <div class="value">${user.expire_date}</div>
+                </div>
+                <div class="user-info-item">
+                    <div class="label">⏳ Осталось дней</div>
+                    <div class="value">${daysLeft > 0 ? daysLeft : 'Истекло'}</div>
+                </div>
+                <div class="user-info-item">
+                    <div class="label">🔌 Порт</div>
+                    <div class="value">${user.port}</div>
+                </div>
+                <div class="user-info-item">
+                    <div class="label">📶 Онлайн</div>
+                    <div class="value">${user.devices && user.devices.some(d => d.online) ? '🟢 Онлайн' : '🔴 Офлайн'}</div>
+                </div>
+            </div>
+            <div style="margin-top:12px;">
+                <div class="label">📅 Прогресс подписки</div>
+                <div class="user-progress">
+                    <div class="fill ${progress > 80 ? 'red' : (progress > 50 ? 'yellow' : 'green')}" style="width:${Math.min(100, progress)}%;"></div>
+                </div>
+                <div style="font-size:12px;color:rgba(255,255,255,0.4);text-align:right;">${Math.round(progress)}% использовано</div>
+            </div>
+            <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+                <button class="btn btn-primary" onclick="copyLink('${user.id}')">🔗 Ссылка</button>
+                <button class="btn btn-success" onclick="extendUser('${user.id}')">⏰ Продлить</button>
+                <button class="btn btn-warning" onclick="toggleUser('${user.id}')">🔄 Вкл/Выкл</button>
+                <button class="btn btn-danger" onclick="deleteUser('${user.id}')">❌ Удалить</button>
+            </div>
+        `;
+    }
+    
+    // Вкладка: Трафик
+    else if (currentTab === 'traffic') {
+        const traffic = user.traffic || { tx_mb: 0, rx_mb: 0, total_mb: 0, limit_mb: 10240 };
+        const usedPercent = Math.min(100, (traffic.total_mb / traffic.limit_mb) * 100);
+        
+        html = `
+            <div class="user-info-grid">
+                <div class="user-info-item">
+                    <div class="label">⬆ TX (отправлено)</div>
+                    <div class="value" style="color:#60a5fa;">${traffic.tx_mb} MB</div>
+                </div>
+                <div class="user-info-item">
+                    <div class="label">⬇ RX (получено)</div>
+                    <div class="value" style="color:#a78bfa;">${traffic.rx_mb} MB</div>
+                </div>
+                <div class="user-info-item">
+                    <div class="label">📊 Всего</div>
+                    <div class="value">${traffic.total_mb} MB</div>
+                </div>
+                <div class="user-info-item">
+                    <div class="label">📦 Лимит</div>
+                    <div class="value">${traffic.limit_mb} MB</div>
+                </div>
+            </div>
+            <div style="margin-top:12px;">
+                <div class="label">📊 Использовано трафика</div>
+                <div class="user-progress">
+                    <div class="fill ${usedPercent > 90 ? 'red' : (usedPercent > 70 ? 'yellow' : 'green')}" style="width:${Math.min(100, usedPercent)}%;"></div>
+                </div>
+                <div style="font-size:12px;color:rgba(255,255,255,0.4);text-align:right;">
+                    ${traffic.total_mb} MB / ${traffic.limit_mb} MB (${Math.round(usedPercent)}%)
+                </div>
+            </div>
+            <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+                <button class="btn btn-warning" onclick="setTrafficLimit('${user.id}')">📦 Установить лимит</button>
+                <button class="btn btn-danger" onclick="resetTraffic('${user.id}')">🔄 Сбросить трафик</button>
+            </div>
+        `;
+    }
+    
+    // Вкладка: Устройства
+    else if (currentTab === 'devices') {
+        const devices = user.devices || [];
+        if (devices.length === 0) {
+            html = `
+                <div style="text-align:center;padding:40px;color:rgba(255,255,255,0.5);">
+                    <i class="fas fa-wifi" style="font-size:48px;display:block;margin-bottom:16px;"></i>
+                    Нет активных устройств
+                </div>
+            `;
+        } else {
+            html = `<div style="margin-top:8px;">`;
+            devices.forEach(d => {
+                html += `
+                    <div class="device-item">
+                        <span class="ip"><i class="fas fa-${d.online ? 'wifi' : 'power-off'}"></i> ${d.ip}</span>
+                        <span class="status ${d.online ? 'online' : 'offline'}">
+                            ${d.online ? '🟢 Онлайн' : '🔴 Офлайн'}
+                        </span>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+        }
+    }
+    
+    // Вкладка: Настройки (уменьшенные поля)
+    else if (currentTab === 'settings') {
+        html = `
+            <div style="padding:4px 0;" class="settings-small">
+                <div class="user-info-grid">
+                    <div class="user-info-item">
+                        <div class="modal-label">👤 Имя</div>
+                        <input type="text" value="${user.name}" disabled style="background:rgba(255,255,255,0.03);">
+                    </div>
+                    <div class="user-info-item">
+                        <div class="modal-label">🔌 Порт</div>
+                        <input type="text" value="${user.port}" disabled style="background:rgba(255,255,255,0.03);">
+                    </div>
+                </div>
+                <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+                    <button class="btn btn-primary" onclick="copyLink('${user.id}')" style="padding:8px 16px;font-size:13px;">🔗 Ссылка</button>
+                    <button class="btn btn-success" onclick="extendUser('${user.id}')" style="padding:8px 16px;font-size:13px;">⏰ Продлить</button>
+                    <button class="btn btn-warning" onclick="toggleUser('${user.id}')" style="padding:8px 16px;font-size:13px;">🔄 Вкл/Выкл</button>
+                    <button class="btn btn-danger" onclick="deleteUser('${user.id}')" style="padding:8px 16px;font-size:13px;">❌ Удалить</button>
+                </div>
+            </div>
+        `;
+    }
+    
+    content.innerHTML = html;
+}
+
+function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+    refreshUserModal();
+}
+
+// ========== ФУНКЦИИ ВЫЗЫВАЕМЫЕ ИЗ ПОЛЬЗОВАТЕЛЬСКОГО ОКНА ==========
+
+function setTrafficLimit(uid) {
+    showPromptModal(
+        '📦 Установить лимит трафика',
+        'Введите лимит в МБ (по умолчанию 10240 = 10 ГБ):',
+        '10240',
+        async function(value) {
+            const limitMb = parseInt(value);
+            if (isNaN(limitMb) || limitMb < 1) {
+                showModal('Ошибка', 'Введите корректное число', '⚠️', false);
+                return;
+            }
+            try {
+                const res = await fetch(`/api/user/traffic-limit/${uid}?limit_mb=${limitMb}`, {method: 'POST'});
+                const data = await res.json();
+                if (data.success) {
+                    showModal('Успех', `Лимит установлен: ${limitMb} МБ`, '✅', false);
+                    refreshUserModal();
+                    setTimeout(() => closeModal(), 2000);
+                }
+            } catch(e) {
+                showModal('Ошибка', 'Не удалось установить лимит', '❌', false);
+            }
+        }
+    );
+}
+
+function resetTraffic(uid) {
+    showConfirm(
+        '🔄 Сброс трафика',
+        'Вы уверены, что хотите сбросить трафик пользователя?',
+        async function(confirmed) {
+            if (confirmed) {
+                try {
+                    const res = await fetch(`/api/user/reset-traffic/${uid}`, {method: 'POST'});
+                    const data = await res.json();
+                    if (data.success) {
+                        showModal('Успех', 'Трафик сброшен', '✅', false);
+                        refreshUserModal();
+                        setTimeout(() => closeModal(), 2000);
+                    }
+                } catch(e) {
+                    showModal('Ошибка', 'Не удалось сбросить трафик', '❌', false);
+                }
+            }
+        },
+        '❓'
+    );
+}
+
+function toggleUser(uid) {
+    showConfirm(
+        '🔄 Изменение статуса',
+        'Вы уверены, что хотите изменить статус пользователя?',
+        async function(confirmed) {
+            if (confirmed) {
+                try {
+                    await fetch(`/api/user/toggle/${uid}`, {method: 'POST'});
+                    showModal('Успех', 'Статус изменён', '✅', false);
+                    loadData();
+                    refreshUserModal();
+                    setTimeout(() => closeModal(), 2000);
+                } catch(e) {
+                    showModal('Ошибка', 'Не удалось изменить статус', '❌', false);
+                }
+            }
+        },
+        '❓'
+    );
+}
+
+function extendUser(uid) {
+    showPromptModal(
+        '⏰ Продление подписки',
+        'На сколько дней продлить? (по умолчанию 30)',
+        '30',
+        async function(value) {
+            const d = parseInt(value) || 30;
+            if (d < 1) {
+                showModal('Ошибка', 'Укажите положительное число дней', '⚠️', false);
+                return;
+            }
+            try {
+                const res = await fetch(`/api/user/extend/${uid}?days=${d}`, {method: 'POST'});
+                const data = await res.json();
+                if (data.success) {
+                    showModal('Успех', `Подписка продлена до ${data.new_expire}`, '✅', false);
+                    loadData();
+                    refreshUserModal();
+                    setTimeout(() => closeModal(), 3000);
+                }
+            } catch(e) {
+                showModal('Ошибка', 'Не удалось продлить подписку', '❌', false);
+            }
+        }
+    );
+}
+
+function deleteUser(uid) {
+    showConfirm(
+        '❌ Подтверждение удаления',
+        'Вы уверены, что хотите удалить этого пользователя?',
+        async function(confirmed) {
+            if (confirmed) {
+                try {
+                    await fetch(`/api/user/${uid}`, {method: 'DELETE'});
+                    showModal('Успех', 'Пользователь удалён', '✅', false);
+                    loadData();
+                    closeUserModal();
+                    setTimeout(() => closeModal(), 2000);
+                } catch(e) {
+                    showModal('Ошибка', 'Не удалось удалить пользователя', '❌', false);
+                }
+            }
+        },
+        '❓'
+    );
+}
+
+// ========== ФУНКЦИИ ИЗ ТАБЛИЦЫ ==========
+
+function toggleUserFromTable(uid) {
+    showConfirm(
+        '🔄 Изменение статуса',
+        'Вы уверены, что хотите изменить статус пользователя?',
+        function(confirmed) {
+            if (confirmed) {
+                fetch(`/api/user/toggle/${uid}`, {method: 'POST'})
+                    .then(() => {
+                        showModal('Успех', 'Статус изменён', '✅', false);
+                        loadData();
+                        setTimeout(() => closeModal(), 2000);
+                    })
+                    .catch(() => {
+                        showModal('Ошибка', 'Не удалось изменить статус', '❌', false);
+                    });
+            }
+        },
+        '❓'
+    );
+}
+
+function extendUserFromTable(uid) {
+    showPromptModal(
+        '⏰ Продление подписки',
+        'На сколько дней продлить? (по умолчанию 30)',
+        '30',
+        function(value) {
+            const d = parseInt(value) || 30;
+            if (d < 1) {
+                showModal('Ошибка', 'Укажите положительное число дней', '⚠️', false);
+                return;
+            }
+            fetch(`/api/user/extend/${uid}?days=${d}`, {method: 'POST'})
+                .then(res => res.json())
+                .then(data => {
+                    showModal('Успех', `Подписка продлена до ${data.new_expire}`, '✅', false);
+                    loadData();
+                    setTimeout(() => closeModal(), 3000);
+                })
+                .catch(() => {
+                    showModal('Ошибка', 'Не удалось продлить подписку', '❌', false);
+                });
+        }
+    );
+}
+
+function deleteUserFromTable(uid) {
+    showConfirm(
+        '❌ Подтверждение удаления',
+        'Вы уверены, что хотите удалить этого пользователя?',
+        function(confirmed) {
+            if (confirmed) {
+                fetch(`/api/user/${uid}`, {method: 'DELETE'})
+                    .then(() => {
+                        showModal('Успех', 'Пользователь удалён', '✅', false);
+                        loadData();
+                        setTimeout(() => closeModal(), 2000);
+                    })
+                    .catch(() => {
+                        showModal('Ошибка', 'Не удалось удалить пользователя', '❌', false);
+                    });
+            }
+        },
+        '❓'
+    );
+}
+
+// ========== ШАГ 1: ВВОД ИМЕНИ ==========
+function createUser() {
+    const icon = document.getElementById('modalIcon');
+    const titleEl = document.getElementById('modalTitle');
+    const message = document.getElementById('modalMessage');
+    const inputs = document.getElementById('modalInputs');
+    const buttons = document.getElementById('modalButtons');
+
+    icon.textContent = '✏️';
+    titleEl.textContent = 'Шаг 1: Введите имя';
+    message.textContent = 'Введите имя пользователя (латиница):';
+    inputs.innerHTML = `<input type="text" id="modalInput" placeholder="например: ivan">`;
+    buttons.innerHTML = `
+        <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+        <button class="btn btn-primary" onclick="step2_DatePicker()">Далее →</button>
+    `;
+    document.getElementById('modalOverlay').classList.add('active');
+    modalCallback = null;
+    setTimeout(() => document.getElementById('modalInput')?.focus(), 100);
+}
+
+// ========== ШАГ 2: ВЫБОР ДАТЫ ==========
+function step2_DatePicker() {
+    const name = document.getElementById('modalInput')?.value?.trim() || '';
+    if (!name) {
+        showModal('Ошибка', 'Имя не может быть пустым', '⚠️', false);
+        return;
+    }
+    if (name.length < 2) {
+        showModal('Ошибка', 'Имя слишком короткое (минимум 2 символа)', '⚠️', false);
+        return;
+    }
+    tempUserName = name;
+    closeModal();
+
+    setTimeout(() => {
+        const icon = document.getElementById('modalIcon');
+        const titleEl = document.getElementById('modalTitle');
+        const message = document.getElementById('modalMessage');
+        const inputs = document.getElementById('modalInputs');
+        const buttons = document.getElementById('modalButtons');
+
+        icon.textContent = '📅';
+        titleEl.textContent = 'Шаг 2: Выберите срок';
+        message.textContent = `Пользователь: ${tempUserName}\nВыберите дату истечения или укажите количество дней:`;
+
+        const today = new Date();
+        const defaultDate = new Date(today);
+        defaultDate.setDate(today.getDate() + 30);
+        const dateStr = defaultDate.toISOString().split('T')[0];
+
+        inputs.innerHTML = `
+            <label class="modal-label">📅 Дата истечения</label>
+            <input type="date" id="modalDate" value="${dateStr}" min="${today.toISOString().split('T')[0]}">
+            <label class="modal-label" style="margin-top:8px;">Или укажите количество дней</label>
+            <input type="number" id="modalDays" placeholder="Например: 30" min="1" max="365" style="margin-bottom:4px;">
+            <span style="font-size:12px;color:rgba(255,255,255,0.3);">Оставьте пустым, чтобы использовать дату</span>
+        `;
+
+        buttons.innerHTML = `
+            <button class="btn btn-secondary" onclick="step1_Back()">← Назад</button>
+            <button class="btn btn-success" onclick="step3_Create()">Создать</button>
+        `;
+
+        document.getElementById('modalOverlay').classList.add('active');
+    }, 300);
+}
+
+// ========== НАЗАД К ШАГУ 1 ==========
+function step1_Back() {
+    closeModal();
+    setTimeout(() => createUser(), 300);
+}
+
+// ========== ШАГ 3: СОЗДАНИЕ ==========
+function step3_Create() {
+    const dateInput = document.getElementById('modalDate');
+    const daysInput = document.getElementById('modalDays');
+    let days = parseInt(daysInput.value) || 0;
+
+    if (days > 0) {
+        createUserWithDays(tempUserName, days);
+        return;
+    }
+
+    const dateValue = dateInput.value;
+    if (!dateValue) {
+        showModal('Ошибка', 'Выберите дату или укажите количество дней', '⚠️', false);
+        return;
+    }
+
+    const selectedDate = new Date(dateValue);
+    const today = new Date();
+    const diffDays = Math.ceil((selectedDate - today) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 1) {
+        showModal('Ошибка', 'Дата должна быть в будущем', '⚠️', false);
+        return;
+    }
+
+    createUserWithDays(tempUserName, diffDays);
+}
+
+function createUserWithDays(name, days) {
+    closeModal();
+    fetch(`/api/user/create?name=${encodeURIComponent(name)}&days=${days}`, {method: 'POST'})
+        .then(res => res.json())
+        .then(data => {
+            if (data.id) {
+                const expireDate = new Date();
+                expireDate.setDate(expireDate.getDate() + days);
+                showModal('✅ Успех', `Пользователь "${name}" создан!\n📅 Срок: ${days} дней\n📆 До: ${expireDate.toLocaleDateString('ru-RU')}`, '🎉', false);
+                loadData();
+                setTimeout(() => closeModal(), 4000);
+            } else {
+                showModal('Ошибка', 'Не удалось создать пользователя', '❌', false);
+            }
+        })
+        .catch(() => {
+            showModal('Ошибка', 'Ошибка сети при создании', '❌', false);
+        });
+}
+
+// ========== LIVE TRAFFIC ==========
+function openLiveTraffic() {
+    document.getElementById('liveTrafficModal').classList.add('active');
+    refreshLiveTraffic();
+    if (liveTrafficInterval) clearInterval(liveTrafficInterval);
+    liveTrafficInterval = setInterval(refreshLiveTraffic, 3000);
+}
+
+function closeLiveTraffic() {
+    document.getElementById('liveTrafficModal').classList.remove('active');
+    if (liveTrafficInterval) {
+        clearInterval(liveTrafficInterval);
+        liveTrafficInterval = null;
+    }
+}
+
+async function refreshLiveTraffic() {
+    try {
+        const res = await fetch('/api/live-traffic');
+        const data = await res.json();
+        const content = document.getElementById('liveTrafficContent');
+        
+        if (data.error) {
+            content.innerHTML = `<div style="text-align:center;padding:20px;color:#f87171;">❌ ${data.error}</div>`;
+            return;
+        }
+        
+        if (data.traffic.length === 0) {
+            content.innerHTML = `
+                <div style="text-align:center;padding:40px;color:rgba(255,255,255,0.5);">
+                    <i class="fas fa-wifi" style="font-size:48px;display:block;margin-bottom:16px;"></i>
+                    Нет активного трафика<br>
+                    <span style="font-size:12px;color:rgba(255,255,255,0.3);">Ожидание подключений...</span>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = `
+            <div style="margin-bottom:12px;color:rgba(255,255,255,0.5);font-size:13px;">
+                🟢 Активных потоков: ${data.count} | Обновлено: ${new Date().toLocaleTimeString()}
+            </div>
+            <div class="live-traffic-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>IP</th>
+                            <th style="text-align:right;">⬆ TX</th>
+                            <th style="text-align:right;">⬇ RX</th>
+                            <th style="text-align:right;">📊 Всего</th>
+                            <th style="text-align:right;">⏱ Время</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        data.traffic.forEach(t => {
+            const color = t.total_mb > 1 ? '#4ade80' : (t.total_mb > 0.1 ? '#fbbf24' : '#60a5fa');
+            html += `
+                <tr>
+                    <td><code>${t.ip}</code></td>
+                    <td style="text-align:right;color:#60a5fa;">${t.tx_mb} MB</td>
+                    <td style="text-align:right;color:#a78bfa;">${t.rx_mb} MB</td>
+                    <td style="text-align:right;color:${color};font-weight:600;">${t.total_mb} MB</td>
+                    <td style="text-align:right;color:rgba(255,255,255,0.3);font-size:11px;">${t.timestamp.replace('T', ' ').substring(0, 19)}</td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        content.innerHTML = html;
+    } catch(e) {
+        document.getElementById('liveTrafficContent').innerHTML = `
+            <div style="text-align:center;padding:20px;color:#f87171;">❌ Ошибка загрузки: ${e.message}</div>
+        `;
+    }
+}
+
+// ========== ОСНОВНЫЕ ФУНКЦИИ ==========
+async function loadData() {
+    try {
+        const res = await fetch('/api/status');
+        const status = await res.json();
+        const usersRes = await fetch('/api/users');
+        const usersData = await usersRes.json();
+        const onlineRes = await fetch('/api/online-v2');
+        onlineData = await onlineRes.json();
+        const trafficRes = await fetch('/api/traffic-v2');
+        trafficData = await trafficRes.json();
+        
+        document.getElementById('serverStatus').textContent = status.status === 'active' ? '🟢 Работает' : '🔴 Остановлен';
+        renderStats(status, usersData.users);
+        renderUsers(usersData.users);
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('content').style.display = 'block';
+    } catch(e) {
+        document.getElementById('loading').innerHTML = '<i class="fas fa-exclamation-triangle" style="color:#f87171;"></i> Ошибка загрузки';
+    }
+}
+
+function renderStats(status, users) {
+    const total = users.length;
+    const active = users.filter(u => u.active).length;
+    const expired = users.filter(u => {
+        if (!u.expire_date || u.expire_date === 'Не указан') return false;
+        try { return new Date(u.expire_date) < new Date(); }
+        catch { return false; }
+    }).length;
+    const soon = users.filter(u => {
+        if (!u.expire_date || u.expire_date === 'Не указан') return false;
+        try {
+            const d = new Date(u.expire_date);
+            const now = new Date();
+            return d > now && d - now < 3 * 24 * 60 * 60 * 1000 && u.active;
+        } catch { return false; }
+    }).length;
+    const online = onlineData.online || 0;
+    
+    document.getElementById('stats').innerHTML = `
+        <div class="stat-card blue">
+            <div class="label"><i class="fas fa-server"></i> Сервер</div>
+            <div class="value">${status.server || 'Польша'}</div>
+            <div class="sub">${status.domain || 'link.qmbox.ru'}</div>
+        </div>
+        <div class="stat-card purple">
+            <div class="label"><i class="fas fa-users"></i> Всего</div>
+            <div class="value">${total}</div>
+        </div>
+        <div class="stat-card green">
+            <div class="label"><i class="fas fa-check-circle"></i> Активных</div>
+            <div class="value"><i class="fas fa-circle" style="font-size:12px;color:#4ade80;"></i> ${active}</div>
+        </div>
+        <div class="stat-card orange">
+            <div class="label"><i class="fas fa-clock"></i> Скоро истекут</div>
+            <div class="value"><i class="fas fa-hourglass-half" style="font-size:18px;color:#fbbf24;"></i> ${soon}</div>
+            <div class="sub">в течение 3 дней</div>
+        </div>
+        <div class="stat-card red">
+            <div class="label"><i class="fas fa-exclamation-triangle"></i> Просрочено</div>
+            <div class="value"><i class="fas fa-circle" style="font-size:12px;color:#f87171;"></i> ${expired}</div>
+        </div>
+        <div class="stat-card cyan">
+            <div class="label"><i class="fas fa-wifi"></i> Онлайн</div>
+            <div class="value" id="onlineCount">${online}</div>
+            <div class="sub">пользователей сейчас</div>
+        </div>
+    `;
+}
+
+function renderUsers(users) {
+    const tbody = document.getElementById('usersList');
+    if (users.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><i class="fas fa-user-slash"></i> Нет пользователей</div></td></tr>`;
+        return;
+    }
+    
+    const onlineMap = {};
+    if (onlineData.users) {
+        onlineData.users.forEach(u => { onlineMap[u.id] = u.online; });
+    }
+    
+    tbody.innerHTML = users.map(u => {
+        const isExpired = u.expire_date && u.expire_date !== 'Не указан' && new Date(u.expire_date) < new Date();
+        let statusClass = u.active ? 'active' : 'inactive';
+        let statusText = u.active ? 'Активен' : 'Неактивен';
+        let statusIcon = 'fa-circle';
+        if (isExpired) { statusClass = 'expired'; statusText = 'Просрочен'; statusIcon = 'fa-exclamation-circle'; }
+        
+        const link = u.link || '—';
+        const isOnline = onlineMap[u.id] || false;
+        
+        return `<tr>
+            <td><span class="status-badge ${statusClass}"><i class="fas ${statusIcon}"></i> ${statusText}</span></td>
+            <td><strong>${u.name}</strong></td>
+            <td><code style="font-size:12px;background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:4px;color:rgba(255,255,255,0.5);">${u.id}</code></td>
+            <td><code style="font-size:13px;background:rgba(108,99,255,0.1);padding:2px 10px;border-radius:4px;color:#a78bfa;">${u.port || '-'}</code></td>
+            <td style="font-size:13px;color:${isExpired ? '#f87171' : 'rgba(255,255,255,0.6)'}">${u.expire_date || '-'}</td>
+            <td>
+                <span class="online-dot ${isOnline ? 'online' : 'offline'}"></span>
+                <span class="online-text ${isOnline ? 'online' : 'offline'}">${isOnline ? 'Онлайн' : 'Офлайн'}</span>
+            </td>
+            <td>0 MB</td>
+            <td><div class="link-cell" id="link_${u.id}"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${link !== '—' ? link.substring(0, 40) + '...' : '—'}</span>${link !== '—' ? `<button class="copy-btn" onclick="copyLink('${u.id}')"><i class="fas fa-copy"></i> Копировать</button>` : ''}</div></td>
+            <td><div class="action-btns">
+                <button class="btn-sm cyan" onclick="openUserModal('${u.id}')" title="Информация"><i class="fas fa-info-circle"></i></button>
+                ${link !== '—' ? `<button class="btn-sm blue" onclick="copyLink('${u.id}')" title="Копировать ссылку"><i class="fas fa-copy"></i></button>` : ''}
+                <button class="btn-sm green" onclick="toggleUserFromTable('${u.id}')" title="Вкл/Выкл"><i class="fas ${u.active ? 'fa-pause' : 'fa-play'}"></i></button>
+                <button class="btn-sm purple" onclick="extendUserFromTable('${u.id}')" title="Продлить"><i class="fas fa-clock"></i></button>
+                <button class="btn-sm red" onclick="deleteUserFromTable('${u.id}')" title="Удалить"><i class="fas fa-trash"></i></button>
+            </div></td>
+            </tr>`;
+    }).join('');
+}
+
+function copyLink(uid) {
+    fetch('/api/users')
+        .then(res => res.json())
+        .then(data => {
+            const user = data.users.find(u => u.id === uid);
+            if (user && user.link) {
+                navigator.clipboard.writeText(user.link).then(() => {
+                    showToast('✅ Ссылка скопирована!');
+                }).catch(() => {
+                    showToast('❌ Не удалось скопировать');
+                });
+            } else {
+                showToast('❌ Нет ссылки');
+            }
+        })
+        .catch(() => {
+            showToast('❌ Ошибка получения ссылки');
+        });
+}
+
+function cleanExpired() {
+    showConfirm(
+        '🧹 Очистка',
+        'Удалить всех просроченных пользователей?',
+        function(confirmed) {
+            if (confirmed) {
+                fetch('/api/clean', {method: 'POST'})
+                    .then(res => res.json())
+                    .then(data => {
+                        showModal('Успех', `Удалено ${data.deleted} пользователей`, '✅', false);
+                        loadData();
+                        setTimeout(() => closeModal(), 3000);
+                    })
+                    .catch(() => {
+                        showModal('Ошибка', 'Не удалось выполнить очистку', '❌', false);
+                    });
+            }
+        },
+        '❓'
+    );
+}
+
+function restartServer() {
+    showConfirm(
+        '🔄 Перезапуск',
+        'Перезапустить сервер Hysteria 2?',
+        function(confirmed) {
+            if (confirmed) {
+                fetch('/api/restart')
+                    .then(() => {
+                        showModal('Успех', 'Сервер перезапущен', '🔄', false);
+                        loadData();
+                        setTimeout(() => closeModal(), 3000);
+                    })
+                    .catch(() => {
+                        showModal('Ошибка', 'Не удалось перезапустить сервер', '❌', false);
+                    });
+            }
+        },
+        '❓'
+    );
+}
+
+function showToast(msg) {
+    const existing = document.querySelector('.toast');
+    if (existing) existing.remove();
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.5s';
+        setTimeout(() => toast.remove(), 500);
+    }, 3000);
+}
+
+// ========== ЗАПУСК ==========
+loadData();
+
+setInterval(() => {
+    fetch('/api/online-v2')
+        .then(res => res.json())
+        .then(data => {
+            onlineData = data;
+            const onlineCount = document.getElementById('onlineCount');
+            if (onlineCount) onlineCount.textContent = data.online || 0;
+        })
+        .catch(() => {});
+}, 10000);
+</script>
+</body>
+</html>

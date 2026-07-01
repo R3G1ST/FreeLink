@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hysteria 2</title>
+    <meta name="theme-color" content="#8b5cf6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="/web/manifest.json">
+    <link rel="apple-touch-icon" href="/web/icon-192.svg">
+    <script src="/web/telegram-web-app.js"></script>
+    <link href="/web/inter.css" rel="stylesheet">
+    <link rel="stylesheet" href="/web/font-awesome.min.css">
+    <script src="/web/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0a0e1a;--c1:#111827;--c2:#1f2937;--c3:#374151;--t1:#f9fafb;--t2:rgba(249,250,251,.7);--t3:rgba(249,250,251,.4);--ac:#8b5cf6;--ac2:#a78bfa;--acg:rgba(139,92,246,.12);--gn:#10b981;--gng:rgba(16,185,129,.1);--rd:#ef4444;--rdg:rgba(239,68,68,.1);--or:#f59e0b;--org:rgba(245,158,11,.1);--bl:#3b82f6;--R:12px;--R2:8px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased;padding-bottom:env(safe-area-inset-bottom,0)}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(139,92,246,.2);border-radius:2px}
+
+/* AUTH */
+.auth{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.auth-box{width:100%;max-width:360px;text-align:center}
+.auth-icon{width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#8b5cf6,#6d28d9);display:inline-flex;align-items:center;justify-content:center;font-size:28px;color:#fff;margin-bottom:20px;box-shadow:0 8px 32px rgba(139,92,246,.4)}
+.auth-box h1{font-size:22px;font-weight:800;margin-bottom:6px}
+.auth-box h1 em{font-style:normal;color:var(--ac2)}
+.auth-box p{font-size:13px;color:var(--t3);margin-bottom:24px}
+.auth-btn{width:100%;padding:14px;border:none;border-radius:var(--R);background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(139,92,246,.3);transition:all .15s}
+.auth-btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.auth-btn:active{transform:scale(.98)}
+.auth-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* NAV */
+.nav{display:flex;gap:4px;padding:8px;background:rgba(255,255,255,.03);border-radius:var(--R);margin:0 16px 16px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.nav::-webkit-scrollbar{display:none}
+.nav-btn{padding:8px 14px;border:none;border-radius:var(--R2);background:transparent;color:var(--t3);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;transition:all .15s;flex-shrink:0}
+.nav-btn.on{background:var(--acg);color:var(--ac2)}
+.nav-btn i{margin-right:4px}
+
+/* PAGE */
+.page{display:none;padding:0 16px 20px}.page.on{display:block}
+
+/* CARDS */
+.card{background:var(--c1);border:1px solid rgba(255,255,255,.06);border-radius:var(--R);padding:16px;margin-bottom:12px}
+.card-title{font-size:14px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card-title i{color:var(--ac2);font-size:13px}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+.stat{background:var(--c1);border:1px solid rgba(255,255,255,.06);border-radius:var(--R);padding:14px;text-align:center}
+.stat .v{font-size:24px;font-weight:800}
+.stat .l{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-top:4px;font-weight:600}
+.stat.cv .v{color:var(--ac2)}.stat.cg .v{color:var(--gn)}.stat.cr .v{color:var(--rd)}.stat.cc .v{color:#22d3ee}.stat.co .v{color:var(--or)}.stat.cb .v{color:var(--bl)}
+
+/* SYSTEM */
+.sys-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px}
+.sys{background:var(--c1);border:1px solid rgba(255,255,255,.06);border-radius:var(--R);padding:14px;text-align:center}
+.sys.wide{grid-column:span 3}
+.sys.gauge{position:relative;width:72px;height:72px;margin:0 auto 8px}
+.sys.gauge svg{transform:rotate(-90deg)}
+.sys.gauge .gv{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800}
+.sys .sl{font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px;display:flex;align-items:center;justify-content:center;gap:4px}
+.sys .sl i{font-size:9px}
+.sys .sd{font-size:9px;color:var(--t3);margin-top:2px}
+.sys.net-row{display:flex;justify-content:space-around;align-items:center;padding:10px 8px}
+.sys.net-item{text-align:center}
+.sys.net-item .nv{font-size:14px;font-weight:800}
+.sys.net-item .nl{font-size:9px;color:var(--t3);margin-top:2px}
+.live-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.live-item:last-child{border-bottom:none}
+.live-item .li-name{font-size:13px;font-weight:600}
+.live-item .li-speed{font-size:11px;color:var(--t3);margin-top:2px}
+.live-item .li-bar{display:flex;align-items:center;gap:6px}
+.live-item .li-tx{font-size:11px;color:var(--bl);font-weight:600}
+.live-item .li-rx{font-size:11px;color:var(--ac2);font-weight:600}
+
+/* USER LIST */
+.user-item{background:var(--c1);border:1px solid rgba(255,255,255,.06);border-radius:var(--R);padding:12px;margin-bottom:8px;transition:all .15s}
+.user-item:active{background:var(--c2);transform:scale(.99)}
+.user-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.user-name{font-size:14px;font-weight:700}
+.user-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px}
+.user-badge.a{background:var(--gng);color:var(--gn)}.user-badge.i{background:var(--rdg);color:var(--rd)}.user-badge.e{background:var(--org);color:var(--or)}
+.user-online{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600}
+.user-online .dot{width:6px;height:6px;border-radius:50%}
+.user-online .dot.on{background:var(--gn);box-shadow:0 0 6px rgba(16,185,129,.5)}
+.user-online .dot.off{background:#6b7280}
+.user-online.on{color:var(--gn)}.user-online.off{color:#6b7280}
+.user-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--t3)}
+.user-bar{height:3px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden;margin-top:8px}
+.user-bar .fill{height:100%;border-radius:2px}
+.user-actions{display:flex;gap:6px;margin-top:8px}
+.user-actions button{flex:1;padding:8px;border:none;border-radius:var(--R2);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
+.user-actions .btn-g{background:var(--gng);color:var(--gn)}
+.user-actions .btn-b{background:rgba(59,130,246,.1);color:var(--bl)}
+.user-actions .btn-o{background:var(--org);color:var(--or)}
+.user-actions .btn-r{background:var(--rdg);color:var(--rd)}
+.user-actions button:active{transform:scale(.95)}
+
+/* SEARCH */
+.search{position:relative;margin-bottom:12px}
+.search input{width:100%;padding:10px 12px 10px 36px;background:var(--c1);border:1px solid rgba(255,255,255,.06);border-radius:var(--R2);color:var(--t1);font-size:13px;outline:none;font-family:inherit}
+.search input::placeholder{color:var(--t3)}
+.search i{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--t3);font-size:12px}
+
+/* CHART */
+.chart-wrap{height:200px;position:relative}
+
+/* BUTTONS */
+.btn{padding:10px 18px;border:none;border-radius:var(--R2);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
+.btn:active{transform:scale(.95)}
+.btn-g{background:linear-gradient(135deg,#10b981,#059669);color:#fff}
+.btn-a{background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff}
+.btn-n{background:rgba(255,255,255,.08);color:var(--t2)}
+.full-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;justify-content:flex-end;align-items:flex-end;z-index:100;padding:0}
+.modal-bg.open{display:flex}
+.modal{background:var(--c1);border-radius:var(--R) var(--R) 0 0;width:100%;max-height:80vh;overflow-y:auto;padding:20px;padding-bottom:calc(20px + env(safe-area-inset-bottom,0));animation:slideUp .25s}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal h3{font-size:18px;font-weight:800;margin-bottom:16px;text-align:center}
+.modal .field{margin-bottom:14px}
+.modal .field label{display:block;font-size:11px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.modal .field input,.modal .field select{width:100%;padding:10px 12px;background:var(--c2);border:1px solid rgba(255,255,255,.06);border-radius:var(--R2);color:var(--t1);font-size:13px;outline:none;font-family:inherit}
+.modal .field select{color-scheme:dark}
+.modal .field select option{background:#1f2937;color:#f9fafb}
+.modal-btns{display:flex;gap:8px;margin-top:16px}
+.modal-btns .btn{flex:1}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--c2);color:var(--t1);padding:10px 20px;border-radius:var(--R2);font-size:12px;font-weight:600;z-index:200;animation:slideUp .2s;pointer-events:none;border:1px solid rgba(255,255,255,.08)}
+.empty{text-align:center;padding:40px 20px;color:var(--t3)}
+.empty i{font-size:32px;margin-bottom:8px;display:block;opacity:.4}
+
+/* FILTERS */
+.filters{display:flex;gap:4px;margin-bottom:12px;overflow-x:auto}
+.filters::-webkit-scrollbar{display:none}
+.filter{padding:6px 12px;border:none;border-radius:20px;background:rgba(255,255,255,.05);color:var(--t3);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;transition:all .15s;flex-shrink:0}
+.filter.on{background:var(--acg);color:var(--ac2)}
+
+/* HEADER */
+.hdr{padding:12px 16px;display:flex;justify-content:space-between;align-items:center}
+.hdr h1{font-size:18px;font-weight:800}
+.hdr h1 em{font-style:normal;color:var(--ac2)}
+.hdr .pill{font-size:11px;font-weight:600;padding:4px 10px;border-radius:12px;background:var(--c1);border:1px solid rgba(255,255,255,.06)}
+.hdr .pill.on{background:var(--gng);color:var(--gn);border-color:rgba(16,185,129,.15)}
+.hdr .pill.off{background:var(--rdg);color:var(--rd);border-color:rgba(239,68,68,.15)}
+
+/* THEME TOGGLE */
+.theme-btn{width:32px;height:32px;border-radius:50%;border:none;background:var(--c2);color:var(--t2);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.theme-btn:active{transform:scale(.9)}
+
+/* NOTIFICATION BELL */
+.notif-wrap{position:relative}
+.notif-dot{position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:var(--rd);border:2px solid var(--bg)}
+
+/* QR MODAL */
+.qr-wrap{display:flex;justify-content:center;padding:16px;background:#fff;border-radius:var(--R);margin-bottom:12px}
+.qr-wrap img{width:200px;height:200px}
+
+/* ANIMATIONS */
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideIn{from{transform:translateX(-10px);opacity:0}to{transform:translateX(0);opacity:1}}
+.animate-in{animation:fadeIn .3s ease-out}
+.card,.stat,.user-item,.sys{transition:all .2s}
+.card:active,.stat:active,.user-item:active{transform:scale(.98);opacity:.9}
+
+/* SPEED BADGE */
+.speed-badge{font-size:9px;padding:2px 6px;border-radius:8px;background:rgba(59,130,246,.15);color:var(--bl);font-weight:600}
+
+/* NODES */
+.node-card{background:var(--c1);border:1px solid rgba(255,255,255,.06);border-radius:var(--R);padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:12px}
+.node-card.main{border:1px solid rgba(139,92,246,.2);background:rgba(139,92,246,.03)}
+.node-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.node-info{flex:1;min-width:0}
+.node-name{font-size:13px;font-weight:700}
+.node-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:6px;background:rgba(139,92,246,.15);color:var(--ac2);margin-left:6px}
+.node-meta{font-size:10px;color:var(--t3);margin-top:2px}
+.node-stats{font-size:10px;color:var(--t3);margin-top:4px}
+.node-status{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.node-status.on{background:var(--gn);box-shadow:0 0 6px rgba(16,185,129,.5)}
+.node-status.off{background:#6b7280}
+</style>
+</head>
+<body>
+<!-- AUTH -->
+<div class="auth" id="authPage">
+    <div class="auth-box">
+        <div class="auth-icon"><i class="fas fa-bolt"></i></div>
+        <h1><em>Hysteria</em> 2</h1>
+        <p>Управление VPN-сервером</p>
+        <button class="auth-btn" onclick="doAuth()" id="authBtn"><i class="fab fa-telegram-plane"></i> Войти через Telegram</button>
+    </div>
+</div>
+
+<!-- APP -->
+<div id="appPage" style="display:none">
+    <div class="hdr">
+        <h1><em>Hysteria</em> 2</h1>
+        <div style="display:flex;gap:8px;align-items:center">
+            <div class="notif-wrap"><button class="theme-btn" onclick="toggleNotifs()"><i class="fas fa-bell"></i></button><div class="notif-dot" id="notifDot" style="display:none"></div></div>
+            <button class="theme-btn" onclick="toggleTheme()" id="themeBtn"><i class="fas fa-moon"></i></button>
+            <div class="pill" id="sPill">...</div>
+        </div>
+    </div>
+
+    <div class="nav">
+        <button class="nav-btn on" onclick="go('dashboard',this)"><i class="fas fa-home"></i> Главная</button>
+        <button class="nav-btn" onclick="go('users',this)"><i class="fas fa-users"></i> Клиенты</button>
+        <button class="nav-btn" onclick="go('nodes',this)"><i class="fas fa-server"></i> Ноды</button>
+        <button class="nav-btn" onclick="go('traffic',this)"><i class="fas fa-chart-line"></i> Трафик</button>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="page on" id="p-dashboard">
+        <div class="stats" id="stats"></div>
+        <div class="sys-grid" id="sysGrid"></div>
+        <div class="card"><div class="card-title"><i class="fas fa-bolt" style="color:var(--gn)"></i> Live Трафик</div><div id="liveTraffic"><div class="empty" style="padding:20px"><i class="fas fa-wifi"></i>Нет активных</div></div></div>
+        <div class="card"><div class="card-title"><i class="fas fa-chart-pie"></i> Статус</div><div class="chart-wrap"><canvas id="cPie"></canvas></div></div>
+    </div>
+
+    <!-- USERS -->
+    <div class="page" id="p-users">
+        <div class="search"><i class="fas fa-search"></i><input type="text" id="searchInput" placeholder="Поиск..." oninput="filterUsers()"></div>
+        <div class="filters">
+            <button class="filter on" onclick="setFilter('all',this)">Все</button>
+            <button class="filter" onclick="setFilter('online',this)">Онлайн</button>
+            <button class="filter" onclick="setFilter('active',this)">Активные</button>
+            <button class="filter" onclick="setFilter('expired',this)">Просрочен.</button>
+        </div>
+        <div id="userList"></div>
+        <button class="btn btn-g full-btn" onclick="showCreateModal()" style="margin-top:8px"><i class="fas fa-plus"></i> Создать</button>
+    </div>
+
+    <!-- TRAFFIC -->
+    <div class="page" id="p-traffic">
+        <div class="card"><div class="card-title"><i class="fas fa-chart-area"></i> Трафик</div>
+            <div class="filters" style="margin-bottom:12px">
+                <button class="filter on" onclick="loadChart(1,this)">1ч</button>
+                <button class="filter" onclick="loadChart(6,this)">6ч</button>
+                <button class="filter" onclick="loadChart(24,this)">24ч</button>
+                <button class="filter" onclick="loadChart(72,this)">3д</button>
+            </div>
+            <div class="chart-wrap"><canvas id="cChart"></canvas></div>
+        </div>
+    </div>
+
+    <!-- NODES -->
+    <div class="page" id="p-nodes">
+        <div id="nodesList"></div>
+        <button class="btn btn-g full-btn" onclick="showDeployModal()" style="margin-top:8px"><i class="fas fa-plus"></i> Добавить ноду</button>
+    </div>
+
+    <!-- SERVICES -->
+    <div class="page" id="p-services">
+        <div id="serviceList"></div>
+    </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let CU=[],CF='all',chart=null,tg=window.Telegram?.WebApp;
+let currentTheme=localStorage.getItem('h2-theme')||'dark';
+
+// ====== INIT ======
+if(tg){tg.ready();tg.expand();tg.MainButton.hide();document.body.style.backgroundColor=tg.themeParams?.bg_color||'#0a0e1a';console.log('TG init:',tg.initData?'OK':'EMPTY')}
+else{console.log('No Telegram WebApp SDK')}
+
+// PWA
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/web/sw.js').catch(e=>{})}
+
+// Theme
+function applyTheme(t){currentTheme=t;localStorage.setItem('h2-theme',t);
+if(t==='light'){document.documentElement.style.setProperty('--bg','#f0f2f5');document.documentElement.style.setProperty('--c1','#ffffff');document.documentElement.style.setProperty('--c2','#e5e7eb');document.documentElement.style.setProperty('--c3','#d1d5db');document.documentElement.style.setProperty('--t1','#111827');document.documentElement.style.setProperty('--t2','rgba(17,24,39,.7)');document.documentElement.style.setProperty('--t3','rgba(17,24,39,.4)');$('themeBtn').innerHTML='<i class="fas fa-sun"></i>'}
+else{document.documentElement.style.setProperty('--bg','#0a0e1a');document.documentElement.style.setProperty('--c1','#111827');document.documentElement.style.setProperty('--c2','#1f2937');document.documentElement.style.setProperty('--c3','#374151');document.documentElement.style.setProperty('--t1','#f9fafb');document.documentElement.style.setProperty('--t2','rgba(249,250,251,.7)');document.documentElement.style.setProperty('--t3','rgba(249,250,251,.4)');$('themeBtn').innerHTML='<i class="fas fa-moon"></i>'}
+document.body.style.background=t==='light'?'#f0f2f5':'#0a0e1a'}
+applyTheme(currentTheme);
+function toggleTheme(){applyTheme(currentTheme==='dark'?'light':'dark')}
+
+// ====== NOTIFICATIONS ======
+let notifsOpen=false;
+async function toggleNotifs(){notifsOpen=!notifsOpen;if(!notifsOpen){document.querySelectorAll('.notif-panel').forEach(p=>p.remove());return}
+const r=await fetch('/api/miniapp/notifications');const d=await r.json();const nots=d.notifications||[];
+const panel=document.createElement('div');panel.className='notif-panel';panel.style.cssText='position:fixed;top:50px;right:10px;width:280px;max-height:400px;overflow-y:auto;background:var(--c1);border:1px solid rgba(255,255,255,.1);border-radius:var(--R);padding:12px;z-index:150;box-shadow:0 8px 32px rgba(0,0,0,.4)';
+if(!nots.length){panel.innerHTML='<div style="text-align:center;padding:20px;color:var(--t3);font-size:12px"><i class="fas fa-bell-slash" style="font-size:20px;display:block;margin-bottom:8px;opacity:.3"></i>Нет уведомлений</div>'}
+else{panel.innerHTML='<div style="font-size:12px;font-weight:700;margin-bottom:8px">Уведомления</div>'+nots.slice(-10).reverse().map(n=>`<div style="padding:8px;margin-bottom:4px;border-radius:6px;background:${n.type==='danger'?'var(--rdg)':n.type==='warning'?'var(--org)':'var(--acg)'};font-size:11px"><div style="font-weight:600;color:${n.type==='danger'?'var(--rd)':n.type==='warning'?'var(--or)':'var(--ac2)'}">${n.message}</div><div style="color:var(--t3);margin-top:2px;font-size:10px">${n.time}</div></div>`).join('')}
+document.body.appendChild(panel);panel.onclick=e=>e.stopPropagation();document.onclick=()=>{panel.remove();notifsOpen=false}}
+function checkNotifDot(){fetch('/api/miniapp/notifications').then(r=>r.json()).then(d=>{const unread=(d.notifications||[]).filter(n=>!n.read).length;const dot=$('notifDot');if(dot)dot.style.display=unread>0?'block':'none'})}
+setInterval(checkNotifDot,30000);setTimeout(checkNotifDot,2000);
+
+// ====== AUTH ======
+async function doAuth(){
+    if(!tg||!tg.initData){
+        const debugInfo = tg ? JSON.stringify({initData:tg.initData||'empty',user:tg.initDataUnsafe?.user}) : 'No TG SDK';
+        console.log('Debug:',debugInfo);
+        const testData = tg?.initDataUnsafe?.user ? JSON.stringify(tg.initDataUnsafe.user) : '{"id":0,"username":"debug"}';
+        const initData = tg?.initData || 'user='+encodeURIComponent(testData);
+        try{
+            const r=await fetch('/api/miniapp/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData:initData})});
+            const d=await r.json();
+            if(d.success){$('authPage').style.display='none';$('appPage').style.display='block';loadData();return}
+        }catch{}
+        showToast('Нет данных авторизации');return
+    }
+    $('authBtn').disabled=true;$('authBtn').textContent='Вход...';
+    try{
+        const r=await fetch('/api/miniapp/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData:tg.initData})});
+        const d=await r.json();
+        if(d.success){$('authPage').style.display='none';$('appPage').style.display='block';loadData()}
+        else{showToast(d.error||'Ошибка');$('authBtn').disabled=false;$('authBtn').innerHTML='<i class="fab fa-telegram-plane"></i> Войти через Telegram'}
+    }catch{showToast('Ошибка сети');$('authBtn').disabled=false;$('authBtn').innerHTML='<i class="fab fa-telegram-plane"></i> Войти через Telegram'}
+}
+
+// ====== DATA ======
+let ws=null;
+function connectWS(){
+try{ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws/live');
+ws.onmessage=e=>{try{const d=JSON.parse(e.data);renderLive(d)}catch{}};
+ws.onclose=()=>setTimeout(connectWS,5000);
+ws.onerror=()=>setTimeout(connectWS,5000);
+}catch{}}
+async function loadData(){
+    try{
+        const[sr,ur,or,sr2,lt]=await Promise.all([fetch('/api/miniapp/status'),fetch('/api/miniapp/users'),fetch('/api/miniapp/online'),fetch('/api/miniapp/server-info?t='+Date.now()),fetch('/api/miniapp/live-traffic?t='+Date.now())]);
+        const s=await sr.json(),u=await ur.json(),o=await or.json(),sv=await sr2.json(),lt2=await lt.json();
+        const pill=$('sPill');pill.textContent=s.status==='active'?'🟢 Работает':'🔴 Стоп';pill.className='pill '+(s.status==='active'?'on':'off');
+        renderStats(s,u.users);renderSys(sv);CU=u.users;renderUsers();renderPie();renderLive(lt2);
+    }catch(e){console.error(e)}
+}
+connectWS();
+
+function renderStats(s,u){
+    const t=u.length,a=u.filter(x=>x.active).length;
+    const ex=u.filter(x=>{try{return x.expire_date&&new Date(x.expire_date)<new Date()}catch{return false}}).length;
+    const on=u.filter(x=>x.online).length;
+    $('stats').innerHTML=`<div class="stat cb"><div class="v">${t}</div><div class="l">Всего</div></div><div class="stat cg"><div class="v">${a}</div><div class="l">Активных</div></div><div class="stat cc"><div class="v">${on}</div><div class="l">Онлайн</div></div><div class="stat co"><div class="v">${ex}</div><div class="l">Просрочено</div></div>`;
+}
+
+function renderSys(s){
+    if(!s||s.error)return;
+    const cpu=s.cpu_percent??0,ram=s.ram_percent??0,disk=s.disk_percent??0;
+    const gc=v=>v>80?'#ef4444':v>50?'#f59e0b':'#10b981';
+    const r=30,c=69,circ=2*Math.PI*r;
+    function gauge(pct,color,label,sub){
+        const off=circ*(1-pct/100);
+        return`<div class="sys"><div class="gauge"><svg width="72" height="72" viewBox="0 0 72 72"><circle cx="36" cy="36" r="${r}" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="5"/><circle cx="36" cy="36" r="${r}" fill="none" stroke="${color}" stroke-width="5" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${off}" style="transition:stroke-dashoffset .6s"/></svg><div class="gv" style="color:${color}">${pct}%</div></div><div class="sl"><i class="fas fa-${label==='CPU'?'microchip':label==='ОЗУ'?'memory':'hdd'}"></i> ${label}</div><div class="sd">${sub}</div></div>`;
+    }
+    const la=s.load_avg||[0,0,0];
+    $('sysGrid').innerHTML=
+        gauge(cpu,gc(cpu),'CPU',`${s.cpu_count||'?'} ядер · ${la[0].toFixed(1)} load`)+
+        gauge(ram,gc(ram),'ОЗУ',`${s.ram_used_gb||'?'}/${s.ram_total_gb||'?'} ГБ`)+
+        gauge(disk,gc(disk),'Диск',`${s.disk_used_gb||'?'}/${s.disk_total_gb||'?'} ГБ`)+
+        `<div class="sys wide net-row">
+            <div class="net-item"><div class="nv" style="color:var(--bl)"><i class="fas fa-arrow-up" style="font-size:11px"></i> ${s.net_sent_gb||'0'} ГБ</div><div class="nl">Отправлено</div></div>
+            <div class="net-item"><div class="nv" style="color:var(--ac2)"><i class="fas fa-arrow-down" style="font-size:11px"></i> ${s.net_recv_gb||'0'} ГБ</div><div class="nl">Получено</div></div>
+            <div class="net-item"><div class="nv" style="color:var(--or)"><i class="fas fa-tachometer-alt" style="font-size:11px"></i> ${s.net_speed||'0'} КБ/с</div><div class="nl">Скорость</div></div>
+        </div>`+
+        `<div class="sys"><div class="sl"><i class="fas fa-clock"></i> Аптайм</div><div class="sd" style="margin-top:4px;font-size:11px;color:var(--t2)">${s.uptime||'?'}</div></div>`+
+        `<div class="sys"><div class="sl"><i class="fas fa-list"></i> Процессы</div><div class="sd" style="margin-top:4px;font-size:11px;color:var(--t2)">${s.process_count||'?'}</div></div>`+
+        `<div class="sys"><div class="sl"><i class="fas fa-server"></i> Нагрузка</div><div class="sd" style="margin-top:4px;font-size:11px;color:var(--t2)">1м:${la[0].toFixed(2)} 5м:${la[1].toFixed(2)} 15м:${la[2].toFixed(2)}</div></div>`;
+}
+
+function renderUsers(){
+    let u=[...CU];
+    const q=$('searchInput').value.toLowerCase();
+    if(q)u=u.filter(x=>x.name.toLowerCase().includes(q)||x.id.toLowerCase().includes(q));
+    if(CF==='online')u=u.filter(x=>x.online);
+    else if(CF==='active')u=u.filter(x=>x.active);
+    else if(CF==='expired')u=u.filter(x=>{try{return new Date(x.expire_date)<new Date()}catch{return false}});
+
+    const el=$('userList');
+    if(!u.length){el.innerHTML='<div class="empty"><i class="fas fa-user-slash"></i>Не найдено</div>';return}
+    el.innerHTML=u.map(x=>{
+        const isEx=x.expire_date&&new Date(x.expire_date)<new Date();
+        let bc=x.active?'a':'i',bt=x.active?'Активен':'Неакт.';
+        if(isEx){bc='e';bt='Просрочен'}
+        const tr=x.traffic||{total_mb:0,limit_mb:0};
+        const ld=tr.limit_mb>0?(tr.limit_mb>1e6?'∞':tr.limit_mb+' МБ'):'∞';
+        const up=tr.limit_mb>0?Math.min(100,(tr.total_mb/tr.limit_mb)*100):0;
+        const pc=up>90?'var(--rd)':up>70?'var(--or)':'var(--gn)';
+        return`<div class="user-item" onclick="openUser('${x.id}')">
+            <div class="user-top">
+                <div><span class="user-name">${x.name}</span> <span class="user-badge ${bc}">${bt}</span></div>
+                <span class="user-online ${x.online?'on':'off'}"><span class="dot ${x.online?'on':'off'}"></span>${x.online?'Online':'Offline'}</span>
+            </div>
+            <div class="user-meta"><span>${tr.total_mb} МБ / ${ld}</span><span>${x.expire_date||'—'}</span></div>
+            ${tr.limit_mb>0?`<div class="user-bar"><div class="fill" style="width:${up}%;background:${pc}"></div></div>`:''}
+        </div>`;
+    }).join('');
+}
+
+function renderPie(){if(!CU.length)return;const a=CU.filter(x=>x.active).length;const e=CU.filter(x=>{try{return x.expire_date&&new Date(x.expire_date)<new Date()}catch{return false}}).length;const i=CU.length-a-e;
+if(chart)chart.destroy();
+chart=new Chart($('cPie'),{type:'doughnut',data:{labels:['Активные','Просрочены','Неактивные'],datasets:[{data:[a,e,i],backgroundColor:['#10b981','#f59e0b','#6b7280'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{color:'rgba(249,250,252,.5)',font:{size:10},padding:10,usePointStyle:true,pointStyle:'circle'}}}}})}
+
+function renderLive(lt){
+    const el=$('liveTraffic');
+    if(!lt||!lt.traffic||!lt.traffic.length){el.innerHTML='<div style="text-align:center;padding:16px;color:var(--t3);font-size:12px"><i class="fas fa-wifi" style="font-size:20px;display:block;margin-bottom:6px;opacity:.3"></i>Нет активных подключений</div>';return}
+    el.innerHTML=lt.traffic.map(t=>`
+        <div class="live-item">
+            <div>
+                <div class="li-name"><i class="fas fa-circle" style="font-size:6px;color:var(--gn);margin-right:4px"></i>${t.user}</div>
+                <div class="li-speed">${t.last_active}</div>
+            </div>
+            <div class="li-bar">
+                <div class="li-tx">↑${t.tx_speed_mb} МБ/с</div>
+                <div class="li-rx">↓${t.rx_speed_mb} МБ/с</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function loadChart(hours,el){document.querySelectorAll('.filters .filter').forEach(b=>b.classList.remove('on'));if(el)el.classList.add('on');
+    const r=await fetch('/api/miniapp/traffic-history?hours='+hours);const d=await r.json();const h=d.history||[];if(!h.length)return;
+    const labels=h.map(x=>x.time.split(' ')[1]||x.time);const names=[...new Set(h.flatMap(x=>Object.keys(x.users||{})))];
+    const cols=['#8b5cf6','#10b981','#ef4444','#f59e0b','#06b6d4'];
+    const ds=names.map((n,i)=>{let cTx=h[0]?.users?.[n]?.tx||0,cRx=h[0]?.users?.[n]?.rx||0;
+        const data=h.map(x=>{const u=x.users?.[n];if(u){cTx=u.tx;cRx=u.rx;return+((u.tx+u.rx)/1024/1024).toFixed(2)}return null});
+        return{label:n,data,borderColor:cols[i%cols.length],backgroundColor:cols[i%cols.length]+'15',tension:.4,fill:true,pointRadius:0,borderWidth:2}});
+    if(chart)chart.destroy();
+    chart=new Chart($('cChart'),{type:'line',data:{labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'},plugins:{legend:{labels:{color:'rgba(249,250,252,.4)',font:{size:9},usePointStyle:true,pointStyle:'circle'}}},scales:{x:{ticks:{color:'rgba(249,250,252,.2)',font:{size:8},maxTicksLimit:8},grid:{color:'rgba(255,255,255,.03)'},border:{display:false}},y:{ticks:{color:'rgba(249,250,252,.2)',font:{size:8},callback:v=>v+' МБ'},grid:{color:'rgba(255,255,255,.03)'},border:{display:false}}}}})
+}
+
+async function loadServices(){const r=await fetch('/api/miniapp/services');const d=await r.json();const nm={'hysteria-server':'Hysteria VPN','vpnbot-api':'API','vpnbot-auth':'Auth','vpnbot-traffic':'Traffic','vpnbot-bot':'Bot','vpnbot-online':'Online','vpnbot-history':'History'};
+    $('serviceList').innerHTML=d.services.map(s=>`<div class="card" style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="width:8px;height:8px;border-radius:50%;background:${s.active?'var(--gn)':'var(--rd)'}"></span><span style="font-size:13px;font-weight:500">${nm[s.name]||s.name}</span></div>
+        <button class="btn btn-n" style="padding:6px 12px;font-size:11px" onclick="restartSvc('${s.name}')"><i class="fas fa-sync"></i></button>
+    </div>`).join('')}
+function restartSvc(n){if(!confirm('Перезапустить '+n+'?'))return;fetch('/api/miniapp/services/'+n+'/restart',{method:'POST'}).then(()=>{showToast(n+' OK');setTimeout(loadServices,2000)})}
+
+// ====== USER MODAL ======
+function openUser(id){const u=CU.find(x=>x.id===id);if(!u)return;const isEx=u.expire_date&&new Date(u.expire_date)<new Date();const tr=u.traffic||{};const isUn=!u.traffic_limit;
+const html=`<h3>${u.name}</h3>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+<div style="background:var(--c2);padding:10px;border-radius:var(--R2);text-align:center"><div style="font-size:10px;color:var(--t3)">Статус</div><div style="font-size:13px;font-weight:700;color:${isEx?'var(--or)':u.active?'var(--gn)':'var(--rd)'};margin-top:2px">${isEx?'Просрочен':u.active?'Активен':'Неакт.'}</div></div>
+<div style="background:var(--c2);padding:10px;border-radius:var(--R2);text-align:center"><div style="font-size:10px;color:var(--t3)">Онлайн</div><div style="font-size:13px;font-weight:700;color:${u.online?'var(--gn)':'#6b7280'};margin-top:2px">${u.online?'Да':'Нет'}</div></div>
+</div>
+<div style="background:var(--c2);padding:12px;border-radius:var(--R2);margin-bottom:12px">
+<div style="font-size:10px;color:var(--t3);text-transform:uppercase;font-weight:600;margin-bottom:6px">Трафик</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px">
+<div><span style="color:var(--t3)">TX:</span> <strong>${tr.tx_mb||0} МБ</strong></div>
+<div><span style="color:var(--t3)">RX:</span> <strong>${tr.rx_mb||0} МБ</strong></div>
+<div><span style="color:var(--t3)">Всего:</span> <strong>${tr.total_mb||0} МБ</strong></div>
+<div><span style="color:var(--t3)">Лимит:</span> <strong>${isUn?'∞':u.traffic_limit+' МБ'}</strong></div>
+</div></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;color:var(--t3);margin-bottom:16px">
+<div>Создан: ${u.created||'—'}</div><div>До: ${u.expire_date||'—'}</div>
+</div>
+<div class="modal-btns">
+<button class="btn btn-g" onclick="copyLink('${u.id}')"><i class="fas fa-copy"></i> Копировать</button>
+<button class="btn btn-a" onclick="showQR('${u.id}')"><i class="fas fa-qrcode"></i> QR</button>
+<button class="btn btn-a" onclick="extendUser('${u.id}')"><i class="fas fa-clock"></i> Продлить</button>
+</div>
+<div class="modal-btns" style="margin-top:6px">
+<button class="btn btn-n" onclick="toggleUser('${u.id}')"><i class="fas fa-exchange-alt"></i> Вкл/Выкл</button>
+<button class="btn btn-n" style="color:var(--rd)" onclick="deleteUser('${u.id}')"><i class="fas fa-trash"></i> Удалить</button>
+</div>`;
+    openModal(html);
+}
+
+function copyLink(id){fetch('/api/miniapp/users').then(r=>r.json()).then(d=>{const u=d.users.find(x=>x.id===id);if(u?.link){navigator.clipboard.writeText(u.link).then(()=>showToast('Скопировано!')).catch(()=>{})}})}
+function showQR(id){
+    fetch('/api/miniapp/qr/'+id).then(r=>r.json()).then(d=>{
+        if(d.qr){
+            const html=`<h3>QR-код</h3><div class="qr-wrap"><img src="${d.qr}" alt="QR"></div><div style="font-size:10px;color:var(--t3);word-break:break-all;padding:8px;background:var(--c2);border-radius:6px;margin-bottom:12px">${d.link}</div><div class="modal-btns"><button class="btn btn-g" onclick="copyLink('${id}');closeModal()"><i class="fas fa-copy"></i> Копировать</button><button class="btn btn-n" onclick="closeModal()">Закрыть</button></div>`;
+            openModal(html);
+        }
+    });
+}
+function extendUser(id){showPromptModal('Дней:','30',v=>{fetch('/api/miniapp/user/extend/'+id+'?days='+v,{method:'POST'}).then(()=>{showToast('Продлено');loadData();closeModal()})})}
+function toggleUser(id){fetch('/api/miniapp/user/toggle/'+id,{method:'POST'}).then(()=>{showToast('OK');loadData();closeModal()})}
+function deleteUser(id){if(!confirm('Удалить?'))return;fetch('/api/miniapp/user/'+id,{method:'DELETE'}).then(()=>{showToast('Удалён');loadData();closeModal()})}
+
+// ====== CREATE ======
+function showCreateModal(){
+    const html=`<h3>Новый клиент</h3>
+    <div class="field"><label>Имя</label><input type="text" id="cName" placeholder="ivan"></div>
+    <div class="field"><label>Дней</label><input type="number" id="cDays" value="30" min="1"></div>
+    <div class="modal-btns"><button class="btn btn-n" onclick="closeModal()">Отмена</button><button class="btn btn-g" onclick="doCreate()">Создать</button></div>`;
+    openModal(html);
+    setTimeout(()=>$('cName')?.focus(),300);
+}
+async function doCreate(){const n=$('cName')?.value?.trim(),d=parseInt($('cDays')?.value)||30;if(!n||n.length<2){showToast('Мин. 2 символа');return}
+    await fetch('/api/miniapp/user/create?name='+encodeURIComponent(n)+'&days='+d,{method:'POST'}).then(r=>r.json()).then(d=>{if(d.id){showToast('Создан!');loadData();closeModal()}else showToast('Ошибка')})}
+
+// ====== MODAL ======
+function openModal(html){const bg=document.createElement('div');bg.className='modal-bg open';bg.onclick=e=>{if(e.target===bg)bg.remove()};bg.innerHTML=`<div class="modal">${html}</div>`;document.body.appendChild(bg)}
+function closeModal(){document.querySelectorAll('.modal-bg').forEach(m=>m.remove())}
+function showPromptModal(title,defaultVal,onConfirm){
+    const html=`<h3>${title}</h3><div class="field"><input type="number" id="pInput" value="${defaultVal}"></div><div class="modal-btns"><button class="btn btn-n" onclick="closeModal()">Отмена</button><button class="btn btn-g" onclick="window._pc(document.getElementById('pInput').value)">OK</button></div>`;
+    openModal(html);window._pc=v=>{closeModal();onConfirm(v)};setTimeout(()=>$('pInput')?.focus(),300);
+}
+
+// ====== NODES ======
+let nodesData=[];
+async function loadNodes(){
+    try{
+        const r=await fetch('/api/miniapp/nodes');
+        const d=await r.json();
+        nodesData=d.nodes||[];
+        renderNodes();
+    }catch(e){console.error(e)}
+}
+function renderNodes(){
+    const el=$('nodesList');
+    if(!el)return;
+    if(!nodesData.length){el.innerHTML='<div class="empty"><i class="fas fa-server"></i>Нет нод</div>';return}
+    const sorted=[...nodesData].sort((a,b)=>(b.is_main?1:0)-(a.is_main?1:0));
+    el.innerHTML=sorted.map(n=>{
+        const isOn=n.is_online||n.status==='online';
+        const isMain=n.is_main===true;
+        const iconBg=isMain?(isOn?'rgba(139,92,246,.15)':'var(--rdg)'):(isOn?'var(--gng)':'var(--rdg)');
+        const iconColor=isMain?'var(--ac2)':isOn?'var(--gn)':'var(--rd)';
+        const domain=n.domain||n.ip||'—';
+        return`<div class="node-card${isMain?' main':''}">
+            <div class="node-icon" style="background:${iconBg};color:${iconColor}"><i class="fas fa-${isMain?'crown':'server'}"></i></div>
+            <div class="node-info">
+                <div class="node-name">${n.name}${isMain?'<span class="node-badge">ОСНОВНОЙ</span>':''}</div>
+                <div class="node-meta">${domain} • ${n.region||'—'}</div>
+                <div class="node-stats">CPU: ${n.cpu_percent||0}% • RAM: ${n.ram_percent||0}% • Юзеров: ${n.online_users||0}/${n.total_users||0}</div>
+            </div>
+            <div class="node-status ${isOn?'on':'off'}"></div>
+        </div>`;
+    }).join('');
+}
+
+function showDeployModal(){
+    const html=`<h3>Новая нода</h3>
+    <div class="field"><label>Имя</label><input type="text" id="dName" placeholder="Germany-1"></div>
+    <div class="field"><label>SSH Хост</label><input type="text" id="dHost" placeholder="185.12.34.56"></div>
+    <div class="field"><label>SSH Порт</label><input type="number" id="dPort" value="22"></div>
+    <div class="field"><label>SSH Логин</label><input type="text" id="dUser" value="root"></div>
+    <div class="field"><label>SSH Пароль</label><input type="password" id="dPass" placeholder="••••••••"></div>
+    <div class="modal-btns"><button class="btn btn-n" onclick="closeModal()">Отмена</button><button class="btn btn-g" onclick="doDeploy()">Развернуть</button></div>`;
+    openModal(html);
+}
+
+async function doDeploy(){
+    const data={
+        name:($('dName')||{}).value||($('dHost')||{}).value||'',
+        host:($('dHost')||{}).value||'',
+        port:parseInt(($('dPort')||{}).value)||22,
+        username:($('dUser')||{}).value||'root',
+        password:($('dPass')||{}).value||'',
+        panel_url:location.origin
+    };
+    if(!data.host){showToast('Введите хост');return}
+    if(!data.password){showToast('Введите пароль');return}
+
+    const btn=document.querySelector('.modal .btn-g');
+    if(btn){btn.disabled=true;btn.textContent='Деплой...';}
+
+    try{
+        const r=await fetch('/api/miniapp/nodes/deploy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+        const d=await r.json();
+        if(d.success){showToast('Нода добавлена!');closeModal();loadNodes()}
+        else{showToast(d.error||'Ошибка');if(btn){btn.disabled=false;btn.textContent='Развернуть';}}
+    }catch(e){showToast('Ошибка сети');if(btn){btn.disabled=false;btn.textContent='Развернуть';}}
+}
+
+// ====== NAV ======
+function go(page,el){document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('on'));$('p-'+page).classList.add('on');el.classList.add('on');
+    if(page==='traffic')loadChart(1,document.querySelector('#p-traffic .filter.on'));
+    if(page==='services')loadServices();
+    if(page==='users')renderUsers();
+    if(page==='nodes')loadNodes();
+}
+function setFilter(f,el){CF=f;document.querySelectorAll('.filter').forEach(b=>b.classList.remove('on'));el.classList.add('on');renderUsers()}
+function filterUsers(){renderUsers()}
+
+function showToast(m){const e=document.querySelector('.toast');if(e)e.remove();const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2500)}
+
+// Auto-refresh via REST (fallback)
+setInterval(()=>{if($('appPage').style.display!=='none')loadData()},30000);
+</script>
+</body>
+</html>

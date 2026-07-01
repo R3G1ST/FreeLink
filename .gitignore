@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+venv/
+.env
+
+# Data files (contains secrets!)
+config.yaml
+data.yaml
+data.db
+data.db.backup
+nodes.json
+sessions.json
+admins.json
+subscriptions.json
+payments.json
+plans.json
+online_status.json
+online_snapshot.json
+traffic_history.json
+traffic_saved.yaml
+audit.log
+backups/
+*.backup
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Certs (NEVER commit!)
+*.pem
+*.key
+*.crt
+
+# Unused
+react-app/
+node_agent.service
+wget-log

@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VPN — Мой кабинет</title>
+    <meta name="theme-color" content="#8b5cf6">
+    <link rel="manifest" href="/web/manifest.json">
+    <link href="/web/inter.css" rel="stylesheet">
+    <link rel="stylesheet" href="/web/font-awesome.min.css">
+    <style>
+:root{--bg:#0a0e1a;--c1:#111827;--c2:#1f2937;--t1:#f9fafb;--t2:rgba(249,250,251,.7);--t3:rgba(249,250,251,.4);--ac:#8b5cf6;--ac2:#a78bfa;--gn:#10b981;--rd:#ef4444;--or:#f59e0b;--bl:#3b82f6;--R:12px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;padding:16px;max-width:480px;margin:0 auto}
+.card{background:var(--c1);border:1px solid rgba(255,255,255,.06);border-radius:var(--R);padding:16px;margin-bottom:12px}
+.hdr{text-align:center;padding:20px 0}
+.hdr h1{font-size:24px;font-weight:800;margin-bottom:4px}
+.hdr h1 em{font-style:normal;color:var(--ac2)}
+.hdr p{font-size:13px;color:var(--t3)}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.stat{background:var(--c1);border:1px solid rgba(255,255,255,.06);border-radius:var(--R);padding:14px;text-align:center}
+.stat .v{font-size:20px;font-weight:800}
+.stat .l{font-size:10px;color:var(--t3);text-transform:uppercase;margin-top:4px}
+.stat.g .v{color:var(--gn)}.stat.r .v{color:var(--rd)}.stat.b .v{color:var(--bl)}.stat.p .v{color:var(--ac2)}.stat.o .v{color:var(--or)}
+.bar{height:6px;background:rgba(255,255,255,.05);border-radius:3px;overflow:hidden;margin-top:8px}
+.bar .fill{height:100%;border-radius:3px;transition:width .5s}
+.label{font-size:11px;color:var(--t3);margin-bottom:4px}
+.value{font-size:13px;font-weight:600}
+.qr{text-align:center;padding:16px;background:#fff;border-radius:var(--R);margin:12px 0}
+.qr img{width:180px;height:180px}
+.btn{width:100%;padding:12px;border:none;border-radius:var(--R);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:8px;transition:all .15s}
+.btn:active{transform:scale(.98)}
+.btn-g{background:linear-gradient(135deg,#10b981,#059669);color:#fff}
+.btn-a{background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff}
+.btn-n{background:rgba(255,255,255,.08);color:var(--t2)}
+.online-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.online-dot.on{background:var(--gn);box-shadow:0 0 6px rgba(16,185,129,.5)}
+.online-dot.off{background:#6b7280}
+.plan-card{background:linear-gradient(135deg,rgba(139,92,246,.15),rgba(109,40,217,.1));border:1px solid rgba(139,92,246,.3);border-radius:var(--R);padding:16px;margin-bottom:12px}
+.plan-card .name{font-size:16px;font-weight:700;color:var(--ac2)}
+.plan-card .price{font-size:20px;font-weight:800;margin:8px 0}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--c2);color:var(--t1);padding:10px 20px;border-radius:8px;font-size:12px;font-weight:600;z-index:200;animation:slideUp .2s}
+@keyframes slideUp{from{transform:translate(-50%,20px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+.fade-in{animation:fadeIn .4s ease-out}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.auth-form{text-align:center;padding:40px 20px}
+.auth-form input{width:100%;max-width:300px;padding:12px;background:var(--c1);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:var(--t1);font-size:14px;font-family:inherit;outline:none;margin-bottom:8px}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="authPage" class="auth-form">
+    <div style="margin-bottom:20px"><i class="fas fa-bolt" style="font-size:48px;color:var(--ac2)"></i></div>
+    <h2 style="margin-bottom:8px">Мой кабинет</h2>
+    <p style="color:var(--t3);font-size:13px;margin-bottom:20px">Введите токен доступа</p>
+    <input type="text" id="tokenInput" placeholder="Токен из Telegram бота">
+    <button class="btn btn-a" onclick="doAuth()" style="max-width:300px;margin:0 auto;display:block">Войти</button>
+</div>
+
+<!-- MAIN -->
+<div id="mainPage" style="display:none">
+    <div class="hdr">
+        <h1><em>Hysteria</em> 2</h1>
+        <p id="userName">—</p>
+    </div>
+
+    <div class="stat-grid fade-in">
+        <div class="stat g" id="statStatus"><div class="v">—</div><div class="l">Статус</div></div>
+        <div class="stat b" id="statOnline"><div class="v">—</div><div class="l">Онлайн</div></div>
+        <div class="stat p" id="statTraffic"><div class="v">—</div><div class="l">Трафик</div></div>
+        <div class="stat o" id="statExpire"><div class="v">—</div><div class="l">Осталось</div></div>
+    </div>
+
+    <!-- Plan Info -->
+    <div class="plan-card fade-in" id="planCard" style="display:none">
+        <div class="name" id="planName">—</div>
+        <div class="price" id="planPrice">—</div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t3)">
+            <span id="planDays">—</span>
+            <span id="planTraffic">—</span>
+        </div>
+    </div>
+
+    <!-- Traffic -->
+    <div class="card fade-in">
+        <div class="label">Использовано трафика</div>
+        <div style="display:flex;justify-content:space-between;margin:4px 0">
+            <span class="value" id="trafUsed">0 МБ</span>
+            <span class="value" id="trafLimit">∞</span>
+        </div>
+        <div class="bar"><div class="fill" id="trafBar" style="width:0%;background:var(--gn)"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--t3);margin-top:6px">
+            <span>⬆ <span id="trafTx">0</span> МБ</span>
+            <span>⬇ <span id="trafRx">0</span> МБ</span>
+        </div>
+    </div>
+
+    <!-- VPN Link -->
+    <div class="card fade-in">
+        <div class="label">VPN-ссылка</div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn btn-g" onclick="copyLink()" style="flex:1;margin:0"><i class="fas fa-copy"></i> Копировать</button>
+            <button class="btn btn-n" onclick="showQR()" style="flex:1;margin:0"><i class="fas fa-qrcode"></i> QR</button>
+        </div>
+    </div>
+
+    <!-- Subscription URL -->
+    <div class="card fade-in">
+        <div class="label">Ссылка подписки</div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:8px">Добавьте в VPN-клиент для доступа ко всем серверам</div>
+        <div id="subUrlBox" style="background:var(--c2);padding:10px;border-radius:8px;font-size:11px;color:var(--ac2);word-break:break-all;font-family:monospace;margin-bottom:8px"></div>
+        <button class="btn btn-a" onclick="copySubUrl()" style="margin:0"><i class="fas fa-copy"></i> Копировать ссылку подписки</button>
+    </div>
+
+    <!-- Servers -->
+    <div class="card fade-in">
+        <div class="label">Доступные серверы</div>
+        <div id="serverList" style="margin-top:8px"></div>
+    </div>
+
+    <!-- QR Modal -->
+    <div id="qrModal" style="display:none">
+        <div class="card" style="text-align:center">
+            <div class="qr"><img id="qrImg" src="" alt="QR"></div>
+            <button class="btn btn-n" onclick="document.getElementById('qrModal').style.display='none'">Закрыть</button>
+        </div>
+    </div>
+
+    <button class="btn btn-n" onclick="loadData()" style="margin-top:8px"><i class="fas fa-sync"></i> Обновить</button>
+</div>
+
+<script>
+let token='',data={},link='',subUrl='';
+const $=id=>document.getElementById(id);
+
+async function doAuth(){
+    token=$('tokenInput').value.trim();
+    if(!token){showToast('Введите токен');return}
+    await loadData();
+}
+
+async function loadData(){
+    try{
+        const r=await fetch('/api/client/sub/'+encodeURIComponent(token));
+        if(!r.ok){showToast('Неверный токен');return}
+        data=await r.json();
+        link=data.link||'';
+        subUrl=location.origin+'/sub/'+encodeURIComponent(token);
+        $('authPage').style.display='none';
+        $('mainPage').style.display='block';
+        render();
+        loadServers();
+    }catch{showToast('Ошибка сети')}
+}
+
+async function loadServers(){
+    try{
+        const r=await fetch('/sub/'+encodeURIComponent(token));
+        const text=await r.text();
+        const lines=text.trim().split('\n').filter(l=>l.startsWith('hysteria2://'));
+        const el=$('serverList');
+        if(!lines.length){el.innerHTML='<div style="font-size:12px;color:var(--t3);padding:8px">Нет доступных серверов</div>';return}
+        el.innerHTML=lines.map(uri=>{
+            try{
+                const u=new URL(uri);
+                const name=u.hash?decodeURIComponent(u.hash.slice(1)):u.hostname;
+                return`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+                    <div style="width:8px;height:8px;border-radius:50%;background:var(--gn);flex-shrink:0"></div>
+                    <div style="flex:1;min-width:0">
+                        <div style="font-size:13px;font-weight:600">${name}</div>
+                        <div style="font-size:10px;color:var(--t3);font-family:monospace">${u.hostname}:${u.port||443}</div>
+                    </div>
+                    <button class="btn btn-n" style="padding:6px 10px;font-size:10px;margin:0" onclick="copySingle('${uri.replace(/'/g,"\\'")}')"><i class="fas fa-copy"></i></button>
+                </div>`;
+            }catch{return''}
+        }).join('');
+    }catch{$('serverList').innerHTML='<div style="font-size:12px;color:var(--t3)">Ошибка загрузки</div>'}
+}
+
+function render(){
+    $('userName').textContent=data.name||'—';
+    // Status
+    const st=$('statStatus');
+    st.querySelector('.v').textContent=data.active?'Активен':'Неакт.';
+    st.querySelector('.v').style.color=data.active?'var(--gn)':'var(--rd)';
+    // Online
+    const on=$('statOnline');
+    on.querySelector('.v').innerHTML=`<span class="online-dot ${data.online?'on':'off'}"></span>${data.online?'Онлайн':'Офлайн'}`;
+    on.querySelector('.v').style.color=data.online?'var(--gn)':'#6b7280';
+    // Traffic
+    const tr=data.traffic||{};
+    $('statTraffic').querySelector('.v').textContent=tr.total_mb+' МБ';
+    // Expire
+    const ex=$('statExpire');
+    if(data.expire_date){
+        const d=new Date(data.expire_date),n=new Date(),days=Math.ceil((d-n)/864e5);
+        ex.querySelector('.v').textContent=days>0?days+' дн':'Истёк';
+        ex.querySelector('.v').style.color=days>3?'var(--gn)':days>0?'var(--or)':'var(--rd)';
+    }
+    // Plan
+    const sub=data.subscription;
+    if(sub){
+        $('planCard').style.display='block';
+        $('planName').textContent=sub.plan_name||'—';
+        $('planPrice').textContent=sub.price?sub.price+' ₽/мес':'Бесплатно';
+        $('planDays').textContent='До: '+(sub.expires||'—').split('T')[0];
+        $('planTraffic').textContent=sub.traffic_limit_mb?sub.traffic_limit_mb+' МБ':'∞';
+    }
+    // Traffic bar
+    $('trafUsed').textContent=tr.total_mb+' МБ';
+    $('trafTx').textContent=tr.tx_mb;
+    $('trafRx').textContent=tr.rx_mb;
+    if(tr.limit_mb>0){
+        $('trafLimit').textContent=tr.limit_mb+' МБ';
+        const pct=Math.min(100,(tr.total_mb/tr.limit_mb)*100);
+        $('trafBar').style.width=pct+'%';
+        $('trafBar').style.background=pct>90?'var(--rd)':pct>70?'var(--or)':'var(--gn)';
+    }else{
+        $('trafLimit').textContent='∞';
+        $('trafBar').style.width='0%';
+    }
+    // Subscription URL
+    $('subUrlBox').textContent=subUrl;
+}
+
+function copyLink(){
+    if(!link){showToast('Нет ссылки');return}
+    navigator.clipboard.writeText(link).then(()=>showToast('Скопировано!')).catch(()=>{});
+}
+
+function copySubUrl(){
+    if(!subUrl){showToast('Нет ссылки');return}
+    navigator.clipboard.writeText(subUrl).then(()=>showToast('Ссылка подписки скопирована!')).catch(()=>{});
+}
+
+function copySingle(uri){
+    navigator.clipboard.writeText(uri).then(()=>showToast('Скопировано!')).catch(()=>{});
+}
+
+async function showQR(){
+    if(!link){showToast('Нет ссылки');return}
+    // Find uid from link
+    const uid=data.subscription?.uid||'';
+    try{
+        const r=await fetch('/api/miniapp/qr/'+uid);
+        const d=await r.json();
+        if(d.qr){
+            $('qrImg').src=d.qr;
+            $('qrModal').style.display='block';
+        }
+    }catch{}
+}
+
+function showToast(m){const e=document.querySelector('.toast');if(e)e.remove();const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2500)}
+
+// Auto-load if token in URL
+const params=new URLSearchParams(location.search);
+if(params.get('token')){token=params.get('token');$('tokenInput').value=token;doAuth()}
+</script>
+</body>
+</html>

@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>Hysteria 2 — Панель управления</title>
+    <link rel="stylesheet" href="/web/font-awesome.min.css">
+    <link rel="stylesheet" href="/web/inter.css">
+    <script src="/web/chart.umd.min.js"></script>
+    <script src="/web/telegram-web-app.js"></script>
+<style>
+/* ===== THEME VARIABLES ===== */
+[data-theme="dark"] {
+    --bg: #0a0e1a;
+    --c1: #0f1320;
+    --c2: #131728;
+    --c3: #181d30;
+    --c4: #1e2438;
+    --g1: rgba(255,255,255,0.025);
+    --g2: rgba(255,255,255,0.05);
+    --g3: rgba(255,255,255,0.07);
+    --b1: rgba(255,255,255,0.06);
+    --b2: rgba(255,255,255,0.1);
+    --b3: rgba(139,92,246,0.25);
+    --t1: #f0f2f8;
+    --t2: rgba(240,242,248,0.7);
+    --t3: rgba(240,242,248,0.42);
+    --t4: rgba(240,242,248,0.22);
+    --ac: #8b5cf6;
+    --ac2: #a78bfa;
+    --acg: rgba(139,92,246,0.08);
+    --gn: #10b981;
+    --gng: rgba(16,185,129,0.08);
+    --rd: #ef4444;
+    --rdg: rgba(239,68,68,0.08);
+    --or: #f59e0b;
+    --org: rgba(245,158,11,0.08);
+    --bl: #3b82f6;
+    --blg: rgba(59,130,246,0.08);
+    --cy: #06b6d4;
+    --cyg: rgba(6,182,212,0.08);
+    --glass-bg: rgba(15,19,32,0.7);
+    --glass-border: rgba(255,255,255,0.06);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+    --shadow-lg: 0 20px 48px rgba(0,0,0,0.4);
+    --scrollbar-thumb: rgba(139,92,246,0.2);
+    --table-stripe: rgba(255,255,255,0.015);
+}
+
+[data-theme="light"] {
+    --bg: #f0f2f8;
+    --c1: #ffffff;
+    --c2: #f8f9fc;
+    --c3: #ffffff;
+    --c4: #f0f2f8;
+    --g1: rgba(255,255,255,0.85);
+    --g2: rgba(0,0,0,0.025);
+    --g3: rgba(0,0,0,0.04);
+    --b1: rgba(0,0,0,0.07);
+    --b2: rgba(0,0,0,0.12);
+    --b3: rgba(139,92,246,0.2);
+    --t1: #1a1d2e;
+    --t2: rgba(26,29,46,0.7);
+    --t3: rgba(26,29,46,0.45);
+    --t4: rgba(26,29,46,0.25);
+    --ac: #7c3aed;
+    --ac2: #8b5cf6;
+    --acg: rgba(124,58,237,0.08);
+    --gn: #059669;
+    --gng: rgba(5,150,105,0.08);
+    --rd: #dc2626;
+    --rdg: rgba(220,38,38,0.06);
+    --or: #d97706;
+    --org: rgba(217,119,6,0.06);
+    --bl: #2563eb;
+    --blg: rgba(37,99,235,0.06);
+    --cy: #0891b2;
+    --cyg: rgba(8,145,178,0.06);
+    --glass-bg: rgba(255,255,255,0.8);
+    --glass-border: rgba(0,0,0,0.08);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+    --shadow-lg: 0 20px 48px rgba(0,0,0,0.1);
+    --scrollbar-thumb: rgba(139,92,246,0.15);
+    --table-stripe: rgba(0,0,0,0.015);
+}
+
+/* ===== RESET & BASE ===== */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased;transition:background .3s ease,color .3s ease}
+body::before{content:'';position:fixed;top:-300px;left:50%;transform:translateX(-50%);width:1000px;height:600px;background:radial-gradient(ellipse,rgba(139,92,246,0.04) 0%,transparent 65%);pointer-events:none;z-index:0}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb);border-radius:3px}
+.wrap{max-width:1400px;margin:0 auto;padding:16px 24px 32px;position:relative;z-index:1}
+a{text-decoration:none;color:inherit}
+
+/* ===== ANIMATIONS ===== */
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideInLeft{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slideInRight{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slideInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scaleIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}
+@keyframes pls{0%,100%{opacity:1}50%{opacity:0.35}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes bellShake{0%,100%{transform:rotate(0)}15%{transform:rotate(15deg)}30%{transform:rotate(-10deg)}45%{transform:rotate(5deg)}60%{transform:rotate(-3deg)}75%{transform:rotate(0)}}
+@keyframes pulseRing{0%{transform:scale(1);opacity:1}100%{transform:scale(1.8);opacity:0}}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(20px) scale(0.95)}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}
+@keyframes toastOut{from{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}to{opacity:0;transform:translateX(-50%) translateY(20px) scale(0.95)}}
+
+/* ===== LAYOUT ===== */
+.layout{display:grid;grid-template-columns:240px 1fr;gap:20px;min-height:calc(100vh - 80px)}
+
+/* ===== SIDEBAR ===== */
+.sidebar{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:12px;padding:16px 0;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);position:sticky;top:16px;height:fit-content;overflow:hidden;box-shadow:var(--shadow-sm);transition:all .3s ease;animation:slideInLeft .3s ease-out}
+.sidebar .sb-logo{display:flex;align-items:center;gap:10px;padding:0 20px 14px;border-bottom:1px solid var(--b1);margin-bottom:4px}
+.sidebar .sb-logo .icon{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#8b5cf6,#6d28d9);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(139,92,246,0.3)}
+.sidebar .sb-logo .icon i{color:#fff;font-size:14px}
+.sidebar .sb-logo h2{font-size:15px;font-weight:700;letter-spacing:-0.3px}
+.sidebar .sb-logo h2 em{font-style:normal;color:var(--ac2)}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;font-size:13px;font-weight:500;color:var(--t3);cursor:pointer;transition:all .2s;border-left:2px solid transparent;margin:0;white-space:nowrap;position:relative}
+.nav-item:hover{color:var(--t1);background:var(--g2)}
+.nav-item.on{color:var(--ac2);background:var(--acg);border-left-color:var(--ac);font-weight:600}
+.nav-item i{width:18px;text-align:center;font-size:13px;flex-shrink:0}
+.nav-sep{height:1px;background:var(--b1);margin:4px 20px}
+.nav-bottom{padding:10px 20px 0;border-top:1px solid var(--b1);margin-top:4px}
+.nav-bottom .user-pill{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2);margin-bottom:8px}
+.nav-bottom .user-pill .avatar{width:28px;height:28px;border-radius:50%;background:var(--acg);display:flex;align-items:center;justify-content:center;color:var(--ac2);font-size:11px;font-weight:700;flex-shrink:0}
+.nav-bottom .logout{display:block;width:100%;text-align:center;padding:7px;border:none;border-radius:8px;background:var(--rdg);color:var(--rd);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}
+.nav-bottom .logout:hover{background:rgba(239,68,68,0.15);transform:translateY(-1px)}
+
+.main{min-width:0}
+.pg{display:none}
+.pg.on{display:block;animation:fadeUp .25s ease-out}
+.pg-title{font-size:20px;font-weight:800;letter-spacing:-0.4px;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.pg-title i{color:var(--ac2);font-size:18px}
+
+/* ===== CARDS ===== */
+.card{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:12px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);position:relative;overflow:hidden;transition:all .25s ease}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.05),transparent)}
+.card:hover{border-color:var(--b2)}
+
+/* ===== HEADER BAR ===== */
+.header-bar{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-bottom:14px}
+.theme-toggle{width:36px;height:36px;border-radius:10px;border:1px solid var(--b1);background:var(--g2);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .25s}
+.theme-toggle:hover{border-color:var(--ac);color:var(--ac2);background:var(--acg);transform:rotate(30deg)}
+.notif-bell{position:relative;width:36px;height:36px;border-radius:10px;border:1px solid var(--b1);background:var(--g2);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .25s}
+.notif-bell:hover{border-color:var(--ac);color:var(--ac2);background:var(--acg)}
+.notif-bell.shake i{animation:bellShake .5s ease}
+.notif-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;border-radius:8px;background:var(--rd);color:#fff;font-size:9px;font-weight:700;display:none;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--bg);line-height:1}
+.notif-badge.show{display:flex}
+.notif-panel{position:absolute;top:44px;right:0;width:340px;max-height:400px;overflow-y:auto;background:var(--c3);border:1px solid var(--b2);border-radius:12px;box-shadow:var(--shadow-lg);display:none;z-index:100;padding:8px;animation:scaleIn .15s ease-out}
+.notif-panel.open{display:block}
+.notif-item{padding:10px 12px;border-radius:8px;font-size:12px;border-bottom:1px solid var(--b1);transition:background .15s;display:flex;gap:10px;align-items:flex-start}
+.notif-item:last-child{border-bottom:none}
+.notif-item:hover{background:var(--g2)}
+.notif-item .ni-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.notif-item .ni-text{flex:1;color:var(--t2);line-height:1.4}
+.notif-item .ni-time{font-size:10px;color:var(--t4);margin-top:2px}
+.notif-item .ni-unread{width:6px;height:6px;border-radius:50%;background:var(--ac);flex-shrink:0;margin-top:5px}
+.notif-empty{padding:24px;text-align:center;color:var(--t4);font-size:12px}
+
+/* ===== METRICS ===== */
+.mrow{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:18px}
+.mc{padding:16px 14px;transition:all .25s ease}
+.mc:hover{border-color:var(--b2);transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.mc .ic{font-size:10px;color:var(--t4);text-transform:uppercase;letter-spacing:0.6px;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.mc .v{font-size:28px;font-weight:800;line-height:1;letter-spacing:-0.5px}
+.mc .sm{font-size:10px;color:var(--t4);margin-top:5px;font-weight:500}
+.mc.cv .v{color:var(--ac2)}
+.mc.cg .v{color:var(--gn)}
+.mc.cr .v{color:var(--rd)}
+.mc.cc .v{color:var(--cy)}
+.mc.co .v{color:var(--or)}
+.mc.cb .v{color:var(--bl)}
+
+/* ===== SYSTEM ===== */
+.srow{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.sc{padding:16px}
+.sc .sh{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.sc .sl{font-size:11px;color:var(--t3);font-weight:500;display:flex;align-items:center;gap:6px}
+.sc .sp{font-size:22px;font-weight:800;letter-spacing:-0.3px}
+.sc .bar{height:4px;background:rgba(255,255,255,0.04);border-radius:2px;overflow:hidden}
+.sc .fill{height:100%;border-radius:2px;transition:width .6s cubic-bezier(0.4,0,0.2,1)}
+.sc .sd{font-size:10px;color:var(--t4);margin-top:8px;font-weight:500}
+
+/* ===== BUTTONS ===== */
+.btn{padding:8px 16px;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;transition:all .2s ease;display:inline-flex;align-items:center;gap:6px;font-family:inherit;position:relative;overflow:hidden}
+.btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn:active{transform:scale(0.97)}
+.btn-g{background:linear-gradient(135deg,#10b981,#059669);color:#fff;box-shadow:0 2px 8px rgba(16,185,129,0.2)}
+.btn-r{background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;box-shadow:0 2px 8px rgba(239,68,68,0.2)}
+.btn-o{background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;box-shadow:0 2px 8px rgba(245,158,11,0.2)}
+.btn-b{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;box-shadow:0 2px 8px rgba(59,130,246,0.2)}
+.btn-a{background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff;box-shadow:0 2px 8px rgba(139,92,246,0.2)}
+.btn-n{background:var(--g2);color:var(--t2);border:1px solid var(--b1)}
+.btn-n:hover{border-color:var(--b3);color:var(--t1)}
+.btn-sm{padding:5px 10px;font-size:11px}
+.btn-icon{width:32px;height:32px;padding:0;justify-content:center}
+
+/* ===== TOOLBAR ===== */
+.tbar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;align-items:center}
+.sbox{flex:1;min-width:180px;position:relative}
+.sbox input{width:100%;padding:8px 12px 8px 34px;background:var(--g1);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-size:12px;outline:none;transition:all .25s;font-family:inherit}
+.sbox input:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(139,92,246,0.1)}
+.sbox input::placeholder{color:var(--t4)}
+.sbox i{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t4);font-size:11px}
+.fgr{display:inline-flex;gap:2px;background:var(--g1);border:1px solid var(--b1);border-radius:8px;padding:2px}
+.fb{padding:5px 12px;border:none;border-radius:6px;cursor:pointer;font-size:11px;background:transparent;color:var(--t3);transition:all .15s;font-weight:500;font-family:inherit}
+.fb.on{background:var(--acg);color:var(--ac2);font-weight:600}
+
+/* ===== TABLE ===== */
+.tbl{overflow:hidden}
+.tbl table{width:100%;border-collapse:collapse}
+.tbl th{background:var(--table-stripe);padding:10px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.7px;color:var(--t4);font-weight:600;cursor:pointer;user-select:none;border-bottom:1px solid var(--b1);transition:color .15s}
+.tbl th:hover{color:var(--t2)}
+.tbl td{padding:10px 14px;border-top:1px solid rgba(255,255,255,0.02);font-size:12px;vertical-align:middle}
+.tbl tbody tr{transition:background .15s}
+.tbl tbody tr:hover td{background:rgba(255,255,255,0.015)}
+.chk{width:15px;height:15px;cursor:pointer;appearance:none;background:var(--g2);border:1.5px solid var(--b2);border-radius:4px;position:relative;transition:all .15s}
+.chk:hover{border-color:var(--ac);background:var(--acg)}
+.chk:checked{background:var(--ac);border-color:var(--ac);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");background-size:11px;background-position:center;background-repeat:no-repeat}
+.pil{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600}
+.pil.a{background:var(--gng);color:var(--gn)}
+.pil.i{background:var(--rdg);color:var(--rd)}
+.pil.e{background:var(--org);color:var(--or)}
+.od{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:500}
+.od .d{width:7px;height:7px;border-radius:50%}
+.od .d.on{background:var(--gn);box-shadow:0 0 8px rgba(16,185,129,0.5);animation:pls 2.5s infinite}
+.od .d.off{background:#475569}
+.od.on{color:var(--gn)}
+.od.off{color:#64748b}
+.ab{display:flex;gap:3px}
+.ab button{width:30px;height:30px;border:none;border-radius:8px;cursor:pointer;font-size:11px;transition:all .15s;background:var(--g2);color:var(--t3);display:flex;align-items:center;justify-content:center;border:1px solid transparent}
+.ab button:hover{transform:translateY(-1px);border-color:var(--b2)}
+.ab .g:hover{background:var(--gng);color:var(--gn)}
+.ab .bl:hover{background:var(--blg);color:var(--bl)}
+.ab .p:hover{background:var(--acg);color:var(--ac2)}
+.ab .r:hover{background:var(--rdg);color:var(--rd)}
+.ab .cy:hover{background:var(--cyg);color:var(--cy)}
+.lk{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;background:rgba(255,255,255,0.025);padding:4px 8px;border-radius:6px;font-family:monospace;color:var(--t3);display:flex;align-items:center;gap:5px;border:1px solid rgba(255,255,255,0.03)}
+.cp{background:var(--acg);border:none;color:var(--ac2);padding:2px 7px;border-radius:6px;cursor:pointer;font-size:10px;transition:all .15s}
+.cp:hover{background:rgba(139,92,246,0.25)}
+.tbr{width:50px;height:3px;background:rgba(255,255,255,0.04);border-radius:2px;overflow:hidden;display:inline-block;vertical-align:middle;margin-left:5px}
+.tbr .f{height:100%;border-radius:2px;transition:width .4s ease}
+.emp{text-align:center;padding:48px;color:var(--t4)}
+.emp i{font-size:36px;margin-bottom:10px;display:block;opacity:0.3}
+.bulk{background:var(--acg);border:1px solid rgba(139,92,246,0.15);border-radius:8px;padding:8px 14px;margin-bottom:10px;display:none;align-items:center;gap:10px;font-size:12px}
+.bulk.show{display:flex;animation:fadeUp .2s ease-out}
+
+/* ===== CHART ===== */
+.chrt{padding:20px;margin-bottom:16px}
+.chrt .ch{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.chrt .ct{font-size:14px;font-weight:700;display:flex;align-items:center;gap:7px}
+.cpd{display:flex;gap:2px;background:var(--g1);border:1px solid var(--b1);border-radius:8px;padding:2px}
+.cpd button{padding:5px 14px;border:none;border-radius:6px;cursor:pointer;font-size:11px;background:transparent;color:var(--t3);transition:all .15s;font-weight:500;font-family:inherit}
+.cpd button.on{background:var(--acg);color:var(--ac2);font-weight:600}
+.cw{height:240px}
+
+/* ===== SERVICES ===== */
+.svcs{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px}
+.svc{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;transition:all .2s}
+.svc:hover{border-color:var(--b3)}
+.svc .sn{font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px}
+.svc .sd{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:background .2s}
+.svc .sb{background:var(--g2);border:1px solid var(--b1);color:var(--t3);padding:5px 12px;border-radius:8px;cursor:pointer;font-size:11px;transition:all .2s;font-family:inherit}
+.svc .sb:hover{border-color:var(--ac);color:var(--ac2);transform:translateY(-1px)}
+
+/* ===== LOGS ===== */
+.logs{background:rgba(0,0,0,0.3);border:1px solid var(--b1);border-radius:8px;padding:16px;font-family:monospace;font-size:11px;color:rgba(248,250,252,0.45);max-height:420px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;line-height:1.7}
+
+/* ===== SETTINGS ===== */
+.set-group{margin-bottom:20px}
+.set-group h3{font-size:14px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:7px;color:var(--t2)}
+.set-item{background:var(--g1);border:1px solid var(--b1);border-radius:8px;padding:14px 16px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;transition:all .2s}
+.set-item:hover{border-color:var(--b2)}
+.set-item .si-label{font-size:13px;font-weight:500}
+.set-item .si-desc{font-size:10px;color:var(--t4);margin-top:2px}
+.ftr{text-align:center;padding:20px 0 8px;font-size:10px;color:var(--t4);border-top:1px solid var(--b1);margin-top:20px}
+
+/* ===== CONFIG EDITOR ===== */
+.config-editor{position:relative}
+.config-editor textarea{width:100%;min-height:400px;padding:16px;background:rgba(0,0,0,0.3);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-family:monospace;font-size:12px;line-height:1.7;resize:vertical;outline:none;transition:border-color .2s,box-shadow .2s}
+.config-editor textarea:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(139,92,246,0.1)}
+.config-status{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;font-size:12px;margin-bottom:12px}
+.config-status.success{background:var(--gng);border:1px solid rgba(16,185,129,0.15);color:var(--gn)}
+.config-status.error{background:var(--rdg);border:1px solid rgba(239,68,68,0.15);color:var(--rd)}
+.config-status.info{background:var(--blg);border:1px solid rgba(59,130,246,0.15);color:var(--bl)}
+.config-toolbar{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+
+/* ===== MODAL ===== */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(12px);display:none;justify-content:center;align-items:center;z-index:1000;padding:20px}
+.modal-bg.open{display:flex;animation:fadeIn .15s}
+.modal{background:var(--c3);border:1px solid var(--b2);border-radius:16px;width:100%;max-width:440px;box-shadow:var(--shadow-lg);animation:modalIn .25s cubic-bezier(0.4,0,0.2,1);position:relative;overflow:hidden}
+.modal.modal-lg{max-width:600px}
+@keyframes modalIn{from{opacity:0;transform:translateY(16px) scale(0.96)}to{opacity:1;transform:none}}
+.modal-head{padding:24px 24px 0;text-align:center}
+.modal-head .mh-icon{width:56px;height:56px;border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:12px;transition:transform .2s}
+.modal-head .mh-icon.purple{background:var(--acg);color:var(--ac2)}
+.modal-head .mh-icon.green{background:var(--gng);color:var(--gn)}
+.modal-head .mh-icon.red{background:var(--rdg);color:var(--rd)}
+.modal-head .mh-icon.blue{background:var(--blg);color:var(--bl)}
+.modal-head .mh-icon.orange{background:var(--org);color:var(--or)}
+.modal-head h3{font-size:18px;font-weight:800;letter-spacing:-0.3px;margin-bottom:4px}
+.modal-head p{font-size:13px;color:var(--t3);line-height:1.5}
+.modal-body{padding:20px 24px}
+.modal-foot{padding:0 24px 24px;display:flex;gap:10px;justify-content:center}
+.modal-close{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:8px;border:1px solid var(--b1);background:var(--g2);color:var(--t3);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;font-size:12px;z-index:1}
+.modal-close:hover{border-color:var(--rd);color:var(--rd);background:var(--rdg)}
+
+/* ===== FORM ELEMENTS ===== */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px}
+.field input,.field select{width:100%;padding:10px 14px;background:var(--g2);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-size:13px;outline:none;transition:all .25s;font-family:inherit}
+.field input:focus,.field select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(139,92,246,0.1)}
+.field input::placeholder{color:var(--t4)}
+.field select{cursor:pointer;color-scheme:dark}
+.field select option{background:#1e1e2a;color:#f8fafc;padding:8px}
+.field .hint{font-size:10px;color:var(--t4);margin-top:4px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field-error{border-color:var(--rd)!important;box-shadow:0 0 0 3px rgba(239,68,68,0.1)!important}
+.error-msg{background:var(--rdg);border:1px solid rgba(239,68,68,0.15);border-radius:8px;padding:10px 14px;font-size:12px;color:#fca5a5;display:none;align-items:center;gap:8px;margin-bottom:14px}
+.error-msg.show{display:flex}
+.success-msg{background:var(--gng);border:1px solid rgba(16,185,129,0.15);border-radius:8px;padding:10px 14px;font-size:12px;color:#6ee7b7;display:none;align-items:center;gap:8px;margin-bottom:14px}
+.success-msg.show{display:flex}
+
+/* ===== ADMIN LIST ===== */
+.admin-row{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--g1);border:1px solid var(--b1);border-radius:8px;margin-bottom:6px;transition:all .2s}
+.admin-row:hover{border-color:var(--b2)}
+.admin-row .ar-info{display:flex;align-items:center;gap:10px}
+.admin-row .ar-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+.admin-row .ar-avatar.admin{background:var(--acg);color:var(--ac2)}
+.admin-row .ar-avatar.editor{background:var(--blg);color:var(--bl)}
+.admin-row .ar-avatar.viewer{background:rgba(255,255,255,0.05);color:var(--t3)}
+.admin-row .ar-name{font-size:13px;font-weight:600}
+.admin-row .ar-role{font-size:10px;color:var(--t4);text-transform:uppercase;letter-spacing:0.3px}
+.admin-row .ar-actions{display:flex;gap:4px}
+.admin-row .ar-actions button{width:30px;height:30px;border:none;border-radius:8px;cursor:pointer;font-size:11px;transition:all .15s;background:var(--g2);color:var(--t3);display:flex;align-items:center;justify-content:center}
+.admin-row .ar-actions button:hover{background:var(--acg);color:var(--ac2)}
+.admin-row .ar-actions button.danger:hover{background:var(--rdg);color:var(--rd)}
+
+/* ===== GEOIP BADGE ===== */
+.geoip-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:500;background:var(--blg);color:var(--bl);border:1px solid rgba(59,130,246,0.15)}
+.geoip-badge.loading{opacity:0.5;font-style:italic}
+
+/* ===== TOKEN DISPLAY ===== */
+.token-box{background:rgba(0,0,0,0.3);border:1px solid var(--b1);border-radius:8px;padding:12px;font-family:monospace;font-size:11px;color:var(--t2);word-break:break-all;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px}
+.token-box .token-val{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ===== TOAST ===== */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--c3);color:var(--t1);padding:10px 24px;border-radius:8px;border:1px solid var(--b2);font-size:12px;font-weight:500;z-index:10001;backdrop-filter:blur(16px);box-shadow:var(--shadow-lg);animation:toastIn .25s ease-out;pointer-events:none;max-width:90vw}
+.toast.out{animation:toastOut .25s ease-in forwards}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:1200px){.mrow{grid-template-columns:repeat(3,1fr)}.srow{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:900px){
+    .layout{grid-template-columns:1fr}
+    .sidebar{position:static;display:flex;flex-wrap:wrap;padding:8px;gap:2px;overflow:auto}
+    .sidebar .sb-logo{display:none}
+    .nav-item{padding:7px 12px;font-size:11px;border-left:none;border-radius:8px;margin:0}
+    .nav-sep{display:none}
+    .nav-bottom{position:static;border-top:none;padding:6px 0 0;display:flex;gap:6px;align-items:center;flex-shrink:0}
+    .nav-bottom .logout{width:auto;margin:0;padding:6px 12px}
+    .nav-bottom .user-pill{margin:0}
+    .mrow{grid-template-columns:repeat(2,1fr)}
+    .header-bar{justify-content:flex-start}
+}
+@media(max-width:600px){
+    .mrow{grid-template-columns:1fr}
+    .srow{grid-template-columns:1fr}
+    .mc .v{font-size:22px}
+    .sidebar{flex-direction:column;flex-wrap:nowrap}
+    .nav-item{padding:8px 16px}
+    .field-row{grid-template-columns:1fr}
+    .notif-panel{width:calc(100vw - 40px);right:-10px}
+    .tbar{gap:4px}
+    .tbar .btn{font-size:11px;padding:6px 10px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+    <div class="layout">
+        <div class="sidebar">
+            <div class="sb-logo"><div class="icon"><i class="fas fa-bolt"></i></div><h2><em>Hysteria</em> 2</h2></div>
+            <div class="nav-item on" onclick="go('dashboard',this)"><i class="fas fa-th-large"></i> Дашборд</div>
+            <div class="nav-item" onclick="go('users',this)"><i class="fas fa-users"></i> Пользователи</div>
+            <div class="nav-item" onclick="go('traffic',this)"><i class="fas fa-chart-area"></i> Трафик</div>
+            <div class="nav-item" onclick="go('plans',this)"><i class="fas fa-tags"></i> Планы</div>
+            <div class="nav-item" onclick="go('nodes',this)"><i class="fas fa-server"></i> Ноды</div>
+            <div class="nav-sep"></div>
+            <div class="nav-item" onclick="go('services',this)"><i class="fas fa-cubes"></i> Сервисы</div>
+            <div class="nav-item" onclick="go('config',this)"><i class="fas fa-file-code"></i> Конфиг</div>
+            <div class="nav-item" onclick="go('logs',this)"><i class="fas fa-scroll"></i> Логи</div>
+            <div class="nav-item" onclick="go('audit',this)"><i class="fas fa-shield-alt"></i> Аудит</div>
+            <div class="nav-item" onclick="go('settings',this)"><i class="fas fa-cog"></i> Настройки</div>
+            <div class="nav-bottom">
+                <div class="user-pill"><div class="avatar" id="avatar">A</div><span id="username">admin</span></div>
+                <button class="logout" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> Выйти</button>
+            </div>
+        </div>
+        <div class="main">
+            <!-- Header bar -->
+            <div class="header-bar">
+                <div class="notif-bell" id="notifBell" onclick="toggleNotifPanel()">
+                    <i class="fas fa-bell"></i>
+                    <span class="notif-badge" id="notifBadge">0</span>
+                </div>
+                <div class="notif-panel" id="notifPanel"></div>
+                <button class="theme-toggle" onclick="toggleTheme()" title="Сменить тему">
+                    <i class="fas" id="themeIcon">fa-moon</i>
+                </button>
+            </div>
+
+            <!-- DASHBOARD -->
+            <div class="pg on" id="p-dashboard">
+                <div class="pg-title"><i class="fas fa-th-large"></i> Обзор</div>
+                <div class="mrow" id="mt"></div>
+                <div class="srow" id="sy"></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                    <div class="card" style="padding:20px"><div style="font-size:14px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:7px"><i class="fas fa-chart-pie" style="color:var(--ac2)"></i> Статус пользователей</div><div style="height:200px"><canvas id="cPie"></canvas></div></div>
+                    <div class="card" style="padding:20px"><div style="font-size:14px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:7px"><i class="fas fa-chart-bar" style="color:var(--ac2)"></i> Топ по трафику</div><div style="height:200px"><canvas id="cBar"></canvas></div></div>
+                </div>
+            </div>
+
+            <!-- USERS -->
+            <div class="pg" id="p-users">
+                <div class="pg-title"><i class="fas fa-users"></i> Пользователи</div>
+                <div class="bulk" id="bulk"><span id="bulkN">0</span><button class="btn btn-g btn-sm" onclick="bT()"><i class="fas fa-exchange-alt"></i> Вкл/Выкл</button><button class="btn btn-o btn-sm" onclick="bE()"><i class="fas fa-clock"></i> Продлить</button><button class="btn btn-r btn-sm" onclick="bD()"><i class="fas fa-trash"></i> Удалить</button><button class="btn btn-n btn-sm" onclick="cSel()">Отмена</button></div>
+                <div class="tbar">
+                    <button class="btn btn-g" onclick="showCreateUser()"><i class="fas fa-plus"></i> Создать</button>
+                    <button class="btn btn-r" onclick="clExp()"><i class="fas fa-broom"></i> Очистить</button>
+                    <button class="btn btn-o" onclick="restSrv()"><i class="fas fa-power-off"></i> Перезапуск</button>
+                    <button class="btn btn-b" onclick="expU()"><i class="fas fa-file-export"></i> Экспорт</button>
+                    <button class="btn btn-a" onclick="downloadReport()"><i class="fas fa-file-csv"></i> Отчёт</button>
+                    <div class="sbox"><i class="fas fa-search"></i><input type="text" id="sI" placeholder="Поиск..." oninput="fU()"></div>
+                    <div class="fgr"><button class="fb on" onclick="fS('all',this)">Все</button><button class="fb" onclick="fS('online',this)">Онлайн</button><button class="fb" onclick="fS('active',this)">Активные</button><button class="fb" onclick="fS('expired',this)">Просрочен.</button></div>
+                </div>
+                <div class="card tbl"><table><thead><tr><th style="width:36px"><input type="checkbox" class="chk" id="sA" onchange="tAll()"></th><th onclick="sr('status')">Статус</th><th onclick="sr('name')">Имя</th><th onclick="sr('id')">ID</th><th onclick="sr('online')">Онлайн</th><th onclick="sr('traffic')">Трафик</th><th onclick="sr('speed')">Скорость</th><th onclick="sr('expire')">До</th><th>Ссылка</th><th>Действия</th></tr></thead><tbody id="uL"></tbody></table></div>
+            </div>
+
+            <!-- TRAFFIC -->
+            <div class="pg" id="p-traffic">
+                <div class="pg-title"><i class="fas fa-chart-area"></i> Аналитика</div>
+                <div class="card chrt"><div class="ch"><div class="ct"><i class="fas fa-chart-line" style="color:var(--ac2)"></i> Трафик</div><div class="cpd"><button class="on" onclick="lCh(1,this)">1ч</button><button onclick="lCh(6,this)">6ч</button><button onclick="lCh(24,this)">24ч</button><button onclick="lCh(72,this)">3д</button></div></div><div class="cw"><canvas id="cC2"></canvas></div></div>
+                <div class="tbar"><button class="btn btn-n" onclick="loadLive()"><i class="fas fa-sync"></i> Обновить</button><span style="font-size:11px;color:var(--t4);margin-left:8px" id="wsStatus"><i class="fas fa-circle" style="color:#64748b;font-size:8px"></i> WebSocket: отключён</span></div>
+                <div class="card" id="liveTable" style="padding:20px;color:var(--t4)">Загрузка...</div>
+            </div>
+
+            <!-- PLANS -->
+            <div class="pg" id="p-plans">
+                <div class="pg-title"><i class="fas fa-tags"></i> Планы</div>
+                <div class="tbar"><button class="btn btn-g" onclick="showCreatePlan()"><i class="fas fa-plus"></i> Новый план</button></div>
+                <div id="pL"></div>
+            </div>
+
+            <!-- NODES -->
+            <div class="pg" id="p-nodes">
+                <div class="pg-title"><i class="fas fa-server"></i> Ноды (Серверы)</div>
+                <div class="tbar">
+                    <button class="btn btn-g" onclick="var e=document.getElementById('deployCard');if(e)e.style.display='block';var l=document.getElementById('deployLog');if(l)l.style.display='none';"><i class="fas fa-rocket"></i> Деплой ноды</button>
+                    <button class="btn btn-n" onclick="loadNodes()"><i class="fas fa-sync"></i> Обновить</button>
+                </div>
+                <div id="nodesList"></div>
+                <!-- Deploy Modal -->
+                <div class="card" id="deployCard" style="display:none;margin-top:12px">
+                    <div class="ct" style="font-size:14px;font-weight:700;margin-bottom:14px"><i class="fas fa-rocket" style="color:var(--ac2)"></i> Новый сервер</div>
+                    <div class="field-row">
+                        <div class="field"><label>Имя ноды</label><input type="text" id="dName" placeholder="Germany-1"></div>
+                        <div class="field"><label>Регион</label><input type="text" id="dRegion" placeholder="Germany"></div>
+                    </div>
+                    <div class="field-row">
+                        <div class="field"><label>SSH Хост</label><input type="text" id="dHost" placeholder="185.12.34.56"></div>
+                        <div class="field"><label>SSH Порт</label><input type="number" id="dPort" value="22"></div>
+                    </div>
+                    <div class="field-row">
+                        <div class="field"><label>SSH Логин</label><input type="text" id="dUser" placeholder="root"></div>
+                        <div class="field"><label>SSH Пароль</label><input type="password" id="dPass" placeholder="••••••••"></div>
+                    </div>
+                    <div class="field"><label>SSH-ключ (альтернатива паролю)</label><textarea id="dKey" rows="3" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----..." style="width:100%;padding:10px;background:var(--g2);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-size:11px;font-family:monospace;resize:vertical"></textarea></div>
+                    <div class="field"><label>URL панели</label><input type="text" id="dPanel" value="https://link.qmbox.ru"></div>
+                    <div style="display:flex;gap:8px;margin-top:12px">
+                        <button class="btn btn-g" onclick="doDeploy()" id="deployBtn" style="flex:1"><i class="fas fa-rocket"></i> Развернуть</button>
+                        <button class="btn btn-n" onclick="var e=document.getElementById('deployCard');if(e)e.style.display='none'" style="flex:1">Отмена</button>
+                    </div>
+                    <div id="deployLog" style="display:none;margin-top:12px;padding:12px;background:var(--g2);border-radius:8px;font-family:monospace;font-size:11px;color:var(--t3);max-height:200px;overflow-y:auto;white-space:pre-wrap"></div>
+                </div>
+            </div>
+
+            <!-- SERVICES -->
+            <div class="pg" id="p-services">
+                <div class="pg-title"><i class="fas fa-cubes"></i> Сервисы</div>
+                <div class="tbar"><button class="btn btn-n" onclick="lSv()"><i class="fas fa-sync"></i> Обновить</button></div>
+                <div class="svcs" id="sL"></div>
+            </div>
+
+            <!-- CONFIG -->
+            <div class="pg" id="p-config">
+                <div class="pg-title"><i class="fas fa-file-code"></i> Конфигурация</div>
+                <div class="config-toolbar">
+                    <button class="btn btn-n" onclick="loadConfig()"><i class="fas fa-sync"></i> Загрузить</button>
+                    <button class="btn btn-g" onclick="saveConfig()"><i class="fas fa-save"></i> Сохранить</button>
+                    <button class="btn btn-o" onclick="restartHysteria()"><i class="fas fa-power-off"></i> Перезапустить</button>
+                </div>
+                <div id="configStatus"></div>
+                <div class="card config-editor" style="padding:4px">
+                    <textarea id="configText" placeholder="Загрузка конфигурации..." spellcheck="false"></textarea>
+                </div>
+            </div>
+
+            <!-- LOGS -->
+            <div class="pg" id="p-logs">
+                <div class="pg-title"><i class="fas fa-scroll"></i> Логи</div>
+                <div class="tbar"><button class="btn btn-n" onclick="lLg()"><i class="fas fa-sync"></i> Обновить</button></div>
+                <div class="logs card" id="lB" style="padding:20px">Загрузка...</div>
+            </div>
+
+            <!-- AUDIT -->
+            <div class="pg" id="p-audit">
+                <div class="pg-title"><i class="fas fa-shield-alt"></i> Аудит</div>
+                <div class="tbar"><button class="btn btn-n" onclick="lAudit()"><i class="fas fa-sync"></i> Обновить</button></div>
+                <div class="logs card" id="aB" style="padding:20px">Загрузка...</div>
+            </div>
+
+            <!-- SETTINGS -->
+            <div class="pg" id="p-settings">
+                <div class="pg-title"><i class="fas fa-cog"></i> Настройки</div>
+                <div class="set-group">
+                    <h3><i class="fas fa-users-cog"></i> Администраторы</h3>
+                    <div id="adminsList"></div>
+                    <button class="btn btn-g" onclick="showCreateAdmin()" style="margin-top:8px"><i class="fas fa-plus"></i> Добавить</button>
+                </div>
+                <div class="set-group">
+                    <h3><i class="fas fa-user-lock"></i> Мой аккаунт</h3>
+                    <div class="set-item"><div><div class="si-label">Сменить пароль</div><div class="si-desc">Минимум 6 символов</div></div><button class="btn btn-a btn-sm" onclick="showChangePw()">Изменить</button></div>
+                    <div class="set-item"><div><div class="si-label">Сменить логин</div><div class="si-desc">Латиница, цифры, _</div></div><button class="btn btn-b btn-sm" onclick="showChangeLogin()">Изменить</button></div>
+                </div>
+                <div class="set-group">
+                    <h3><i class="fas fa-info-circle"></i> О системе</h3>
+                    <div class="set-item"><div class="si-label">Версия</div><span style="font-size:12px;color:var(--t3)">v3.8</span></div>
+                    <div class="set-item"><div class="si-label">Сервер</div><span style="font-size:12px;color:var(--t3)">Польша — link.qmbox.ru</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="ftr">Hysteria 2 Manager v3.8</div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-bg" id="modalBg"><div class="modal" id="modalBox">
+    <button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+    <div class="modal-head"><div class="mh-icon purple" id="mhIcon"><i class="fas fa-info"></i></div><h3 id="mhTitle"></h3><p id="mhDesc"></p></div>
+    <div class="modal-body" id="mhBody"></div>
+    <div class="modal-foot" id="mhFoot"></div>
+</div></div>
+
+<!-- USER MODAL -->
+<div class="modal-bg" id="userBg" onclick="if(event.target===this)closeUserModal()"><div class="modal modal-lg">
+    <button class="modal-close" onclick="closeUserModal()"><i class="fas fa-times"></i></button>
+    <div class="modal-head"><div class="mh-icon purple"><i class="fas fa-user"></i></div><h3 id="umTitle"></h3></div>
+    <div class="modal-body" id="umBody" style="max-height:420px;overflow-y:auto"></div>
+    <div class="modal-foot" id="umFoot"></div>
+</div></div>
+
+<script>
+const $=id=>document.getElementById(id);
+let CU=[],CF='all',CS={k:'name',d:1},CUid=null,CUd=null,OD={},chart=null,sel=new Set(),currentPage='dashboard';
+let pieChart=null,barChart=null;
+let wsConn=null,wsReconnectTimer=null,geoipCache={};
+
+/* ===== THEME ===== */
+function initTheme(){
+    const saved=localStorage.getItem('vpn_admin_theme')||'dark';
+    document.documentElement.setAttribute('data-theme',saved);
+    updateThemeIcon(saved);
+}
+function toggleTheme(){
+    const current=document.documentElement.getAttribute('data-theme');
+    const next=current==='dark'?'light':'dark';
+    document.documentElement.setAttribute('data-theme',next);
+    localStorage.setItem('vpn_admin_theme',next);
+    updateThemeIcon(next);
+}
+function updateThemeIcon(theme){
+    const icon=$('themeIcon');
+    icon.className=theme==='dark'?'fas fa-moon':'fas fa-sun';
+}
+
+/* ===== TOAST ===== */
+function toast(m){
+    const old=document.querySelector('.toast');
+    if(old){old.remove()}
+    const t=document.createElement('div');
+    t.className='toast';
+    t.textContent=m;
+    document.body.appendChild(t);
+    setTimeout(()=>{t.classList.add('out');setTimeout(()=>t.remove(),300)},2500);
+}
+
+/* ===== MODAL ===== */
+function openModal(){$('modalBg').classList.add('open')}
+function closeModal(){$('modalBg').classList.remove('open')}
+function setModal(icon,iconClass,title,desc,body,footer){
+    $('mhIcon').className='mh-icon '+iconClass;$('mhIcon').innerHTML='<i class="fas fa-'+icon+'"></i>';
+    $('mhTitle').textContent=title;$('mhDesc').textContent=desc||'';
+    $('mhBody').innerHTML=body||'';$('mhFoot').innerHTML=footer||'';
+    openModal();
+}
+function showModal(msg,icon='check-circle',iconClass='green'){
+    setModal(icon,iconClass,'Готово',msg,'<div style="text-align:center"></div>','<button class="btn btn-g" onclick="closeModal()">OK</button>');
+}
+function confirmModal(msg,onConfirm){
+    setModal('question-circle','orange','Подтверждение',msg,'','<button class="btn btn-n" onclick="closeModal()">Отмена</button><button class="btn btn-r" id="confirmBtn">Да</button>');
+    $('confirmBtn').onclick=()=>{closeModal();onConfirm()};
+}
+function showPromptModal(title,msg,defaultVal,onConfirm){
+    setModal('edit','purple',title,msg,`<div class="field"><label>Значение</label><input type="text" id="modalInput" value="${defaultVal||''}"></div>`,'<button class="btn btn-n" onclick="closeModal()">Отмена</button><button class="btn btn-a" id="promptBtn">OK</button>');
+    $('promptBtn').onclick=()=>{const v=$('modalInput').value;closeModal();onConfirm(v)};
+    setTimeout(()=>$('modalInput')?.focus(),100);
+}
+
+/* ===== NAVIGATION ===== */
+function go(page,el){
+    document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('on'));
+    $('p-'+page).classList.add('on');
+    el.classList.add('on');
+    currentPage=page;
+    if(page==='dashboard')setTimeout(()=>{renderPieChart();renderBarChart()},100);
+    if(page==='traffic')lCh(1,document.querySelector('#p-traffic .cpd button.on'));
+    if(page==='services')lSv();
+    if(page==='plans')lPl();
+    if(page==='nodes')loadNodes();
+    if(page==='logs')lLg();
+    if(page==='audit')lAudit();
+    if(page==='settings')loadAdmins();
+    if(page==='config')loadConfig();
+}
+
+async function doLogout(){await fetch('/api/logout',{method:'POST'});window.location.href='/login'}
+async function loadMe(){try{const r=await fetch('/api/me');if(!r.ok){window.location.href='/login';return}const d=await r.json();$('username').textContent=d.username;$('avatar').textContent=d.username[0].toUpperCase()}catch{window.location.href='/login'}}
+
+/* ===== DASHBOARD ===== */
+async function loadAll(){
+    try{
+        const[sr,ur,or,sr2]=await Promise.all([fetch('/api/status'),fetch('/api/users'),fetch('/api/online'),fetch('/api/server-info')]);
+        const s=await sr.json(),u=await ur.json(),o=await or.json(),sv=await sr2.json();
+        OD=o;rMt(s,u.users);rSy(sv);CU=u.users;rU();
+        if(currentPage==='dashboard')setTimeout(()=>{renderPieChart();renderBarChart()},100);
+    }catch(e){console.error(e)}
+}
+
+function rMt(s,u){
+    const t=u.length,a=u.filter(x=>x.active).length;
+    const ex=u.filter(x=>{try{return x.expire_date&&x.expire_date!=='Не указан'&&new Date(x.expire_date)<new Date()}catch{return false}}).length;
+    const sn=u.filter(x=>{try{const d=new Date(x.expire_date),n=new Date();return d>n&&d-n<3*864e5&&x.active}catch{return false}}).length;
+    const on=OD.online||0;
+    $('mt').innerHTML=`<div class="card mc cb"><div class="ic"><i class="fas fa-server"></i> Сервер</div><div class="v" style="font-size:20px">Польша</div><div class="sm">link.qmbox.ru</div></div><div class="card mc cv"><div class="ic"><i class="fas fa-users"></i> Всего</div><div class="v">${t}</div><div class="sm">пользователей</div></div><div class="card mc cg"><div class="ic"><i class="fas fa-check-circle"></i> Активных</div><div class="v">${a}</div><div class="sm">подписок</div></div><div class="card mc cc"><div class="ic"><i class="fas fa-wifi"></i> Онлайн</div><div class="v">${on}</div><div class="sm">сейчас</div></div><div class="card mc co"><div class="ic"><i class="fas fa-hourglass-half"></i> Истекают</div><div class="v">${sn}</div><div class="sm">3 дня</div></div><div class="card mc cr"><div class="ic"><i class="fas fa-exclamation-triangle"></i> Просрочено</div><div class="v">${ex}</div><div class="sm">требуют удаления</div></div>`;
+}
+
+function rSy(s){
+    if(s.cpu_percent==null)return;
+    const cc=s.cpu_percent>80?'var(--rd)':s.cpu_percent>50?'var(--or)':'var(--gn)';
+    const rc=s.ram_percent>80?'var(--rd)':s.ram_percent>50?'var(--or)':'var(--gn)';
+    const dc=s.disk_percent>80?'var(--rd)':s.disk_percent>50?'var(--or)':'var(--gn)';
+    $('sy').innerHTML=`<div class="card sc"><div class="sh"><span class="sl"><i class="fas fa-microchip"></i> CPU</span><span class="sp" style="color:${cc}">${s.cpu_percent}%</span></div><div class="bar"><div class="fill" style="width:${s.cpu_percent}%;background:${cc}"></div></div><div class="sd">${s.cpu_count} ядра</div></div><div class="card sc"><div class="sh"><span class="sl"><i class="fas fa-memory"></i> ОЗУ</span><span class="sp" style="color:${rc}">${s.ram_percent}%</span></div><div class="bar"><div class="fill" style="width:${s.ram_percent}%;background:${rc}"></div></div><div class="sd">${s.ram_used_gb}/${s.ram_total_gb} ГБ</div></div><div class="card sc"><div class="sh"><span class="sl"><i class="fas fa-hdd"></i> Диск</span><span class="sp" style="color:${dc}">${s.disk_percent}%</span></div><div class="bar"><div class="fill" style="width:${s.disk_percent}%;background:${dc}"></div></div><div class="sd">${s.disk_used_gb}/${s.disk_total_gb} ГБ</div></div><div class="card sc"><div class="sh"><span class="sl"><i class="fas fa-network-wired"></i> Сеть</span><span class="sp" style="color:var(--bl)">—</span></div><div class="bar"><div class="fill" style="width:0%"></div></div><div class="sd"><i class="fas fa-arrow-up" style="color:var(--bl)"></i> ${s.net_sent_gb} ГБ <i class="fas fa-arrow-down" style="color:var(--ac2)"></i> ${s.net_recv_gb} ГБ</div></div>`;
+}
+
+function renderPieChart(){
+    if(!CU.length)return;
+    const active=CU.filter(x=>x.active).length;
+    const expired=CU.filter(x=>{try{return x.expire_date&&x.expire_date!=='Не указан'&&new Date(x.expire_date)<new Date()}catch{return false}}).length;
+    const inactive=CU.length-active-expired;
+    if(pieChart)pieChart.destroy();
+    pieChart=new Chart($('cPie'),{type:'doughnut',data:{labels:['Активные','Просрочены','Неактивные'],datasets:[{data:[active,expired,inactive],backgroundColor:['#10b981','#f59e0b','#64748b'],borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{color:'rgba(248,250,252,.5)',font:{family:'Inter',size:10},padding:12,usePointStyle:true,pointStyle:'circle'}}}}});
+}
+
+function renderBarChart(){
+    if(!CU.length)return;
+    const sorted=[...CU].sort((a,b)=>((b.traffic?.total_mb||0))-(a.traffic?.total_mb||0)).slice(0,5);
+    if(barChart)barChart.destroy();
+    barChart=new Chart($('cBar'),{type:'bar',data:{labels:sorted.map(x=>x.name),datasets:[{label:'Трафик (МБ)',data:sorted.map(x=>x.traffic?.total_mb||0),backgroundColor:['#8b5cf6','#10b981','#ef4444','#f59e0b','#06b6d4'],borderWidth:0,borderRadius:4,barThickness:24}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'rgba(248,250,252,.3)',font:{family:'Inter',size:9},callback:v=>v+' МБ'},grid:{color:'rgba(255,255,255,.02)'},border:{display:false}},y:{ticks:{color:'rgba(248,250,252,.5)',font:{family:'Inter',size:10}},grid:{display:false},border:{display:false}}}}});
+}
+
+/* ===== USERS TABLE ===== */
+function rU(){
+    let u=[...CU];
+    const q=$('sI').value.toLowerCase();
+    if(q)u=u.filter(x=>x.name.toLowerCase().includes(q)||x.id.toLowerCase().includes(q));
+    if(CF==='online')u=u.filter(x=>x.online);
+    else if(CF==='active')u=u.filter(x=>x.active);
+    else if(CF==='expired')u=u.filter(x=>{try{return new Date(x.expire_date)<new Date()}catch{return false}});
+    const k=CS.k,dd=CS.d;
+    u.sort((a,b)=>{
+        if(k==='name')return a.name.localeCompare(b.name)*dd;
+        if(k==='online')return((b.online?1:0)-(a.online?1:0))*dd;
+        if(k==='traffic')return((b.traffic?.total_mb||0)-(a.traffic?.total_mb||0))*dd;
+        if(k==='speed')return((b.speed_limit_mbps||0)-(a.speed_limit_mbps||0))*dd;
+        if(k==='expire')try{return(new Date(a.expire_date)-new Date(b.expire_date))*dd}catch{return 0}
+        if(k==='status')return((b.active?1:0)-(a.active?1:0))*dd;
+        if(k==='id')return a.id.localeCompare(b.id)*dd;
+        return 0;
+    });
+    const tb=$('uL');
+    if(!u.length){tb.innerHTML='<tr><td colspan="10"><div class="emp"><i class="fas fa-user-slash"></i><p>Не найдено</p></div></td></tr>';return}
+    tb.innerHTML=u.map(x=>{
+        const isEx=x.expire_date&&x.expire_date!=='Не указан'&&new Date(x.expire_date)<new Date();
+        let pc=x.active?'a':'i',pt=x.active?'Активен':'Неакт.';
+        if(isEx){pc='e';pt='Просрочен'}
+        const tr=x.traffic||{total_mb:0,limit_mb:0};
+        const ld=tr.limit_mb>0?(tr.limit_mb>1e6?'∞':tr.limit_mb+' МБ'):'∞';
+        const up=tr.limit_mb>0?Math.min(100,(tr.total_mb/tr.limit_mb)*100):0;
+        const bc=up>90?'var(--rd)':up>70?'var(--or)':'var(--gn)';
+        const ln=x.link||'',isOn=x.online,sl=sel.has(x.id);
+        const spd=x.speed_limit_mbps||0;
+        const spdDisplay=spd>0?spd+' Мбит/с':'∞';
+        return`<tr class="${sl?'sel':''}"><td><input type="checkbox" class="chk" ${sl?'checked':''} onchange="tS('${x.id}')"></td><td><span class="pil ${pc}"><i class="fas fa-circle" style="font-size:5px"></i> ${pt}</span></td><td><strong>${x.name}</strong></td><td><code style="font-size:10px;background:var(--g2);padding:2px 7px;border-radius:6px;color:var(--t3)">${x.id}</code></td><td><span class="od ${isOn?'on':'off'}"><span class="d ${isOn?'on':'off'}"></span> ${isOn?'Онлайн':'Офлайн'}</span></td><td><div style="font-size:11px"><strong>${tr.total_mb} МБ</strong><div style="font-size:9px;color:var(--t4)">/ ${ld}</div>${tr.limit_mb>0?`<div class="tbr"><div class="f" style="width:${up}%;background:${bc}"></div></div>`:''}</div></td><td style="font-size:11px;color:${spd>0?'var(--or)':'var(--t4)'};font-weight:${spd>0?'600':'400'}">${spdDisplay}</td><td style="font-size:11px;color:${isEx?'var(--rd)':'var(--t3)'}">${x.expire_date||'—'}</td><td>${ln?`<div class="lk"><span>${ln.substring(0,24)}...</span><button class="cp" onclick="cpL('${x.id}')"><i class="fas fa-copy"></i></button></div>`:'—'}</td><td><div class="ab"><button class="cy" onclick="openUserModal('${x.id}')" title="Подробнее"><i class="fas fa-info-circle"></i></button><button class="p" onclick="showQRForUser('${x.id}')" title="QR-код"><i class="fas fa-qrcode"></i></button>${ln?`<button class="bl" onclick="cpL('${x.id}')" title="Копировать"><i class="fas fa-copy"></i></button>`:''}<button class="g" onclick="tU('${x.id}')" title="Вкл/Выкл"><i class="fas ${x.active?'fa-pause':'fa-play'}"></i></button><button class="p" onclick="eU('${x.id}')" title="Продлить"><i class="fas fa-clock"></i></button><button class="r" onclick="dU('${x.id}')" title="Удалить"><i class="fas fa-trash"></i></button></div></td></tr>`;
+    }).join('');
+}
+
+function sr(k){if(CS.k===k)CS.d*=-1;else{CS.k=k;CS.d=1}rU()}
+function fS(f,el){CF=f;document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));el.classList.add('on');rU()}
+function fU(){rU()}
+function tS(id){if(sel.has(id))sel.delete(id);else sel.add(id);uB();rU()}
+function tAll(){const c=$('sA').checked;sel.clear();if(c)CU.forEach(u=>sel.add(u.id));uB();rU()}
+function cSel(){sel.clear();$('sA').checked=false;uB();rU()}
+function uB(){const n=sel.size;$('bulk').classList.toggle('show',n>0);$('bulkN').textContent=n+' выбрано'}
+async function bD(){if(!sel.size)return;confirmModal('Удалить '+sel.size+' пользователей?',async()=>{await fB('/api/users/bulk-delete',{ids:[...sel]});toast('Удалено');sel.clear();uB();loadAll()})}
+async function bT(){if(!sel.size)return;await fB('/api/users/bulk-toggle',{ids:[...sel]});toast('OK');sel.clear();uB();loadAll()}
+async function bE(){if(!sel.size)return;showPromptModal('Продление','Дней:','30',async v=>{await fB('/api/users/bulk-extend',{ids:[...sel],days:parseInt(v)});toast('Продлено');sel.clear();uB();loadAll()})}
+async function fB(u,b){return fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)})}
+function cpL(id){fetch('/api/users').then(r=>r.json()).then(d=>{const u=d.users.find(x=>x.id===id);if(u&&u.link){navigator.clipboard.writeText(u.link).then(()=>toast('Скопировано!'))}})}
+function tU(id){fetch('/api/user/toggle/'+id,{method:'POST'}).then(()=>{toast('OK');loadAll()})}
+function dU(id){confirmModal('Удалить пользователя?',()=>{fetch('/api/user/'+id,{method:'DELETE'}).then(()=>{toast('Удалён');loadAll()})})}
+function eU(id){showPromptModal('Продление','Дней:','30',v=>{fetch('/api/user/extend/'+id+'?days='+v,{method:'POST'}).then(r=>r.json()).then(d=>{toast('До '+d.new_expire);loadAll()})})}
+function clExp(){confirmModal('Удалить просроченных?',()=>{fetch('/api/clean',{method:'POST'}).then(r=>r.json()).then(d=>{toast('Удалено: '+d.deleted);loadAll()})})}
+function restSrv(){confirmModal('Перезапустить Hysteria 2?',()=>{fetch('/api/restart').then(()=>{toast('Перезапущен');setTimeout(loadAll,3000)})})}
+function expU(){window.open('/api/export?fmt=json','_blank')}
+function downloadReport(){window.open('/api/report?fmt=csv','_blank')}
+
+/* ===== CREATE USER ===== */
+function showCreateUser(){
+    setModal('user-plus','green','Новый пользователь','Введите имя и выберите тариф',`
+        <div class="field"><label>Имя</label><input type="text" id="cuName" placeholder="ivan"></div>
+        <div class="field"><label>Тариф</label><select id="cuPlan"><option value="">— Свой срок —</option></select></div>
+        <div class="field"><label>Дней (если свой)</label><input type="number" id="cuDays" value="30" min="1"></div>
+    `,'<button class="btn btn-n" onclick="closeModal()">Отмена</button><button class="btn btn-g" id="cuBtn">Создать</button>');
+    fetch('/api/plans').then(r=>r.json()).then(d=>{const sel=$('cuPlan');(d.plans||[]).forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=`${p.name} — ${p.days}дн`;sel.appendChild(o)})});
+    $('cuBtn').onclick=async()=>{const n=$('cuName')?.value?.trim();if(!n||n.length<2){toast('Мин. 2 символа');return}const pid=$('cuPlan')?.value;const d=parseInt($('cuDays')?.value)||30;closeModal();
+        if(pid){await fB('/api/user/create-with-plan',{name:n,plan_id:pid}).then(r=>r.json()).then(d=>{if(d.id)toast('Создан!');else toast('Ошибка')})}
+        else{await fetch('/api/user/create?name='+encodeURIComponent(n)+'&days='+d,{method:'POST'}).then(r=>r.json()).then(d=>{if(d.id)toast('Создан!');else toast('Ошибка')})}
+        loadAll()};
+    setTimeout(()=>$('cuName')?.focus(),100);
+}
+
+/* ===== USER MODAL ===== */
+function openUserModal(id){CUid=id;$('userBg').classList.add('open');refreshUserModal()}
+function closeUserModal(){$('userBg').classList.remove('open');CUid=null;CUd=null}
+async function refreshUserModal(){if(!CUid)return;try{const r=await fetch('/api/user/'+CUid);CUd=await r.json();renderUserModal(CUd)}catch{toast('Ошибка')}}
+function renderUserModal(u){
+    const isEx=u.expire_date&&u.expire_date!=='Не указан'&&new Date(u.expire_date)<new Date();
+    const now=new Date(),exp=new Date(u.expire_date),dl=Math.ceil((exp-now)/864e5);
+    const tr=u.traffic||{},isUn=!u.traffic_limit||u.traffic_limit===0;
+    const up=isUn?0:Math.min(100,(tr.total_mb/u.traffic_limit)*100);
+    const bc=up>90?'var(--rd)':up>70?'var(--or)':'var(--gn)';
+    const sp=u.expire_date?Math.min(100,Math.max(0,(dl/30)*100)):0;
+    const spd=u.speed_limit_mbps||0;
+    const spdText=spd>0?spd+' Мбит/с':'∞ Неограничена';
+    $('umTitle').textContent=u.name;
+    $('umBody').innerHTML=`
+    <div class="field-row"><div class="field"><label>Статус</label><div style="padding:10px;background:var(--g2);border-radius:8px;font-size:13px;font-weight:600;color:${isEx?'var(--or)':u.active?'var(--gn)':'var(--rd)'}">${isEx?'Просрочен':u.active?'Активен':'Неактивен'}</div></div><div class="field"><label>Онлайн</label><div style="padding:10px;background:var(--g2);border-radius:8px;font-size:13px;font-weight:600;color:${u.online?'var(--gn)':'#64748b'}">${u.online?'Подключён':'Не в сети'}</div></div></div>
+    <div class="field-row"><div class="field"><label>Создан</label><div style="padding:10px;background:var(--g2);border-radius:8px;font-size:12px">${u.created||'—'}</div></div><div class="field"><label>Действует до</label><div style="padding:10px;background:var(--g2);border-radius:8px;font-size:12px;color:${isEx?'var(--rd)':'inherit'}">${u.expire_date||'—'}</div></div></div>
+    <div class="field"><label>Прогресс подписки</label><div style="background:var(--g2);border-radius:4px;height:6px;overflow:hidden;margin-top:4px"><div style="height:100%;width:${Math.min(100,sp)}%;background:${sp>80?'var(--rd)':sp>50?'var(--or)':'var(--gn)'};border-radius:4px;transition:width .4s"></div></div><div style="font-size:10px;color:var(--t4);margin-top:3px;text-align:right">${dl>0?dl+' дн':'Истекло'} — ${Math.round(sp)}%</div></div>
+    <div style="padding:14px;background:var(--g1);border:1px solid var(--b1);border-radius:8px;margin-top:12px">
+    <div style="font-size:10px;color:var(--t3);text-transform:uppercase;font-weight:600;letter-spacing:.5px;margin-bottom:10px">Скорость</div>
+    <div class="field-row"><div class="field"><label>Лимит скорости</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;font-weight:600;color:${spd>0?'var(--or)':'var(--t2)'}">${spdText}</div></div><div class="field"><label>IP-адрес</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;color:var(--t3)">${u.ip||'—'}</div></div></div>
+    </div>
+    <div style="padding:14px;background:var(--g1);border:1px solid var(--b1);border-radius:8px;margin-top:12px">
+    <div style="font-size:10px;color:var(--t3);text-transform:uppercase;font-weight:600;letter-spacing:.5px;margin-bottom:10px">Трафик</div>
+    <div class="field-row"><div class="field"><label>TX</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;color:var(--bl);font-weight:600">${tr.tx_mb||0} МБ</div></div><div class="field"><label>RX</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;color:var(--ac2);font-weight:600">${tr.rx_mb||0} МБ</div></div></div>
+    <div class="field-row"><div class="field"><label>Всего</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;font-weight:600">${tr.total_mb||0} МБ</div></div><div class="field"><label>Лимит</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;font-weight:600">${isUn?'∞ Безлимит':u.traffic_limit+' МБ'}</div></div></div>
+    ${!isUn?`<div style="background:var(--g2);border-radius:4px;height:5px;overflow:hidden;margin-top:6px"><div style="height:100%;width:${up}%;background:${bc};border-radius:4px"></div></div>`:''}
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:10px">
+    <button class="btn btn-n btn-sm" onclick="setLimit(10240)">10 ГБ</button>
+    <button class="btn btn-n btn-sm" onclick="setLimit(51200)">50 ГБ</button>
+    <button class="btn btn-n btn-sm" onclick="setLimit(102400)">100 ГБ</button>
+    <button class="btn btn-n btn-sm" onclick="setLimit(0)">∞ Безлимит</button>
+    <button class="btn btn-n btn-sm" onclick="resetTraffic()" style="border-color:rgba(239,68,68,.15);color:var(--rd)">Сброс</button>
+    </div></div>`;
+    const subUrl=u.service_token?location.origin+'/sub/'+u.service_token:'';
+    $('umFoot').innerHTML=`<button class="btn btn-a btn-sm" onclick="copySubUrlAuto()"><i class="fas fa-share-alt"></i> Подписка</button><button class="btn btn-b btn-sm" onclick="copyUserLink()"><i class="fas fa-link"></i> Ссылка</button><button class="btn btn-n btn-sm" onclick="showQRModal()"><i class="fas fa-qrcode"></i> QR</button><button class="btn btn-g btn-sm" onclick="extendUserModal()"><i class="fas fa-clock"></i> Продлить</button><button class="btn btn-o btn-sm" onclick="toggleUserModal()"><i class="fas fa-exchange-alt"></i> Вкл/Выкл</button><button class="btn btn-r btn-sm" onclick="deleteUserModal()"><i class="fas fa-trash"></i> Удалить</button>`;
+}
+function setLimit(mb){if(!CUid)return;fetch('/api/user/set-limit/'+CUid+'?limit_mb='+mb,{method:'POST'}).then(()=>{toast('Лимит: '+(mb?mb+' МБ':'∞'));refreshUserModal()})}
+function resetTraffic(){if(!CUid)return;confirmModal('Сбросить трафик?',()=>{fetch('/api/user/reset-traffic/'+CUid,{method:'POST'}).then(()=>{toast('Сброшено');refreshUserModal()})})}
+function copyUserLink(){if(CUd?.link){navigator.clipboard.writeText(CUd.link).then(()=>toast('Скопировано!'))}}
+function copySubUrl(url){if(!url){toast('Нет токена');return}navigator.clipboard.writeText(url).then(()=>toast('Ссылка подписки скопирована!'))}
+function copySubUrlAuto(){
+    if(!CUid)return;
+    if(CUd?.service_token){
+        navigator.clipboard.writeText(location.origin+'/sub/'+CUd.service_token).then(()=>toast('Ссылка подписки скопирована!'));
+    }else{
+        fetch('/api/user/gen-service-token/'+CUid,{method:'POST'}).then(r=>r.json()).then(d=>{
+            if(d.token){
+                CUd.service_token=d.token;
+                navigator.clipboard.writeText(location.origin+'/sub/'+d.token).then(()=>toast('Токен создан и ссылка скопирована!'));
+            }else{toast('Ошибка генерации токена')}
+        }).catch(()=>toast('Ошибка сети'));
+    }
+}
+function extendUserModal(){if(!CUid)return;showPromptModal('Продление','Дней:','30',v=>{fetch('/api/user/extend/'+CUid+'?days='+v,{method:'POST'}).then(r=>r.json()).then(d=>{toast('До '+d.new_expire);loadAll();refreshUserModal()})})}
+function toggleUserModal(){if(!CUid)return;fetch('/api/user/toggle/'+CUid,{method:'POST'}).then(()=>{toast('OK');loadAll();refreshUserModal()})}
+function deleteUserModal(){if(!CUid)return;confirmModal('Удалить пользователя?',()=>{fetch('/api/user/'+CUid,{method:'DELETE'}).then(()=>{toast('Удалён');loadAll();closeUserModal()})})}
+
+/* ===== QR CODE (per-user button) ===== */
+function showQRForUser(uid){
+    fetch('/api/qr/'+uid).then(r=>r.json()).then(d=>{
+        if(d.qr){
+            setModal('qrcode','blue','QR-код','Отсканируйте в Hysteria 2',`<div style="text-align:center"><img src="${d.qr}" style="max-width:220px;border-radius:8px" onerror="this.style.display='none';this.parentElement.innerHTML+='<div style=\\'padding:16px;color:var(--rd);font-size:12px\\'>Ошибка загрузки QR</div>'"/></div><div style="font-size:10px;color:var(--t4);margin-top:10px;word-break:break-all;font-family:monospace">${d.link||''}</div>`,'<button class="btn btn-n" onclick="closeModal()">Закрыть</button>');
+        }else if(d.link){
+            showQRModalWithData(d.link);
+        }else{
+            toast('QR-код недоступен');
+        }
+    }).catch(()=>toast('Ошибка получения QR-кода'));
+}
+
+function showQRModal(){
+    if(!CUid)return;
+    fetch('/api/qr/'+CUid).then(r=>r.json()).then(d=>{
+        if(d.qr){
+            setModal('qrcode','blue','QR-код','Отсканируйте в Hysteria 2',`<div style="text-align:center"><img src="${d.qr}" style="max-width:220px;border-radius:8px"/></div><div style="font-size:10px;color:var(--t4);margin-top:10px;word-break:break-all;font-family:monospace">${d.link||''}</div>`,'<button class="btn btn-n" onclick="closeModal()">Закрыть</button>');
+        }else{
+            showQRModalWithData(d.link||'');
+        }
+    }).catch(()=>toast('Ошибка'));
+}
+
+function showQRModalWithData(link){
+    if(!link){toast('Нет ссылки');return}
+    setModal('qrcode','blue','QR-код','Отсканируйте в Hysteria 2',`<div style="text-align:center;padding:16px;background:#fff;border-radius:8px;display:inline-block"><img src="/api/qr/${CUid}" style="max-width:200px" onerror="this.style.display='none'"/></div><div style="font-size:10px;color:var(--t4);margin-top:10px;word-break:break-all;font-family:monospace">${link}</div>`,'<button class="btn btn-n" onclick="closeModal()">Закрыть</button>');
+}
+
+/* ===== SERVICE TOKEN ===== */
+function showServiceTokenModal(){
+    if(!CUid||!CUd)return;
+    // Save CUid/CUd before closing user modal
+    const savedId=CUid;
+    const savedData=CUd;
+    closeUserModal();
+    const existingToken=savedData.service_token||'';
+    const subUrl=existingToken?location.origin+'/sub/'+existingToken:'';
+    const tokenHtml=existingToken
+        ?`<div style="font-size:12px;color:var(--t3);margin-bottom:8px">Ваш токен:</div><div class="token-box"><span class="token-val">${existingToken}</span><button class="cp" onclick="navigator.clipboard.writeText('${existingToken}');toast('Скопировано!')"><i class="fas fa-copy"></i></button></div><div style="font-size:11px;color:var(--t3);margin-top:12px;margin-bottom:6px">Ссылка подписки:</div><div style="background:var(--g2);padding:8px;border-radius:6px;font-size:10px;color:var(--ac2);word-break:break-all;font-family:monospace">${subUrl}</div>`
+        :`<div style="text-align:center;color:var(--t4);font-size:12px;padding:10px">Нажмите для генерации</div>`;
+    const footerHtml=existingToken
+        ?`<button class="btn btn-n" onclick="closeModal()">Закрыть</button><button class="btn btn-a" onclick="navigator.clipboard.writeText('${subUrl}');toast('Ссылка подписки скопирована!')"><i class="fas fa-copy"></i> Копировать ссылку</button><button class="btn btn-n" onclick="generateServiceToken()">Перегенерировать</button>`
+        :`<button class="btn btn-n" onclick="closeModal()">Закрыть</button><button class="btn btn-a" onclick="generateServiceToken()">Генерировать</button>`;
+    setModal('key','purple','Токен сервиса','Токен для доступа к кабинету и подписке',`<div id="tokenArea">${tokenHtml}</div>`,footerHtml);
+    // Store savedId on window for generateServiceToken to use
+    window._tokenUserId=savedId;
+}
+
+function generateServiceToken(){
+    const uid=window._tokenUserId||CUid;
+    if(!uid)return;
+    const area=document.getElementById('tokenArea');
+    if(area)area.innerHTML='<div style="text-align:center;color:var(--t4);font-size:12px;padding:10px"><i class="fas fa-spinner fa-spin"></i> Генерация...</div>';
+    fetch('/api/user/gen-service-token/'+uid,{method:'POST'}).then(r=>r.json()).then(d=>{
+        if(d.token){
+            const subUrl=location.origin+'/sub/'+d.token;
+            if(area)area.innerHTML=`<div style="font-size:12px;color:var(--t3);margin-bottom:8px">Ваш токен:</div><div class="token-box"><span class="token-val">${d.token}</span><button class="cp" onclick="navigator.clipboard.writeText('${d.token}');toast('Скопировано!')"><i class="fas fa-copy"></i></button></div><div style="font-size:11px;color:var(--t3);margin-top:12px;margin-bottom:6px">Ссылка подписки:</div><div style="background:var(--g2);padding:8px;border-radius:6px;font-size:10px;color:var(--ac2);word-break:break-all;font-family:monospace">${subUrl}</div>`;
+            toast('Токен сгенерирован!');
+        }else{
+            if(area)area.innerHTML='<div style="color:var(--rd);font-size:12px;padding:10px">'+(d.error||'Ошибка генерации')+'</div>';
+        }
+    }).catch(()=>{
+        if(area)area.innerHTML='<div style="color:var(--rd);font-size:12px;padding:10px">Ошибка соединения</div>';
+    });
+}
+
+/* ===== NOTIFICATIONS ===== */
+let notifCount=0;
+function toggleNotifPanel(){
+    const panel=$('notifPanel');
+    if(panel.classList.contains('open')){
+        panel.classList.remove('open');
+    }else{
+        panel.classList.add('open');
+        loadNotifications();
+    }
+}
+async function loadNotifications(){
+    try{
+        const r=await fetch('/api/notifications');
+        const d=await r.json();
+        renderNotifications(d.notifications||d.items||[]);
+    }catch{
+        const panel=$('notifPanel');
+        panel.innerHTML='<div class="notif-empty">Ошибка загрузки</div>';
+    }
+}
+function renderNotifications(items){
+    const panel=$('notifPanel');
+    if(!items.length){
+        panel.innerHTML='<div class="notif-empty">Нет уведомлений</div>';
+        return;
+    }
+    const iconMap={info:['info-circle','var(--blg)','var(--bl)'],warning:['exclamation-triangle','var(--org)','var(--or)'],error:['times-circle','var(--rdg)','var(--rd)'],success:['check-circle','var(--gng)','var(--gn)']};
+    panel.innerHTML=items.slice(0,20).map(n=>{
+        const type=n.type||'info';
+        const[ic,icBg,icClr]=iconMap[type]||iconMap.info;
+        const time=n.time||n.created_at||'';
+        return`<div class="notif-item">${n.unread?'<div class="ni-unread"></div>':''}<div class="ni-icon" style="background:${icBg};color:${icClr}"><i class="fas fa-${ic}"></i></div><div><div class="ni-text">${n.message||n.text||n.title||''}</div>${time?`<div class="ni-time">${time}</div>`:''}</div></div>`;
+    }).join('');
+    const unread=items.filter(n=>n.unread).length;
+    if(unread>0){
+        const badge=$('notifBadge');
+        badge.textContent=unread;
+        badge.classList.add('show');
+        notifCount=unread;
+    }
+}
+function updateNotifBadge(count){
+    const badge=$('notifBadge');
+    if(count>0){badge.textContent=count;badge.classList.add('show')}
+    else{badge.classList.remove('show')}
+}
+async function pollNotifications(){
+    try{
+        const r=await fetch('/api/notifications');
+        const d=await r.json();
+        const items=d.notifications||d.items||[];
+        const unread=items.filter(n=>n.unread).length;
+        if(unread>notifCount){
+            const bell=$('notifBell');
+            bell.classList.add('shake');
+            setTimeout(()=>bell.classList.remove('shake'),600);
+        }
+        updateNotifBadge(unread);
+    }catch{}
+}
+
+/* ===== CONFIG EDITOR ===== */
+async function loadConfig(){
+    const statusEl=$('configStatus');
+    statusEl.innerHTML='<div class="config-status info"><i class="fas fa-spinner fa-spin"></i> Загрузка конфигурации...</div>';
+    try{
+        const r=await fetch('/api/config');
+        if(!r.ok)throw new Error('HTTP '+r.status);
+        const d=await r.json();
+        const text=d.content||d.config||d.yaml||JSON.stringify(d,null,2);
+        $('configText').value=typeof text==='string'?text:JSON.stringify(text,null,2);
+        statusEl.innerHTML='<div class="config-status success"><i class="fas fa-check-circle"></i> Конфигурация загружена</div>';
+        setTimeout(()=>{statusEl.innerHTML=''},3000);
+    }catch(e){
+        statusEl.innerHTML='<div class="config-status error"><i class="fas fa-times-circle"></i> Ошибка загрузки: '+e.message+'</div>';
+    }
+}
+
+async function saveConfig(){
+    const content=$('configText').value;
+    const statusEl=$('configStatus');
+    statusEl.innerHTML='<div class="config-status info"><i class="fas fa-spinner fa-spin"></i> Сохранение...</div>';
+    try{
+        const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:content})});
+        if(!r.ok){const e=await r.json().catch(()=>({error:'HTTP '+r.status}));throw new Error(e.error||'HTTP '+r.status)}
+        const d=await r.json();
+        statusEl.innerHTML='<div class="config-status success"><i class="fas fa-check-circle"></i> Конфигурация сохранена'+(d.message?' — '+d.message:'')+'</div>';
+        toast('Конфиг сохранён!');
+        setTimeout(()=>{statusEl.innerHTML=''},4000);
+    }catch(e){
+        statusEl.innerHTML='<div class="config-status error"><i class="fas fa-times-circle"></i> Ошибка сохранения: '+e.message+'</div>';
+    }
+}
+
+function restartHysteria(){
+    confirmModal('Перезапустить Hysteria 2?',async()=>{
+        const statusEl=$('configStatus');
+        statusEl.innerHTML='<div class="config-status info"><i class="fas fa-spinner fa-spin"></i> Перезапуск...</div>';
+        try{
+            const r=await fetch('/api/config/restart',{method:'POST'});
+            if(!r.ok)throw new Error('HTTP '+r.status);
+            statusEl.innerHTML='<div class="config-status success"><i class="fas fa-check-circle"></i> Сервис перезапущен</div>';
+            toast('Перезапущен!');
+            setTimeout(()=>{statusEl.innerHTML='';loadAll()},3000);
+        }catch(e){
+            statusEl.innerHTML='<div class="config-status error"><i class="fas fa-times-circle"></i> Ошибка перезапуска: '+e.message+'</div>';
+        }
+    });
+}
+
+/* ===== TRAFFIC CHARTS ===== */
+async function lCh(hours,el){
+    document.querySelectorAll('.cpd button').forEach(b=>b.classList.remove('on'));
+    if(el)el.classList.add('on');
+    const canvasId=currentPage==='traffic'?'cC2':'cC';
+    const r=await fetch('/api/traffic-history?hours='+hours);
+    const d=await r.json();
+    const h=d.history||[];
+    if(!h.length)return;
+    const labels=h.map(x=>x.time.split(' ')[1]||x.time);
+    const names=[...new Set(h.flatMap(x=>Object.keys(x.users||{})))];
+    const cols=['#8b5cf6','#10b981','#ef4444','#f59e0b','#06b6d4','#a78bfa'];
+    const ds=names.map((n,i)=>{
+        let cTx=h[0]?.users?.[n]?.tx||0,cRx=h[0]?.users?.[n]?.rx||0;
+        const data=h.map(x=>{const u=x.users?.[n];if(u){cTx=u.tx;cRx=u.rx;return parseFloat(((u.tx+u.rx)/1024/1024).toFixed(2))}return null});
+        return{label:n,data,borderColor:cols[i%cols.length],backgroundColor:cols[i%cols.length]+'10',tension:.4,fill:true,pointRadius:0,borderWidth:2};
+    });
+    if(chart)chart.destroy();
+    chart=new Chart($(canvasId),{type:'line',data:{labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'},plugins:{legend:{labels:{color:'rgba(248,250,252,.4)',font:{family:'Inter',size:10},usePointStyle:true,pointStyle:'circle'}}},scales:{x:{ticks:{color:'rgba(248,250,252,.18)',font:{family:'Inter',size:9},maxTicksLimit:10},grid:{color:'rgba(255,255,255,.02)'},border:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'rgba(248,250,252,.18)',font:{family:'Inter',size:9},callback:v=>v+' МБ'},grid:{color:'rgba(255,255,255,.02)'},border:{color:'rgba(255,255,255,.04)'}}}}});
+}
+
+async function loadLive(){
+    try{
+        const r=await fetch('/api/live-traffic');
+        const d=await r.json();
+        const el=$('liveTable');
+        if(!d.traffic||!d.traffic.length){el.innerHTML='<div class="emp"><i class="fas fa-wifi"></i><p>Нет активного трафика</p></div>';return}
+        el.innerHTML=`<table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:8px;font-size:10px;text-transform:uppercase;color:var(--t4)">Пользователь</th><th style="text-align:left;padding:8px;font-size:10px;text-transform:uppercase;color:var(--t4)">IP / Страна</th><th style="text-align:right;padding:8px;font-size:10px;text-transform:uppercase;color:var(--t4)">TX</th><th style="text-align:right;padding:8px;font-size:10px;text-transform:uppercase;color:var(--t4)">RX</th><th style="text-align:right;padding:8px;font-size:10px;text-transform:uppercase;color:var(--t4)">Всего</th></tr></thead><tbody>${d.traffic.map(t=>`<tr><td style="padding:8px;font-size:12px"><strong>${t.user}</strong></td><td style="padding:8px;font-size:11px"><span class="geoip-badge loading" data-ip="${t.ip||''}" id="geoip-${(t.ip||'').replace(/\./g,'_')}">${t.ip||'—'}</span></td><td style="padding:8px;text-align:right;font-size:12px;color:var(--bl)">${t.tx_speed_mb} МБ/с</td><td style="padding:8px;text-align:right;font-size:12px;color:var(--ac2)">${t.rx_speed_mb} МБ/с</td><td style="padding:8px;text-align:right;font-size:12px;font-weight:600">${t.total_speed_mb} МБ/с</td></tr>`).join('')}</tbody></table>`;
+        if(typeof d.traffic!=='undefined')resolveGeoIPs();
+    }catch(e){console.error(e)}
+}
+
+/* ===== GEOIP ===== */
+function resolveGeoIPs(){
+    const badges=document.querySelectorAll('.geoip-badge[data-ip]');
+    badges.forEach(badge=>{
+        const ip=badge.getAttribute('data-ip');
+        if(!ip||ip==='0.0.0.0'){badge.textContent=ip||'—';badge.classList.remove('loading');return}
+        if(geoipCache[ip]){badge.textContent=geoipCache[ip];badge.classList.remove('loading');return}
+        fetch('/api/geo/'+encodeURIComponent(ip)).then(r=>r.json()).then(d=>{
+            const loc=d.country||d.country_code||d.location||'';
+            const city=d.city||'';
+            const display=city?city+', '+loc:loc||ip;
+            geoipCache[ip]=display;
+            badge.textContent=display;
+            badge.classList.remove('loading');
+        }).catch(()=>{
+            badge.textContent=ip;
+            badge.classList.remove('loading');
+        });
+    });
+}
+
+/* ===== PLANS ===== */
+async function lPl(){
+    const r=await fetch('/api/plans');
+    const d=await r.json();
+    const el=$('pL');
+    if(!d.plans.length){el.innerHTML='<div class="emp card" style="padding:48px"><i class="fas fa-tags"></i><p>Нет планов</p></div>';return}
+    el.innerHTML=d.plans.map(p=>`<div class="card svc" style="margin-bottom:8px"><div><div style="font-size:14px;font-weight:700">${p.name}</div><div style="font-size:11px;color:var(--t3);margin-top:3px">${p.days} дн · ${p.traffic_limit_mb>0?p.traffic_limit_mb+' МБ':'∞'}${p.price?' · '+p.price:''}</div></div><button class="sb" onclick="deletePlan('${p.id}')" style="color:var(--rd)"><i class="fas fa-trash"></i></button></div>`).join('');
+}
+function showCreatePlan(){
+    setModal('tags','green','Новый тариф','Настройте параметры',`
+    <div class="field"><label>Название</label><input type="text" id="cpName" placeholder="Базовый"></div>
+    <div class="field-row"><div class="field"><label>Дней</label><input type="number" id="cpDays" value="30"></div><div class="field"><label>Лимит (МБ)</label><input type="number" id="cpLimit" value="10240"><div class="hint">0 = безлимит</div></div></div>
+    <div class="field"><label>Цена</label><input type="text" id="cpPrice" placeholder="Необязательно"></div>
+    `,'<button class="btn btn-n" onclick="closeModal()">Отмена</button><button class="btn btn-g" id="cpBtn">Создать</button>');
+    $('cpBtn').onclick=async()=>{const n=$('cpName')?.value||'План',d=parseInt($('cpDays')?.value)||30,t=parseInt($('cpLimit')?.value)||0,p=$('cpPrice')?.value||'';closeModal();await fetch('/api/plans',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,days:d,traffic_limit_mb:t,price:p})}).then(()=>{toast('Создан');lPl()})};
+    setTimeout(()=>$('cpName')?.focus(),100);
+}
+function deletePlan(id){confirmModal('Удалить план?',()=>{fetch('/api/plans/'+id,{method:'DELETE'}).then(()=>{toast('Удалён');lPl()})})}
+
+/* ===== SERVICES ===== */
+async function lSv(){
+    const r=await fetch('/api/services');
+    const d=await r.json();
+    const nm={'hysteria-server':'Hysteria 2 VPN','vpnbot-api':'API','vpnbot-auth':'Авторизация','vpnbot-traffic':'Трафик','vpnbot-bot':'Telegram-бот','vpnbot-online':'Онлайн','vpnbot-history':'История'};
+    $('sL').innerHTML=d.services.map(s=>`<div class="card svc"><div class="sn"><span class="sd" style="background:${s.active?'var(--gn)':'var(--rd)'}"></span> ${nm[s.name]||s.name}</div><button class="sb" onclick="restartService('${s.name}')"><i class="fas fa-sync"></i></button></div>`).join('');
+}
+function restartService(n){confirmModal('Перезапустить '+n+'?',()=>{fetch('/api/services/'+n+'/restart',{method:'POST'}).then(()=>{toast(n+' OK');setTimeout(lSv,2000)})})}
+
+/* ===== LOGS / AUDIT ===== */
+async function lLg(){const r=await fetch('/api/logs');const d=await r.json();$('lB').textContent=d.logs||'Пусто'}
+async function lAudit(){const r=await fetch('/api/audit');const d=await r.json();$('aB').textContent=d.logs||'Пусто'}
+
+/* ===== ADMIN MANAGEMENT ===== */
+async function loadAdmins(){
+    const r=await fetch('/api/admins');
+    const d=await r.json();
+    const el=$('adminsList');
+    if(!d.admins||!d.admins.length){el.innerHTML='<div style="padding:12px;color:var(--t4);font-size:12px">Нет</div>';return}
+    const roleNames={admin:'Администратор',editor:'Редактор',viewer:'Наблюдатель'};
+    el.innerHTML=d.admins.map(a=>`<div class="admin-row"><div class="ar-info"><div class="ar-avatar ${a.role}">${a.username[0].toUpperCase()}</div><div><div class="ar-name">${a.username}</div><div class="ar-role">${roleNames[a.role]||a.role}</div></div></div><div class="ar-actions"><button onclick="showEditAdmin('${a.username}','${a.role}')" title="Редактировать"><i class="fas fa-pen"></i></button>${a.username!=='admin'?`<button class="danger" onclick="deleteAdmin('${a.username}')" title="Удалить"><i class="fas fa-trash"></i></button>`:''}</div></div>`).join('');
+}
+
+function showChangePw(){
+    setModal('lock','purple','Смена пароля','Введите текущий и новый пароль',`
+    <div class="error-msg" id="pwErr"></div>
+    <div class="field"><label>Текущий пароль</label><input type="password" id="pwOld" placeholder="Введите текущий пароль"></div>
+    <div class="field"><label>Новый пароль</label><input type="password" id="pwNew" placeholder="Минимум 6 символов"></div>
+    <div class="field"><label>Повторите</label><input type="password" id="pwNew2" placeholder="Повторите новый пароль"></div>
+    `,'<button class="btn btn-n" onclick="closeModal()">Отмена</button><button class="btn btn-a" id="pwBtn">Изменить</button>');
+    $('pwBtn').onclick=async()=>{const o=$('pwOld')?.value,n=$('pwNew')?.value,n2=$('pwNew2')?.value;if(!o||!n){$('pwErr').textContent='Заполните все поля';$('pwErr').classList.add('show');return}if(n.length<6){$('pwErr').textContent='Минимум 6 символов';$('pwErr').classList.add('show');return}if(n!==n2){$('pwErr').textContent='Пароли не совпадают';$('pwErr').classList.add('show');return}const r=await fetch('/api/change-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({old_password:o,new_password:n})});const d=await r.json();if(d.success){closeModal();toast('Пароль изменён!')}else{$('pwErr').textContent=d.error;$('pwErr').classList.add('show')}};
+    setTimeout(()=>$('pwOld')?.focus(),100);
+}
+
+function showChangeLogin(){
+    setModal('key','blue','Смена логина','Введите новый логин и подтвердите паролем',`
+    <div class="error-msg" id="lgErr"></div>
+    <div class="field"><label>Новый логин</label><input type="text" id="lgNew" placeholder="латиница, цифры, _"></div>
+    <div class="field"><label>Пароль</label><input type="password" id="lgPass" placeholder="Для подтверждения"></div>
+    `,'<button class="btn btn-n" onclick="closeModal()">Отмена</button><button class="btn btn-b" id="lgBtn">Изменить</button>');
+    $('lgBtn').onclick=async()=>{const nw=$('lgNew')?.value?.trim(),pw=$('lgPass')?.value;if(!nw||nw.length<3){$('lgErr').textContent='Минимум 3 символа';$('lgErr').classList.add('show');return}if(!/^[a-zA-Z0-9_]+$/.test(nw)){$('lgErr').textContent='Только латиница, цифры и _';$('lgErr').classList.add('show');return}if(!pw){$('lgErr').textContent='Введите пароль';$('lgErr').classList.add('show');return}const r=await fetch('/api/admins/change-username',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({new_username:nw,password:pw})});const d=await r.json();if(d.success){closeModal();toast('Логин изменён! Войдите заново.');setTimeout(()=>window.location.href='/login',1500)}else{$('lgErr').textContent=d.error;$('lgErr').classList.add('show')}};
+    setTimeout(()=>$('lgNew')?.focus(),100);
+}
+
+function showCreateAdmin(){
+    setModal('user-plus','green','Новый администратор','Создайте учётную запись',`
+    <div class="error-msg" id="caErr"></div>
+    <div class="field"><label>Логин</label><input type="text" id="caUser" placeholder="латиница, цифры, _"></div>
+    <div class="field"><label>Пароль</label><input type="password" id="caPass" placeholder="минимум 6 символов"></div>
+    <div class="field"><label>Роль</label><select id="caRole"><option value="viewer">Наблюдатель — просмотр</option><option value="editor">Редактор — управление</option><option value="admin">Администратор — полный доступ</option></select></div>
+    `,'<button class="btn btn-n" onclick="closeModal()">Отмена</button><button class="btn btn-g" id="caBtn">Создать</button>');
+    $('caBtn').onclick=async()=>{const u=$('caUser')?.value?.trim(),p=$('caPass')?.value,r=$('caRole')?.value;if(!u||u.length<3){$('caErr').textContent='Минимум 3 символа';$('caErr').classList.add('show');return}if(!/^[a-zA-Z0-9_]+$/.test(u)){$('caErr').textContent='Только латиница, цифры и _';$('caErr').classList.add('show');return}if(!p||p.length<6){$('caErr').textContent='Пароль минимум 6 символов';$('caErr').classList.add('show');return}const res=await fetch('/api/admins',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p,role:r})});const d=await res.json();if(d.success){closeModal();toast('Создан!');loadAdmins()}else{$('caErr').textContent=d.error;$('caErr').classList.add('show')}};
+    setTimeout(()=>$('caUser')?.focus(),100);
+}
+
+function showEditAdmin(username,currentRole){
+    setModal('pen','purple','Редактировать: '+username,'Измените роль или пароль',`
+    <div class="field"><label>Роль</label><select id="eaRole"><option value="admin">Администратор</option><option value="editor">Редактор</option><option value="viewer">Наблюдатель</option></select></div>
+    <div class="field"><label>Новый пароль</label><input type="password" id="eaPass" placeholder="Оставьте пустым"><div class="hint">Оставьте пустым чтобы не менять</div></div>
+    `,'<button class="btn btn-n" onclick="closeModal()">Отмена</button><button class="btn btn-a" id="eaBtn">Сохранить</button>');
+    setTimeout(()=>{$('eaRole').value=currentRole},50);
+    $('eaBtn').onclick=async()=>{const role=$('eaRole')?.value,pw=$('eaPass')?.value||'';const body={role};if(pw)body.password=pw;const r=await fetch('/api/admins/'+username,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();if(d.success){closeModal();toast('Обновлено!');loadAdmins()}else{toast(d.error||'Ошибка')}};
+}
+
+async function deleteAdmin(username){confirmModal('Удалить '+username+'?',async()=>{const r=await fetch('/api/admins/'+username,{method:'DELETE'});const d=await r.json();if(d.success){toast('Удалён');loadAdmins()}else{toast(d.error||'Ошибка')}})}
+
+/* ===== WEBSOCKET LIVE TRAFFIC ===== */
+function connectWebSocket(){
+    try{
+        const proto=location.protocol==='https:'?'wss:':'ws:';
+        const wsUrl=proto+'//'+location.host+'/ws/live';
+        wsConn=new WebSocket(wsUrl);
+        wsConn.onopen=function(){
+            const el=$('wsStatus');
+            if(el)el.innerHTML='<i class="fas fa-circle" style="color:var(--gn);font-size:8px"></i> WebSocket: подключён';
+        };
+        wsConn.onmessage=function(evt){
+            try{
+                const data=JSON.parse(evt.data);
+                if(data.type==='traffic'||data.traffic){
+                    const traffic=data.traffic||data.users||data;
+                    if(Array.isArray(traffic)){
+                        const el=$('liveTable');
+                        if(currentPage==='traffic'){
+                            if(!traffic.length){
+                                el.innerHTML='<div class="emp"><i class="fas fa-wifi"></i><p>Нет активного трафика</p></div>';
+                            }else{
+                                el.innerHTML=`<table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:8px;font-size:10px;text-transform:uppercase;color:var(--t4)">Пользователь</th><th style="text-align:left;padding:8px;font-size:10px;text-transform:uppercase;color:var(--t4)">IP / Страна</th><th style="text-align:right;padding:8px;font-size:10px;text-transform:uppercase;color:var(--t4)">TX</th><th style="text-align:right;padding:8px;font-size:10px;text-transform:uppercase;color:var(--t4)">RX</th><th style="text-align:right;padding:8px;font-size:10px;text-transform:uppercase;color:var(--t4)">Всего</th></tr></thead><tbody>${traffic.map(t=>`<tr><td style="padding:8px;font-size:12px"><strong>${t.user||t.name||''}</strong></td><td style="padding:8px;font-size:11px"><span class="geoip-badge loading" data-ip="${t.ip||''}" id="geoip-${(t.ip||'').replace(/\./g,'_')}">${t.ip||'—'}</span></td><td style="padding:8px;text-align:right;font-size:12px;color:var(--bl)">${t.tx_speed_mb||t.tx||0} МБ/с</td><td style="padding:8px;text-align:right;font-size:12px;color:var(--ac2)">${t.rx_speed_mb||t.rx||0} МБ/с</td><td style="padding:8px;text-align:right;font-size:12px;font-weight:600">${t.total_speed_mb||t.total||0} МБ/с</td></tr>`).join('')}</tbody></table>`;
+                                resolveGeoIPs();
+                            }
+                        }
+                    }
+                    if(data.online!==undefined){OD.online=data.online}
+                    if(data.online_users){OD.online_users=data.online_users}
+                }
+                if(data.type==='status'||data.server_status){
+                    const s=data.server_status||data;
+                    if(s.cpu_percent!=null)rSy(s);
+                }
+            }catch{}
+        };
+        wsConn.onclose=function(){
+            const el=$('wsStatus');
+            if(el)el.innerHTML='<i class="fas fa-circle" style="color:#64748b;font-size:8px"></i> WebSocket: отключён';
+            if(wsReconnectTimer)clearTimeout(wsReconnectTimer);
+            wsReconnectTimer=setTimeout(connectWebSocket,5000);
+        };
+        wsConn.onerror=function(){
+            wsConn.close();
+        };
+    }catch(e){
+        console.error('WebSocket error:',e);
+    }
+}
+
+/* ===== INIT ===== */
+initTheme();
+loadMe();
+loadAll().then(()=>{setTimeout(()=>{renderPieChart();renderBarChart()},500)});
+connectWebSocket();
+setInterval(()=>{fetch('/api/online').then(r=>r.json()).then(d=>{OD=d;rU()}).catch(()=>{})},10000);
+setInterval(()=>{fetch('/api/server-info').then(r=>r.json()).then(d=>rSy(d)).catch(()=>{})},15000);
+setInterval(pollNotifications,30000);
+setTimeout(pollNotifications,2000);
+
+/* Close notif panel on outside click */
+document.addEventListener('click',function(e){
+    const panel=document.getElementById('notifPanel');
+    const bell=document.getElementById('notifBell');
+    if(panel&&bell&&!bell.contains(e.target)&&!panel.contains(e.target)){panel.style.display='none'}
+});
+
+/* ===== NODES MANAGEMENT ===== */
+let nodesData=[];
+
+async function loadNodes(){
+    try{
+        const r=await fetch('/api/nodes');
+        const d=await r.json();
+        nodesData=d.nodes||[];
+        renderNodes();
+    }catch(e){console.error(e)}
+}
+
+function renderNodes(){
+    const el=document.getElementById('nodesList');
+    if(!el)return;
+    if(!nodesData.length){el.innerHTML='<div class="card" style="text-align:center;padding:30px;color:var(--t4)"><i class="fas fa-server" style="font-size:32px;display:block;margin-bottom:8px;opacity:.3"></i>Нет нод. Добавьте первый сервер.</div>';return}
+    // Sort: main server first
+    const sorted=[...nodesData].sort((a,b)=>(b.is_main?1:0)-(a.is_main?1:0));
+    el.innerHTML=sorted.map(n=>{
+        const isOn=n.is_online||n.status==='online';
+        const isMain=n.is_main===true;
+        const statusColor=isOn?'var(--gn)':'var(--rd)';
+        const statusText=isOn?'Онлайн':'Офлайн';
+        const lastSeen=n.last_seen?new Date(n.last_seen).toLocaleString('ru'):'—';
+        const mainBadge=isMain?'<span style="display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:6px;background:rgba(139,92,246,.15);color:var(--ac2);margin-left:6px;vertical-align:middle">ОСНОВНОЙ</span>':'';
+        const iconBg=isMain?(isOn?'rgba(139,92,246,.15)':'var(--rdg)'):(isOn?'var(--gng)':'var(--rdg)');
+        const iconColor=isMain?'var(--ac2)':statusColor;
+        const domain=n.domain||n.ip||'—';
+        const details=isMain
+            ?`CPU: ${n.cpu_percent||0}% • RAM: ${n.ram_percent||0}% (${n.ram_used_gb||0}/${n.ram_total_gb||0} ГБ) • Диск: ${n.disk_percent||0}% • Юзеров: ${n.online_users||0}/${n.total_users||0}`
+            :`CPU: ${n.cpu_percent||0}% • RAM: ${n.ram_percent||0}% • Юзеров: ${n.online_users||0}/${n.total_users||0} • Видел: ${lastSeen}`;
+        return`<div class="card" style="display:flex;align-items:center;gap:16px;padding:16px;${isMain?'border:1px solid rgba(139,92,246,.2);background:rgba(139,92,246,.03)':''}">
+            <div style="width:44px;height:44px;border-radius:12px;background:${iconBg};display:flex;align-items:center;justify-content:center">
+                <i class="fas fa-${isMain?'crown':'server'}" style="font-size:18px;color:${iconColor}"></i>
+            </div>
+            <div style="flex:1;min-width:0">
+                <div style="font-size:14px;font-weight:700">${n.name}${mainBadge}${isMain?'':` <button class="cp" onclick="editNodeName('${n.id}','${n.name}')" title="Изменить название" style="background:none;border:none;color:var(--t4);cursor:pointer;font-size:11px;padding:0 2px"><i class="fas fa-pen" style="font-size:10px"></i></button>`}</div>
+                <div style="font-size:11px;color:var(--t4)">${n.ip} • ${n.region||'—'} • <span style="color:${statusColor}">${statusText}</span></div>
+                <div style="font-size:10px;color:var(--t4);margin-top:2px">${details}</div>
+                <div style="font-size:10px;color:var(--t3);margin-top:2px;font-family:monospace">🔗 ${domain}${isMain?'':' <button class="cp" onclick="editNodeDomain(\''+n.id+'\',\''+domain+'\')" title="Изменить домен" style="background:none;border:none;color:var(--ac2);cursor:pointer;font-size:10px;padding:0 4px"><i class="fas fa-pen"></i></button>'}</div>
+            </div>
+            <div style="display:flex;gap:6px">
+                ${isMain?'':`<button class="btn btn-n btn-sm" onclick="assignUserModal('${n.id}')" title="Назначить юзера"><i class="fas fa-user-plus"></i></button>`}
+                ${isMain?'':`<button class="btn btn-n btn-sm" onclick="fixNodeModal('${n.id}','${n.name}')" title="Исправить конфиг"><i class="fas fa-wrench"></i></button>`}
+                ${isMain?'':`<button class="btn btn-n btn-sm" style="color:var(--rd)" onclick="deleteNode('${n.id}','${n.name}')" title="Удалить"><i class="fas fa-trash"></i></button>`}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function showDeployModal(){
+    var e=document.getElementById('deployCard');
+    if(e)e.style.display='block';
+    var l=document.getElementById('deployLog');
+    if(l){l.style.display='none';l.textContent='';}
+}
+function hideDeployModal(){var e=document.getElementById('deployCard');if(e)e.style.display='none';}
+
+function editNodeDomain(nodeId,currentDomain){
+    showPromptModal('Домен ноды','Введите домен или IP для подключения',currentDomain,function(newDomain){
+        if(!newDomain)return;
+        fetch('/api/nodes/'+nodeId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({domain:newDomain})}).then(()=>{toast('Домен обновлён');loadNodes()});
+    });
+}
+
+function editNodeName(nodeId,currentName){
+    showPromptModal('Название ноды','Введите новое название',currentName,function(newName){
+        if(!newName||newName===currentName)return;
+        fetch('/api/nodes/'+nodeId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:newName})}).then(()=>{toast('Название обновлено');loadNodes()});
+    });
+}
+
+function fixNodeModal(nodeId,nodeName){
+    const node=nodesData.find(n=>n.id===nodeId);
+    const hasPass=node&&node.ssh_password;
+    const savedUser=node?.ssh_username||'root';
+    setModal('wrench','orange','Исправить ноду',(hasPass?'Пароль сохранён':'Нет сохранённого пароля')+' — '+nodeName,`<div class="field"><label>SSH Логин</label><input type="text" id="fixUser" value="${savedUser}"></div><div class="field"><label>SSH Пароль</label><input type="password" id="fixPass" placeholder="${hasPass?'•••••••• (оставьте пустым для сохранённого)':'Введите пароль'}"></div><div class="field"><label>URL панели</label><input type="text" id="fixPanel" value="https://link.qmbox.ru"></div>`,`<button class="btn btn-n" onclick="closeModal()">Отмена</button><button class="btn btn-g" onclick="doFixNode('${nodeId}')">Исправить</button>`);
+}
+
+function doFixNode(nodeId){
+    const user=(document.getElementById('fixUser')||{}).value||'root';
+    const pass=(document.getElementById('fixPass')||{}).value||'';
+    const panel=(document.getElementById('fixPanel')||{}).value||'https://link.qmbox.ru';
+    if(!pass){toast('Введите пароль');return}
+    const area=document.getElementById('mhBody');
+    if(area)area.innerHTML+='<div style="margin-top:12px;text-align:center;color:var(--t4);font-size:12px"><i class="fas fa-spinner fa-spin"></i> Исправление...</div>';
+    fetch('/api/nodes/'+nodeId+'/fix',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:user,password:pass,panel_url:panel})}).then(r=>r.json()).then(d=>{
+        if(d.success){toast('Нода исправлена!');closeModal();loadNodes()}
+        else{toast(d.error||'Ошибка');if(area)area.innerHTML+=`<div style="color:var(--rd);font-size:11px;margin-top:8px">${d.error||''}</div>`}
+    }).catch(()=>toast('Ошибка сети'));
+}
+
+async function doDeploy(){
+    var btn=document.getElementById('deployBtn');
+    var log=document.getElementById('deployLog');
+    var data={
+        name:(document.getElementById('dName')||{}).value||(document.getElementById('dHost')||{}).value||'',
+        region:(document.getElementById('dRegion')||{}).value||'',
+        host:(document.getElementById('dHost')||{}).value||'',
+        port:parseInt((document.getElementById('dPort')||{}).value)||22,
+        username:(document.getElementById('dUser')||{}).value||'root',
+        password:(document.getElementById('dPass')||{}).value||'',
+        key:(document.getElementById('dKey')||{}).value||'',
+        panel_url:(document.getElementById('dPanel')||{}).value||'https://link.qmbox.ru'
+    };
+    if(!data.host){toast('Введите хост');return}
+    if(!data.username){toast('Введите логин');return}
+    if(!data.password&&!data.key){toast('Введите пароль или ключ');return}
+
+    if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Деплой...';}
+    if(log){log.style.display='block';log.textContent='Подключение к серверу...\n';}
+
+    try{
+        const r=await fetch('/api/nodes/deploy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+        const d=await r.json();
+        if(d.success){
+            if(log)log.textContent+='Сервер развёрнут!\nNode ID: '+d.node_id+'\nIP: '+d.ip+'\n';
+            if(d.output&&log)log.textContent+=d.output+'\n';
+            toast('Нода добавлена!');
+            loadNodes();
+            setTimeout(function(){hideDeployModal()},3000);
+        }else{
+            if(log)log.textContent+='Ошибка: '+d.error+'\n';
+            if(d.output&&log)log.textContent+=d.output+'\n';
+            if(d.stderr&&log)log.textContent+=d.stderr+'\n';
+            toast(d.error||'Ошибка деплоя');
+        }
+    }catch(e){
+        if(log)log.textContent+='Ошибка: '+e.message+'\n';
+        toast('Ошибка сети');
+    }
+    if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-rocket"></i> Развернуть';}
+}
+
+async function deleteNode(id,name){
+    confirmModal('Удалить ноду "'+name+'"?',async function(){
+        await fetch('/api/nodes/'+id,{method:'DELETE'});
+        toast('Нода удалена');
+        loadNodes();
+    });
+}
+
+async function assignUserModal(nodeId){
+    const r=await fetch('/api/users');
+    const d=await r.json();
+    const users=d.users||[];
+    const html='<div style="max-height:300px;overflow-y:auto">'+users.map(function(u){
+        return'<div style="display:flex;align-items:center;gap:10px;padding:8px;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer" onclick="assignUser(\''+nodeId+'\',\''+u.id+'\')"><span style="width:8px;height:8px;border-radius:50%;background:'+(u.online?'var(--gn)':'#64748b')+'"></span><strong>'+u.name+'</strong><span style="font-size:10px;color:var(--t4);margin-left:auto">'+u.id+'</span></div>';
+    }).join('')+'</div>';
+    setModal('user-plus','blue','Назначить на ноду','Выберите пользователя',html,'<button class="btn btn-n" onclick="closeModal()">Закрыть</button>');
+}
+
+async function assignUser(nodeId,uid){
+    await fetch('/api/nodes/'+nodeId+'/assign',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:uid})});
+    toast('Пользователь назначен');
+    closeModal();
+    loadNodes();
+}
+
+/* ===== END NODES ===== */
+</script>
+</body>
+</html>
