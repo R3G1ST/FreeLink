@@ -7,6 +7,9 @@ domain: "vpn.example.com"
 # Server public IP
 server_ip: "1.2.3.4"
 
+# Language: "en" or "ru"
+language: "ru"
+
 # Obfuscation password (generate with: openssl rand -hex 16)
 obfs_password: "CHANGE_ME"
 

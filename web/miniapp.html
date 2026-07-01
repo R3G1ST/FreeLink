@@ -199,16 +199,17 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
         <h1><em>Hysteria</em> 2</h1>
         <div style="display:flex;gap:8px;align-items:center">
             <div class="notif-wrap"><button class="theme-btn" onclick="toggleNotifs()"><i class="fas fa-bell"></i></button><div class="notif-dot" id="notifDot" style="display:none"></div></div>
+            <button class="theme-btn" onclick="setLang(currentLang==='ru'?'en':'ru')" title="Language"><i class="fas fa-globe"></i></button>
             <button class="theme-btn" onclick="toggleTheme()" id="themeBtn"><i class="fas fa-moon"></i></button>
             <div class="pill" id="sPill">...</div>
         </div>
     </div>
 
     <div class="nav">
-        <button class="nav-btn on" onclick="go('dashboard',this)"><i class="fas fa-home"></i> Главная</button>
-        <button class="nav-btn" onclick="go('users',this)"><i class="fas fa-users"></i> Клиенты</button>
-        <button class="nav-btn" onclick="go('nodes',this)"><i class="fas fa-server"></i> Ноды</button>
-        <button class="nav-btn" onclick="go('traffic',this)"><i class="fas fa-chart-line"></i> Трафик</button>
+        <button class="nav-btn on" onclick="go('dashboard',this)"><i class="fas fa-home"></i> <span data-i18n="nav_home">Главная</span></button>
+        <button class="nav-btn" onclick="go('users',this)"><i class="fas fa-users"></i> <span data-i18n="nav_users">Клиенты</span></button>
+        <button class="nav-btn" onclick="go('nodes',this)"><i class="fas fa-server"></i> <span data-i18n="nav_nodes">Ноды</span></button>
+        <button class="nav-btn" onclick="go('traffic',this)"><i class="fas fa-chart-line"></i> <span data-i18n="nav_traffic">Трафик</span></button>
     </div>
 
     <!-- DASHBOARD -->
@@ -262,7 +263,67 @@ const $=id=>document.getElementById(id);
 let CU=[],CF='all',chart=null,tg=window.Telegram?.WebApp;
 let currentTheme=localStorage.getItem('h2-theme')||'dark';
 
+/* ===== I18N ===== */
+const LANG_KEY='h2_lang';
+let currentLang=localStorage.getItem(LANG_KEY)||'ru';
+const I18N={
+nav_home:{ru:'Главная',en:'Home'},
+nav_users:{ru:'Клиенты',en:'Clients'},
+nav_nodes:{ru:'Ноды',en:'Nodes'},
+nav_traffic:{ru:'Трафик',en:'Traffic'},
+btn_create:{ru:'Создать',en:'Create'},
+btn_delete:{ru:'Удалить',en:'Delete'},
+btn_extend:{ru:'Продлить',en:'Extend'},
+btn_toggle:{ru:'Вкл/Выкл',en:'On/Off'},
+btn_cancel:{ru:'Отмена',en:'Cancel'},
+btn_close:{ru:'Закрыть',en:'Close'},
+btn_copy:{ru:'Копировать',en:'Copy'},
+btn_deploy:{ru:'Развернуть',en:'Deploy'},
+btn_add_node:{ru:'Добавить ноду',en:'Add node'},
+status_active:{ru:'Активен',en:'Active'},
+status_inactive:{ru:'Неакт.',en:'Inactive'},
+status_expired:{ru:'Просрочен',en:'Expired'},
+status_running:{ru:'Работает',en:'Running'},
+status_stopped:{ru:'Стоп',en:'Stopped'},
+msg_copied:{ru:'Скопировано!',en:'Copied!'},
+msg_deleted:{ru:'Удалён',en:'Deleted'},
+msg_error:{ru:'Ошибка',en:'Error'},
+msg_network_error:{ru:'Ошибка сети',en:'Network error'},
+msg_no_nodes:{ru:'Нет нод',en:'No nodes'},
+msg_no_traffic:{ru:'Нет активных подключений',en:'No active connections'},
+msg_no_notifications:{ru:'Нет уведомлений',en:'No notifications'},
+msg_enter_host:{ru:'Введите хост',en:'Enter host'},
+msg_enter_password:{ru:'Введите пароль',en:'Enter password'},
+msg_node_added:{ru:'Нода добавлена!',en:'Node added!'},
+msg_new_node:{ru:'Новая нода',en:'New node'},
+msg_new_client:{ru:'Новый клиент',en:'New client'},
+msg_login:{ru:'Войти через Telegram',en:'Login via Telegram'},
+msg_logging:{ru:'Вход...',en:'Logging in...'},
+msg_no_auth:{ru:'Нет данных авторизации',en:'No auth data'},
+auth_title:{ru:'Управление VPN-сервером',en:'VPN Server Management'},
+auth_subtitle:{ru:'Войдите через Telegram',en:'Login via Telegram'},
+metric_total:{ru:'Всего',en:'Total'},
+metric_active:{ru:'Активных',en:'Active'},
+metric_online:{ru:'Онлайн',en:'Online'},
+metric_expired:{ru:'Просрочено',en:'Expired'},
+sys_cpu:{ru:'CPU',en:'CPU'},
+sys_ram:{ru:'ОЗУ',en:'RAM'},
+sys_disk:{ru:'Диск',en:'Disk'},
+sys_sent:{ru:'Отправлено',en:'Sent'},
+sys_recv:{ru:'Получено',en:'Received'},
+sys_speed:{ru:'Скорость',en:'Speed'},
+sys_uptime:{ru:'Аптайм',en:'Uptime'},
+sys_procs:{ru:'Процессы',en:'Processes'},
+sys_load:{ru:'Нагрузка',en:'Load'},
+};
+function t(key){return I18N[key]?.[currentLang]||I18N[key]?.['ru']||key}
+function setLang(lang){localStorage.setItem(LANG_KEY,lang);location.reload()}
+function applyLang(){
+    document.querySelectorAll('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n)});
+}
+
 // ====== INIT ======
+applyLang();
 if(tg){tg.ready();tg.expand();tg.MainButton.hide();document.body.style.backgroundColor=tg.themeParams?.bg_color||'#0a0e1a';console.log('TG init:',tg.initData?'OK':'EMPTY')}
 else{console.log('No Telegram WebApp SDK')}
 

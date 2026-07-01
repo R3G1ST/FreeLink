@@ -386,20 +386,20 @@ a{text-decoration:none;color:inherit}
     <div class="layout">
         <div class="sidebar">
             <div class="sb-logo"><div class="icon"><i class="fas fa-bolt"></i></div><h2><em>Hysteria</em> 2</h2></div>
-            <div class="nav-item on" onclick="go('dashboard',this)"><i class="fas fa-th-large"></i> Дашборд</div>
-            <div class="nav-item" onclick="go('users',this)"><i class="fas fa-users"></i> Пользователи</div>
-            <div class="nav-item" onclick="go('traffic',this)"><i class="fas fa-chart-area"></i> Трафик</div>
-            <div class="nav-item" onclick="go('plans',this)"><i class="fas fa-tags"></i> Планы</div>
-            <div class="nav-item" onclick="go('nodes',this)"><i class="fas fa-server"></i> Ноды</div>
+            <div class="nav-item on" onclick="go('dashboard',this)"><i class="fas fa-th-large"></i> <span data-i18n="nav_dashboard">Дашборд</span></div>
+            <div class="nav-item" onclick="go('users',this)"><i class="fas fa-users"></i> <span data-i18n="nav_users">Пользователи</span></div>
+            <div class="nav-item" onclick="go('traffic',this)"><i class="fas fa-chart-area"></i> <span data-i18n="nav_plans">Трафик</span></div>
+            <div class="nav-item" onclick="go('plans',this)"><i class="fas fa-tags"></i> <span data-i18n="nav_plans">Планы</span></div>
+            <div class="nav-item" onclick="go('nodes',this)"><i class="fas fa-server"></i> <span data-i18n="nav_nodes">Ноды</span></div>
             <div class="nav-sep"></div>
-            <div class="nav-item" onclick="go('services',this)"><i class="fas fa-cubes"></i> Сервисы</div>
-            <div class="nav-item" onclick="go('config',this)"><i class="fas fa-file-code"></i> Конфиг</div>
-            <div class="nav-item" onclick="go('logs',this)"><i class="fas fa-scroll"></i> Логи</div>
-            <div class="nav-item" onclick="go('audit',this)"><i class="fas fa-shield-alt"></i> Аудит</div>
-            <div class="nav-item" onclick="go('settings',this)"><i class="fas fa-cog"></i> Настройки</div>
+            <div class="nav-item" onclick="go('services',this)"><i class="fas fa-cubes"></i> <span data-i18n="nav_services">Сервисы</span></div>
+            <div class="nav-item" onclick="go('config',this)"><i class="fas fa-file-code"></i> <span data-i18n="nav_config">Конфиг</span></div>
+            <div class="nav-item" onclick="go('logs',this)"><i class="fas fa-scroll"></i> <span data-i18n="nav_logs">Логи</span></div>
+            <div class="nav-item" onclick="go('audit',this)"><i class="fas fa-shield-alt"></i> <span data-i18n="nav_audit">Аудит</span></div>
+            <div class="nav-item" onclick="go('settings',this)"><i class="fas fa-cog"></i> <span data-i18n="nav_settings">Настройки</span></div>
             <div class="nav-bottom">
                 <div class="user-pill"><div class="avatar" id="avatar">A</div><span id="username">admin</span></div>
-                <button class="logout" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> Выйти</button>
+                <button class="logout" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> <span data-i18n="nav_logout">Выйти</span></button>
             </div>
         </div>
         <div class="main">
@@ -539,7 +539,17 @@ a{text-decoration:none;color:inherit}
                     <div class="set-item"><div><div class="si-label">Сменить логин</div><div class="si-desc">Латиница, цифры, _</div></div><button class="btn btn-b btn-sm" onclick="showChangeLogin()">Изменить</button></div>
                 </div>
                 <div class="set-group">
-                    <h3><i class="fas fa-info-circle"></i> О системе</h3>
+                    <h3><i class="fas fa-globe"></i> <span data-i18n="settings_language">Язык</span></h3>
+                    <div class="set-item">
+                        <div class="si-label">Language / Язык</div>
+                        <select onchange="setLang(this.value)" style="padding:8px 12px;background:var(--g2);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-size:12px;font-family:inherit;cursor:pointer">
+                            <option value="ru" ${currentLang==='ru'?'selected':''}>Русский</option>
+                            <option value="en" ${currentLang==='en'?'selected':''}>English</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="set-group">
+                    <h3><i class="fas fa-info-circle"></i> <span data-i18n="settings_system">О системе</span></h3>
                     <div class="set-item"><div class="si-label">Версия</div><span style="font-size:12px;color:var(--t3)">v3.8</span></div>
                     <div class="set-item"><div class="si-label">Сервер</div><span style="font-size:12px;color:var(--t3)">Польша — link.qmbox.ru</span></div>
                 </div>
@@ -570,6 +580,116 @@ const $=id=>document.getElementById(id);
 let CU=[],CF='all',CS={k:'name',d:1},CUid=null,CUd=null,OD={},chart=null,sel=new Set(),currentPage='dashboard';
 let pieChart=null,barChart=null;
 let wsConn=null,wsReconnectTimer=null,geoipCache={};
+
+/* ===== I18N ===== */
+const LANG_KEY='vpn_lang';
+let currentLang=localStorage.getItem(LANG_KEY)||'ru';
+const I18N={
+nav_dashboard:{ru:'Дашборд',en:'Dashboard'},
+nav_users:{ru:'Пользователи',en:'Users'},
+nav_plans:{ru:'Тарифы',en:'Plans'},
+nav_nodes:{ru:'Ноды',en:'Nodes'},
+nav_services:{ru:'Сервисы',en:'Services'},
+nav_config:{ru:'Конфиг',en:'Config'},
+nav_logs:{ru:'Логи',en:'Logs'},
+nav_audit:{ru:'Аудит',en:'Audit'},
+nav_settings:{ru:'Настройки',en:'Settings'},
+nav_logout:{ru:'Выйти',en:'Logout'},
+page_dashboard:{ru:'Обзор',en:'Overview'},
+page_users:{ru:'Пользователи',en:'Users'},
+page_analytics:{ru:'Аналитика',en:'Analytics'},
+page_plans:{ru:'Тарифы',en:'Plans'},
+page_nodes:{ru:'Ноды (Серверы)',en:'Nodes (Servers)'},
+page_services:{ru:'Сервисы',en:'Services'},
+page_config:{ru:'Конфигурация',en:'Configuration'},
+page_logs:{ru:'Логи',en:'Logs'},
+page_audit:{ru:'Аудит',en:'Audit'},
+page_settings:{ru:'Настройки',en:'Settings'},
+btn_create:{ru:'Создать',en:'Create'},
+btn_delete:{ru:'Удалить',en:'Delete'},
+btn_extend:{ru:'Продлить',en:'Extend'},
+btn_toggle:{ru:'Вкл/Выкл',en:'On/Off'},
+btn_save:{ru:'Сохранить',en:'Save'},
+btn_cancel:{ru:'Отмена',en:'Cancel'},
+btn_close:{ru:'Закрыть',en:'Close'},
+btn_copy:{ru:'Копировать',en:'Copy'},
+btn_deploy:{ru:'Развернуть',en:'Deploy'},
+btn_refresh:{ru:'Обновить',en:'Refresh'},
+btn_restart:{ru:'Перезапустить',en:'Restart'},
+btn_export:{ru:'Экспорт',en:'Export'},
+btn_report:{ru:'Отчёт',en:'Report'},
+btn_reset:{ru:'Сброс',en:'Reset'},
+btn_load:{ru:'Загрузить',en:'Load'},
+btn_add:{ru:'Добавить',en:'Add'},
+btn_edit:{ru:'Изменить',en:'Edit'},
+btn_login:{ru:'Войти',en:'Login'},
+btn_generate:{ru:'Генерировать',en:'Generate'},
+btn_subscribe:{ru:'Подписка',en:'Subscription'},
+btn_link:{ru:'Ссылка',en:'Link'},
+btn_qr:{ru:'QR',en:'QR'},
+status_active:{ru:'Активен',en:'Active'},
+status_inactive:{ru:'Неактивен',en:'Inactive'},
+status_expired:{ru:'Просрочен',en:'Expired'},
+status_online:{ru:'Онлайн',en:'Online'},
+status_offline:{ru:'Офлайн',en:'Offline'},
+status_connected:{ru:'Подключён',en:'Connected'},
+status_disconnected:{ru:'Не в сети',en:'Disconnected'},
+status_running:{ru:'Работает',en:'Running'},
+status_stopped:{ru:'Остановлен',en:'Stopped'},
+metric_server:{ru:'Сервер',en:'Server'},
+metric_total:{ru:'Всего',en:'Total'},
+metric_active:{ru:'Активных',en:'Active'},
+metric_online:{ru:'Онлайн',en:'Online'},
+metric_expiring:{ru:'Истекают',en:'Expiring'},
+metric_expired:{ru:'Просрочено',en:'Expired'},
+table_status:{ru:'Статус',en:'Status'},
+table_name:{ru:'Имя',en:'Name'},
+table_online:{ru:'Онлайн',en:'Online'},
+table_traffic:{ru:'Трафик',en:'Traffic'},
+table_speed:{ru:'Скорость',en:'Speed'},
+table_expires:{ru:'До',en:'Until'},
+table_link:{ru:'Ссылка',en:'Link'},
+table_actions:{ru:'Действия',en:'Actions'},
+msg_copied:{ru:'Скопировано!',en:'Copied!'},
+msg_deleted:{ru:'Удалён',en:'Deleted'},
+msg_created:{ru:'Создан!',en:'Created!'},
+msg_saved:{ru:'Сохранено',en:'Saved'},
+msg_restarted:{ru:'Перезапущен',en:'Restarted'},
+msg_extended:{ru:'Продлено',en:'Extended'},
+msg_error:{ru:'Ошибка',en:'Error'},
+msg_network_error:{ru:'Ошибка сети',en:'Network error'},
+msg_no_data:{ru:'Нет данных',en:'No data'},
+msg_no_users:{ru:'Нет пользователей',en:'No users'},
+msg_no_nodes:{ru:'Нет нод',en:'No nodes'},
+msg_no_services:{ru:'Нет сервисов',en:'No services'},
+msg_no_traffic:{ru:'Нет активного трафика',en:'No active traffic'},
+msg_no_notifications:{ru:'Нет уведомлений',en:'No notifications'},
+msg_confirm_delete:{ru:'Удалить?',en:'Delete?'},
+msg_confirm_restart:{ru:'Перезапустить Hysteria 2?',en:'Restart Hysteria 2?'},
+msg_search:{ru:'Поиск...',en:'Search...'},
+msg_new_user:{ru:'Новый пользователь',en:'New user'},
+msg_new_node:{ru:'Новый сервер',en:'New server'},
+msg_config_loaded:{ru:'Конфигурация загружена',en:'Configuration loaded'},
+msg_config_saved:{ru:'Конфигурация сохранена',en:'Configuration saved'},
+settings_language:{ru:'Язык',en:'Language'},
+settings_password:{ru:'Сменить пароль',en:'Change password'},
+settings_login:{ru:'Сменить логин',en:'Change login'},
+settings_system:{ru:'О системе',en:'About'},
+settings_version:{ru:'Версия',en:'Version'},
+settings_server:{ru:'Сервер',en:'Server'},
+units_mb:{ru:'МБ',en:'MB'},
+units_gb:{ru:'ГБ',en:'GB'},
+units_mbps:{ru:'Мбит/с',en:'Mbps'},
+units_kbps:{ru:'КБ/с',en:'KB/s'},
+time_hour:{ru:'ч',en:'h'},
+time_day:{ru:'дн',en:'d'},
+};
+function t(key){return I18N[key]?.[currentLang]||I18N[key]?.['ru']||key}
+function setLang(lang){localStorage.setItem(LANG_KEY,lang);location.reload()}
+function applyLang(){
+    document.querySelectorAll('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n)});
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el=>{el.placeholder=t(el.dataset.i18nPlaceholder)});
+}
 
 /* ===== THEME ===== */
 function initTheme(){
@@ -1181,6 +1301,7 @@ function connectWebSocket(){
 
 /* ===== INIT ===== */
 initTheme();
+applyLang();
 loadMe();
 loadAll().then(()=>{setTimeout(()=>{renderPieChart();renderBarChart()},500)});
 connectWebSocket();

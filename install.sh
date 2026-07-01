@@ -21,6 +21,20 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
+# Select language
+echo -e "${YELLOW}Select language:${NC}"
+echo "  1) English"
+echo "  2) Русский"
+read -p "Choice [2]: " LANG_CHOICE
+LANG_CHOICE=${LANG_CHOICE:-2}
+if [ "$LANG_CHOICE" = "1" ]; then
+    LANG_CODE="en"
+    echo -e "${GREEN}Language: English${NC}"
+else
+    LANG_CODE="ru"
+    echo -e "${GREEN}Language: Русский${NC}"
+fi
+
 # Collect configuration
 echo -e "${YELLOW}Enter configuration:${NC}"
 read -p "Domain (e.g. vpn.example.com): " DOMAIN
@@ -58,6 +72,7 @@ cat > /opt/vpnbot/config.yaml << EOF
 domain: "${DOMAIN}"
 server_ip: "${SERVER_IP}"
 obfs_password: "${OBFS_PASS}"
+language: "${LANG_CODE}"
 
 telegram:
   token: "${TG_TOKEN}"
