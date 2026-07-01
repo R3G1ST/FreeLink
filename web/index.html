@@ -417,7 +417,7 @@ a{text-decoration:none;color:inherit}
 
             <!-- DASHBOARD -->
             <div class="pg on" id="p-dashboard">
-                <div class="pg-title"><i class="fas fa-th-large"></i> Обзор</div>
+                <div class="pg-title"><i class="fas fa-th-large"></i> <span data-i18n="page_dashboard">Обзор</span></div>
                 <div class="mrow" id="mt"></div>
                 <div class="srow" id="sy"></div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -428,18 +428,18 @@ a{text-decoration:none;color:inherit}
 
             <!-- USERS -->
             <div class="pg" id="p-users">
-                <div class="pg-title"><i class="fas fa-users"></i> Пользователи</div>
-                <div class="bulk" id="bulk"><span id="bulkN">0</span><button class="btn btn-g btn-sm" onclick="bT()"><i class="fas fa-exchange-alt"></i> Вкл/Выкл</button><button class="btn btn-o btn-sm" onclick="bE()"><i class="fas fa-clock"></i> Продлить</button><button class="btn btn-r btn-sm" onclick="bD()"><i class="fas fa-trash"></i> Удалить</button><button class="btn btn-n btn-sm" onclick="cSel()">Отмена</button></div>
+                <div class="pg-title"><i class="fas fa-users"></i> <span data-i18n="page_users">Пользователи</span></div>
+                <div class="bulk" id="bulk"><span id="bulkN">0</span><button class="btn btn-g btn-sm" onclick="bT()"><i class="fas fa-exchange-alt"></i> <span data-i18n="btn_toggle">Вкл/Выкл</span></button><button class="btn btn-o btn-sm" onclick="bE()"><i class="fas fa-clock"></i> <span data-i18n="btn_extend">Продлить</span></button><button class="btn btn-r btn-sm" onclick="bD()"><i class="fas fa-trash"></i> <span data-i18n="btn_delete">Удалить</span></button><button class="btn btn-n btn-sm" onclick="cSel()"><span data-i18n="btn_cancel">Отмена</span></button></div>
                 <div class="tbar">
-                    <button class="btn btn-g" onclick="showCreateUser()"><i class="fas fa-plus"></i> Создать</button>
+                    <button class="btn btn-g" onclick="showCreateUser()"><i class="fas fa-plus"></i> <span data-i18n="btn_create">Создать</span></button>
                     <button class="btn btn-r" onclick="clExp()"><i class="fas fa-broom"></i> Очистить</button>
                     <button class="btn btn-o" onclick="restSrv()"><i class="fas fa-power-off"></i> Перезапуск</button>
-                    <button class="btn btn-b" onclick="expU()"><i class="fas fa-file-export"></i> Экспорт</button>
-                    <button class="btn btn-a" onclick="downloadReport()"><i class="fas fa-file-csv"></i> Отчёт</button>
-                    <div class="sbox"><i class="fas fa-search"></i><input type="text" id="sI" placeholder="Поиск..." oninput="fU()"></div>
-                    <div class="fgr"><button class="fb on" onclick="fS('all',this)">Все</button><button class="fb" onclick="fS('online',this)">Онлайн</button><button class="fb" onclick="fS('active',this)">Активные</button><button class="fb" onclick="fS('expired',this)">Просрочен.</button></div>
+                    <button class="btn btn-b" onclick="expU()"><i class="fas fa-file-export"></i> <span data-i18n="btn_export">Экспорт</span></button>
+                    <button class="btn btn-a" onclick="downloadReport()"><i class="fas fa-file-csv"></i> <span data-i18n="btn_report">Отчёт</span></button>
+                    <div class="sbox"><i class="fas fa-search"></i><input type="text" id="sI" placeholder="Поиск..." data-i18n-placeholder="msg_search" oninput="fU()"></div>
+                    <div class="fgr"><button class="fb on" onclick="fS('all',this)">Все</button><button class="fb" onclick="fS('online',this)"><span data-i18n="status_online">Онлайн</span></button><button class="fb" onclick="fS('active',this)"><span data-i18n="status_active">Активные</span></button><button class="fb" onclick="fS('expired',this)">Просрочен.</button></div>
                 </div>
-                <div class="card tbl"><table><thead><tr><th style="width:36px"><input type="checkbox" class="chk" id="sA" onchange="tAll()"></th><th onclick="sr('status')">Статус</th><th onclick="sr('name')">Имя</th><th onclick="sr('id')">ID</th><th onclick="sr('online')">Онлайн</th><th onclick="sr('traffic')">Трафик</th><th onclick="sr('speed')">Скорость</th><th onclick="sr('expire')">До</th><th>Ссылка</th><th>Действия</th></tr></thead><tbody id="uL"></tbody></table></div>
+                <div class="card tbl"><table><thead><tr><th style="width:36px"><input type="checkbox" class="chk" id="sA" onchange="tAll()"></th><th onclick="sr('status')"><span data-i18n="table_status">Статус</span></th><th onclick="sr('name')"><span data-i18n="table_name">Имя</span></th><th onclick="sr('id')">ID</th><th onclick="sr('online')"><span data-i18n="table_online">Онлайн</span></th><th onclick="sr('traffic')"><span data-i18n="table_traffic">Трафик</span></th><th onclick="sr('speed')"><span data-i18n="table_speed">Скорость</span></th><th onclick="sr('expire')"><span data-i18n="table_expires">До</span></th><th><span data-i18n="table_link">Ссылка</span></th><th><span data-i18n="table_actions">Действия</span></th></tr></thead><tbody id="uL"></tbody></table></div>
             </div>
 
             <!-- TRAFFIC -->
@@ -459,10 +459,10 @@ a{text-decoration:none;color:inherit}
 
             <!-- NODES -->
             <div class="pg" id="p-nodes">
-                <div class="pg-title"><i class="fas fa-server"></i> Ноды (Серверы)</div>
+                <div class="pg-title"><i class="fas fa-server"></i> <span data-i18n="page_nodes">Ноды (Серверы)</span></div>
                 <div class="tbar">
-                    <button class="btn btn-g" onclick="var e=document.getElementById('deployCard');if(e)e.style.display='block';var l=document.getElementById('deployLog');if(l)l.style.display='none';"><i class="fas fa-rocket"></i> Деплой ноды</button>
-                    <button class="btn btn-n" onclick="loadNodes()"><i class="fas fa-sync"></i> Обновить</button>
+                    <button class="btn btn-g" onclick="var e=document.getElementById('deployCard');if(e)e.style.display='block';var l=document.getElementById('deployLog');if(l)l.style.display='none';"><i class="fas fa-rocket"></i> <span data-i18n="btn_deploy">Деплой ноды</span></button>
+                    <button class="btn btn-n" onclick="loadNodes()"><i class="fas fa-sync"></i> <span data-i18n="btn_refresh">Обновить</span></button>
                 </div>
                 <div id="nodesList"></div>
                 <!-- Deploy Modal -->
@@ -501,9 +501,9 @@ a{text-decoration:none;color:inherit}
             <div class="pg" id="p-config">
                 <div class="pg-title"><i class="fas fa-file-code"></i> Конфигурация</div>
                 <div class="config-toolbar">
-                    <button class="btn btn-n" onclick="loadConfig()"><i class="fas fa-sync"></i> Загрузить</button>
-                    <button class="btn btn-g" onclick="saveConfig()"><i class="fas fa-save"></i> Сохранить</button>
-                    <button class="btn btn-o" onclick="restartHysteria()"><i class="fas fa-power-off"></i> Перезапустить</button>
+                    <button class="btn btn-n" onclick="loadConfig()"><i class="fas fa-sync"></i> <span data-i18n="btn_load">Загрузить</span></button>
+                    <button class="btn btn-g" onclick="saveConfig()"><i class="fas fa-save"></i> <span data-i18n="btn_save">Сохранить</span></button>
+                    <button class="btn btn-o" onclick="restartHysteria()"><i class="fas fa-power-off"></i> <span data-i18n="btn_restart">Перезапустить</span></button>
                 </div>
                 <div id="configStatus"></div>
                 <div class="card config-editor" style="padding:4px">
