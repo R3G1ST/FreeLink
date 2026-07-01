@@ -319,6 +319,9 @@ a{text-decoration:none;color:inherit}
 .field input::placeholder{color:var(--t4)}
 .field select{cursor:pointer;color-scheme:dark}
 .field select option{background:#1e1e2a;color:#f8fafc;padding:8px}
+.lang-select{padding:8px 12px;background:var(--g2);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-size:12px;font-family:inherit;cursor:pointer;color-scheme:dark;width:auto}
+.lang-select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(139,92,246,0.1)}
+.lang-select option{background:#1e1e2a;color:#f8fafc}
 .field .hint{font-size:10px;color:var(--t4);margin-top:4px}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .field-error{border-color:var(--rd)!important;box-shadow:0 0 0 3px rgba(239,68,68,0.1)!important}
@@ -542,7 +545,7 @@ a{text-decoration:none;color:inherit}
                     <h3><i class="fas fa-globe"></i> <span data-i18n="settings_language">Язык</span></h3>
                     <div class="set-item">
                         <div class="si-label">Language / Язык</div>
-                        <select id="langSelect" onchange="setLang(this.value)" style="padding:8px 12px;background:var(--g2);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-size:12px;font-family:inherit;cursor:pointer">
+                        <select id="langSelect" onchange="setLang(this.value)" class="lang-select">
                             <option value="ru">Русский</option>
                             <option value="en">English</option>
                         </select>
@@ -1063,7 +1066,7 @@ function renderUserModal(u){
     <button class="btn btn-n btn-sm" onclick="resetTraffic()" style="border-color:rgba(239,68,68,.15);color:var(--rd)">Сброс</button>
     </div></div>`;
     const subUrl=u.service_token?location.origin+'/sub/'+u.service_token:'';
-    $('umFoot').innerHTML=`<button class="btn btn-a btn-sm" onclick="copySubUrlAuto()"><i class="fas fa-share-alt"></i> Подписка</button><button class="btn btn-b btn-sm" onclick="copyUserLink()"><i class="fas fa-link"></i> Ссылка</button><button class="btn btn-n btn-sm" onclick="showQRModal()"><i class="fas fa-qrcode"></i> QR</button><button class="btn btn-g btn-sm" onclick="extendUserModal()"><i class="fas fa-clock"></i> Продлить</button><button class="btn btn-o btn-sm" onclick="toggleUserModal()"><i class="fas fa-exchange-alt"></i> Вкл/Выкл</button><button class="btn btn-r btn-sm" onclick="deleteUserModal()"><i class="fas fa-trash"></i> Удалить</button>`;
+    $('umFoot').innerHTML=`<button class="btn btn-a btn-sm" onclick="copySubUrlAuto()"><i class="fas fa-share-alt"></i> ${t('btn_subscribe')}</button><button class="btn btn-b btn-sm" onclick="copyUserLink()"><i class="fas fa-link"></i> ${t('btn_link')}</button><button class="btn btn-n btn-sm" onclick="showQRModal()"><i class="fas fa-qrcode"></i> ${t('btn_qr')}</button><button class="btn btn-g btn-sm" onclick="extendUserModal()"><i class="fas fa-clock"></i> ${t('btn_extend')}</button><button class="btn btn-o btn-sm" onclick="toggleUserModal()"><i class="fas fa-exchange-alt"></i> ${t('btn_toggle')}</button><button class="btn btn-r btn-sm" onclick="deleteUserModal()"><i class="fas fa-trash"></i> ${t('btn_delete')}</button>`;
 }
 function setLimit(mb){if(!CUid)return;fetch('/api/user/set-limit/'+CUid+'?limit_mb='+mb,{method:'POST'}).then(()=>{toast(t('traffic_limit')+': '+(mb?mb+' '+t('units_mb'):t('traffic_unlimited')));refreshUserModal()})}
 function resetTraffic(){if(!CUid)return;confirmModal(t('msg_confirm_reset'),()=>{fetch('/api/user/reset-traffic/'+CUid,{method:'POST'}).then(()=>{toast(t('msg_traffic_reset'));refreshUserModal()})})}
@@ -1385,7 +1388,7 @@ function showCreateAdmin(){
     <div class="error-msg" id="caErr"></div>
     <div class="field"><label>Логин</label><input type="text" id="caUser" placeholder="латиница, цифры, _"></div>
     <div class="field"><label>Пароль</label><input type="password" id="caPass" placeholder="минимум 6 символов"></div>
-    <div class="field"><label>Роль</label><select id="caRole"><option value="viewer">Наблюдатель — просмотр</option><option value="editor">Редактор — управление</option><option value="admin">Администратор — полный доступ</option></select></div>
+    <div class="field"><label>Роль</label><select id="caRole"><option value="viewer">${t('msg_viewer_role')}</option><option value="editor">${t('msg_editor_role')}</option><option value="admin">${t('msg_admin_role')}</option></select></div>
     `,'<button class="btn btn-n" onclick="closeModal()">Отмена</button><button class="btn btn-g" id="caBtn">Создать</button>');
     $('caBtn').onclick=async()=>{const u=$('caUser')?.value?.trim(),p=$('caPass')?.value,r=$('caRole')?.value;if(!u||u.length<3){$('caErr').textContent='Минимум 3 символа';$('caErr').classList.add('show');return}if(!/^[a-zA-Z0-9_]+$/.test(u)){$('caErr').textContent='Только латиница, цифры и _';$('caErr').classList.add('show');return}if(!p||p.length<6){$('caErr').textContent='Пароль минимум 6 символов';$('caErr').classList.add('show');return}const res=await fetch('/api/admins',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p,role:r})});const d=await res.json();if(d.success){closeModal();toast('Создан!');loadAdmins()}else{$('caErr').textContent=d.error;$('caErr').classList.add('show')}};
     setTimeout(()=>$('caUser')?.focus(),100);
@@ -1491,7 +1494,7 @@ function renderNodes(){
         const isOn=n.is_online||n.status==='online';
         const isMain=n.is_main===true;
         const statusColor=isOn?'var(--gn)':'var(--rd)';
-        const statusText=isOn?'Онлайн':'Офлайн';
+        const statusText=isOn?t('status_online'):t('status_offline');
         const lastSeen=n.last_seen?new Date(n.last_seen).toLocaleString('ru'):'—';
         const mainBadge=isMain?'<span style="display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:6px;background:rgba(139,92,246,.15);color:var(--ac2);margin-left:6px;vertical-align:middle">'+t('node_main')+'</span>':'';
         const iconBg=isMain?(isOn?'rgba(139,92,246,.15)':'var(--rdg)'):(isOn?'var(--gng)':'var(--rdg)');
