@@ -1059,11 +1059,11 @@ function renderUserModal(u){
     <div class="field-row"><div class="field"><label>${t('traffic_total')}</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;font-weight:600">${tr.total_mb||0} ${t('units_mb')}</div></div><div class="field"><label>${t('traffic_limit')}</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;font-weight:600">${isUn?t('traffic_unlimited'):u.traffic_limit+' '+t('units_mb')}</div></div></div>
     ${!isUn?`<div style="background:var(--g2);border-radius:4px;height:5px;overflow:hidden;margin-top:6px"><div style="height:100%;width:${up}%;background:${bc};border-radius:4px"></div></div>`:''}
     <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:10px">
-    <button class="btn btn-n btn-sm" onclick="setLimit(10240)">10 ГБ</button>
-    <button class="btn btn-n btn-sm" onclick="setLimit(51200)">50 ГБ</button>
-    <button class="btn btn-n btn-sm" onclick="setLimit(102400)">100 ГБ</button>
-    <button class="btn btn-n btn-sm" onclick="setLimit(0)">∞ Безлимит</button>
-    <button class="btn btn-n btn-sm" onclick="resetTraffic()" style="border-color:rgba(239,68,68,.15);color:var(--rd)">Сброс</button>
+    <button class="btn btn-n btn-sm" onclick="setLimit(10240)">10 ${t('units_gb')}</button>
+    <button class="btn btn-n btn-sm" onclick="setLimit(51200)">50 ${t('units_gb')}</button>
+    <button class="btn btn-n btn-sm" onclick="setLimit(102400)">100 ${t('units_gb')}</button>
+    <button class="btn btn-n btn-sm" onclick="setLimit(0)">∞ ${t('plan_unlimited')}</button>
+    <button class="btn btn-n btn-sm" onclick="resetTraffic()" style="border-color:rgba(239,68,68,.15);color:var(--rd)">${t('btn_reset')}</button>
     </div></div>`;
     const subUrl=u.service_token?location.origin+'/sub/'+u.service_token:'';
     $('umFoot').innerHTML=`<button class="btn btn-a btn-sm" onclick="copySubUrlAuto()"><i class="fas fa-share-alt"></i> ${t('btn_subscribe')}</button><button class="btn btn-b btn-sm" onclick="copyUserLink()"><i class="fas fa-link"></i> ${t('btn_link')}</button><button class="btn btn-n btn-sm" onclick="showQRModal()"><i class="fas fa-qrcode"></i> ${t('btn_qr')}</button><button class="btn btn-g btn-sm" onclick="extendUserModal()"><i class="fas fa-clock"></i> ${t('btn_extend')}</button><button class="btn btn-o btn-sm" onclick="toggleUserModal()"><i class="fas fa-exchange-alt"></i> ${t('btn_toggle')}</button><button class="btn btn-r btn-sm" onclick="deleteUserModal()"><i class="fas fa-trash"></i> ${t('btn_delete')}</button>`;
