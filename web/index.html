@@ -550,8 +550,8 @@ a{text-decoration:none;color:inherit}
                 </div>
                 <div class="set-group">
                     <h3><i class="fas fa-info-circle"></i> <span data-i18n="settings_system">О системе</span></h3>
-                    <div class="set-item"><div class="si-label">Версия</div><span style="font-size:12px;color:var(--t3)">v3.8</span></div>
-                    <div class="set-item"><div class="si-label">Сервер</div><span style="font-size:12px;color:var(--t3)">Польша — link.qmbox.ru</span></div>
+                    <div class="set-item"><div class="si-label"><span data-i18n="settings_version">Версия</span></div><span style="font-size:12px;color:var(--t3)">v3.8</span></div>
+                    <div class="set-item"><div class="si-label"><span data-i18n="settings_server">Сервер</span></div><span style="font-size:12px;color:var(--t3)">Польша — link.qmbox.ru</span></div>
                 </div>
             </div>
         </div>
@@ -766,6 +766,27 @@ svc_traffic:{ru:'Трафик',en:'Traffic'},
 svc_telegram_bot:{ru:'Telegram-бот',en:'Telegram Bot'},
 svc_online:{ru:'Онлайн',en:'Online'},
 svc_history:{ru:'История',en:'History'},
+settings_version:{ru:'Версия',en:'Version'},
+settings_server:{ru:'Сервер',en:'Server'},
+config_loaded:{ru:'Конфигурация загружена',en:'Configuration loaded'},
+node_main:{ru:'ОСНОВНОЙ',en:'MAIN'},
+node_users:{ru:'Юзеров',en:'Users'},
+node_seen:{ru:'Видел',en:'Seen'},
+node_server_region:{ru:'Основной сервер',en:'Main server'},
+msg_deployed:{ru:'Сервер развёрнут!',en:'Server deployed!'},
+msg_node_id:{ru:'Node ID',en:'Node ID'},
+msg_qr_title:{ru:'QR-код',en:'QR Code'},
+msg_qr_scan:{ru:'Отсканируйте в Hysteria 2',en:'Scan in Hysteria 2'},
+msg_token_service:{ru:'Токен сервиса',en:'Service Token'},
+msg_token_desc:{ru:'Токен для доступа к кабинету и подписке',en:'Token for portal and subscription access'},
+msg_new_plan:{ru:'Новый тариф',en:'New Plan'},
+msg_plan_params:{ru:'Настройте параметры',en:'Configure parameters'},
+msg_change_password:{ru:'Смена пароля',en:'Change Password'},
+msg_change_password_desc:{ru:'Введите текущий и новый пароль',en:'Enter current and new password'},
+msg_change_login:{ru:'Смена логина',en:'Change Login'},
+msg_change_login_desc:{ru:'Введите новый логин и подтвердите паролем',en:'Enter new login and confirm with password'},
+msg_new_admin:{ru:'Новый администратор',en:'New Administrator'},
+msg_new_admin_desc:{ru:'Создайте учётную запись',en:'Create account'},
 sys_network:{ru:'Сеть',en:'Network'},
 chart_status:{ru:'Статус пользователей',en:'User Status'},
 chart_top_traffic:{ru:'Топ по трафику',en:'Top by Traffic'},
@@ -864,7 +885,7 @@ function showModal(msg,icon='check-circle',iconClass='green'){
     setModal(icon,iconClass,t('msg_done'),msg,'<div style="text-align:center"></div>','<button class="btn btn-g" onclick="closeModal()">OK</button>');
 }
 function confirmModal(msg,onConfirm){
-    setModal('question-circle','orange','Подтверждение',msg,'','<button class="btn btn-n" onclick="closeModal()">Отмена</button><button class="btn btn-r" id="confirmBtn">Да</button>');
+    setModal('question-circle','orange',t('msg_confirm'),msg,'','<button class="btn btn-n" onclick="closeModal()">'+t('btn_cancel')+'</button><button class="btn btn-r" id="confirmBtn">'+t('btn_yes')+'</button>');
     $('confirmBtn').onclick=()=>{closeModal();onConfirm()};
 }
 function showPromptModal(title,msg,defaultVal,onConfirm){
@@ -1069,7 +1090,7 @@ function deleteUserModal(){if(!CUid)return;confirmModal('Удалить поль
 function showQRForUser(uid){
     fetch('/api/qr/'+uid).then(r=>r.json()).then(d=>{
         if(d.qr){
-            setModal('qrcode','blue','QR-код','Отсканируйте в Hysteria 2',`<div style="text-align:center"><img src="${d.qr}" style="max-width:220px;border-radius:8px" onerror="this.style.display='none';this.parentElement.innerHTML+='<div style=\\'padding:16px;color:var(--rd);font-size:12px\\'>Ошибка загрузки QR</div>'"/></div><div style="font-size:10px;color:var(--t4);margin-top:10px;word-break:break-all;font-family:monospace">${d.link||''}</div>`,'<button class="btn btn-n" onclick="closeModal()">Закрыть</button>');
+            setModal('qrcode','blue',t('msg_qr_title'),t('msg_qr_scan'),`<div style="text-align:center"><img src="${d.qr}" style="max-width:220px;border-radius:8px" onerror="this.style.display='none';this.parentElement.innerHTML+='<div style=\\'padding:16px;color:var(--rd);font-size:12px\\'>${t('msg_qr_error')}</div>'"/></div><div style="font-size:10px;color:var(--t4);margin-top:10px;word-break:break-all;font-family:monospace">${d.link||''}</div>`,'<button class="btn btn-n" onclick="closeModal()">'+t('btn_close')+'</button>');
         }else if(d.link){
             showQRModalWithData(d.link);
         }else{
@@ -1109,7 +1130,7 @@ function showServiceTokenModal(){
     const footerHtml=existingToken
         ?`<button class="btn btn-n" onclick="closeModal()">Закрыть</button><button class="btn btn-a" onclick="navigator.clipboard.writeText('${subUrl}');toast('Ссылка подписки скопирована!')"><i class="fas fa-copy"></i> Копировать ссылку</button><button class="btn btn-n" onclick="generateServiceToken()">Перегенерировать</button>`
         :`<button class="btn btn-n" onclick="closeModal()">Закрыть</button><button class="btn btn-a" onclick="generateServiceToken()">Генерировать</button>`;
-    setModal('key','purple','Токен сервиса','Токен для доступа к кабинету и подписке',`<div id="tokenArea">${tokenHtml}</div>`,footerHtml);
+    setModal('key','purple',t('msg_token_service'),t('msg_token_desc'),`<div id="tokenArea">${tokenHtml}</div>`,footerHtml);
     // Store savedId on window for generateServiceToken to use
     window._tokenUserId=savedId;
 }
@@ -1204,7 +1225,7 @@ async function loadConfig(){
         const d=await r.json();
         const text=d.content||d.config||d.yaml||JSON.stringify(d,null,2);
         $('configText').value=typeof text==='string'?text:JSON.stringify(text,null,2);
-        statusEl.innerHTML='<div class="config-status success"><i class="fas fa-check-circle"></i> Конфигурация загружена</div>';
+        statusEl.innerHTML='<div class="config-status success"><i class="fas fa-check-circle"></i> '+t('config_loaded')+'</div>';
         setTimeout(()=>{statusEl.innerHTML=''},3000);
     }catch(e){
         statusEl.innerHTML='<div class="config-status error"><i class="fas fa-times-circle"></i> Ошибка загрузки: '+e.message+'</div>';
@@ -1305,7 +1326,7 @@ async function lPl(){
     el.innerHTML=d.plans.map(p=>`<div class="card svc" style="margin-bottom:8px"><div><div style="font-size:14px;font-weight:700">${p.name}</div><div style="font-size:11px;color:var(--t3);margin-top:3px">${p.days} ${t('plan_days')} · ${p.traffic_limit_mb>0?p.traffic_limit_mb+' '+t('units_mb'):t('plan_unlimited')}${p.price?' · '+p.price:''}</div></div><button class="sb" onclick="deletePlan('${p.id}')" style="color:var(--rd)"><i class="fas fa-trash"></i></button></div>`).join('');
 }
 function showCreatePlan(){
-    setModal('tags','green','Новый тариф','Настройте параметры',`
+    setModal('tags','green',t('msg_new_plan'),t('msg_plan_params'),`
     <div class="field"><label>Название</label><input type="text" id="cpName" placeholder="Базовый"></div>
     <div class="field-row"><div class="field"><label>${t('plan_days_label')}</label><input type="number" id="cpDays" value="30"></div><div class="field"><label>${t('plan_limit')}</label><input type="number" id="cpLimit" value="10240"><div class="hint">${t('plan_zero_unlimited')}</div></div></div>
     <div class="field"><label>Цена</label><input type="text" id="cpPrice" placeholder="Необязательно"></div>
@@ -1339,7 +1360,7 @@ async function loadAdmins(){
 }
 
 function showChangePw(){
-    setModal('lock','purple','Смена пароля','Введите текущий и новый пароль',`
+    setModal('lock','purple',t('msg_change_password'),t('msg_change_password_desc'),`
     <div class="error-msg" id="pwErr"></div>
     <div class="field"><label>Текущий пароль</label><input type="password" id="pwOld" placeholder="Введите текущий пароль"></div>
     <div class="field"><label>Новый пароль</label><input type="password" id="pwNew" placeholder="Минимум 6 символов"></div>
@@ -1350,7 +1371,7 @@ function showChangePw(){
 }
 
 function showChangeLogin(){
-    setModal('key','blue','Смена логина','Введите новый логин и подтвердите паролем',`
+    setModal('key','blue',t('msg_change_login'),t('msg_change_login_desc'),`
     <div class="error-msg" id="lgErr"></div>
     <div class="field"><label>Новый логин</label><input type="text" id="lgNew" placeholder="латиница, цифры, _"></div>
     <div class="field"><label>Пароль</label><input type="password" id="lgPass" placeholder="Для подтверждения"></div>
@@ -1360,7 +1381,7 @@ function showChangeLogin(){
 }
 
 function showCreateAdmin(){
-    setModal('user-plus','green','Новый администратор','Создайте учётную запись',`
+    setModal('user-plus','green',t('msg_new_admin'),t('msg_new_admin_desc'),`
     <div class="error-msg" id="caErr"></div>
     <div class="field"><label>Логин</label><input type="text" id="caUser" placeholder="латиница, цифры, _"></div>
     <div class="field"><label>Пароль</label><input type="password" id="caPass" placeholder="минимум 6 символов"></div>
@@ -1418,7 +1439,7 @@ function connectWebSocket(){
         };
         wsConn.onclose=function(){
             const el=$('wsStatus');
-            if(el)el.innerHTML='<i class="fas fa-circle" style="color:#64748b;font-size:8px"></i> WebSocket: отключён';
+            if(el)el.innerHTML='<i class="fas fa-circle" style="color:#64748b;font-size:8px"></i> WebSocket: '+t('ws_disconnected');
             if(wsReconnectTimer)clearTimeout(wsReconnectTimer);
             wsReconnectTimer=setTimeout(connectWebSocket,5000);
         };
@@ -1472,20 +1493,20 @@ function renderNodes(){
         const statusColor=isOn?'var(--gn)':'var(--rd)';
         const statusText=isOn?'Онлайн':'Офлайн';
         const lastSeen=n.last_seen?new Date(n.last_seen).toLocaleString('ru'):'—';
-        const mainBadge=isMain?'<span style="display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:6px;background:rgba(139,92,246,.15);color:var(--ac2);margin-left:6px;vertical-align:middle">ОСНОВНОЙ</span>':'';
+        const mainBadge=isMain?'<span style="display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:6px;background:rgba(139,92,246,.15);color:var(--ac2);margin-left:6px;vertical-align:middle">'+t('node_main')+'</span>':'';
         const iconBg=isMain?(isOn?'rgba(139,92,246,.15)':'var(--rdg)'):(isOn?'var(--gng)':'var(--rdg)');
         const iconColor=isMain?'var(--ac2)':statusColor;
         const domain=n.domain||n.ip||'—';
         const details=isMain
-            ?`CPU: ${n.cpu_percent||0}% • RAM: ${n.ram_percent||0}% (${n.ram_used_gb||0}/${n.ram_total_gb||0} ГБ) • Диск: ${n.disk_percent||0}% • Юзеров: ${n.online_users||0}/${n.total_users||0}`
-            :`CPU: ${n.cpu_percent||0}% • RAM: ${n.ram_percent||0}% • Юзеров: ${n.online_users||0}/${n.total_users||0} • Видел: ${lastSeen}`;
+            ?`CPU: ${n.cpu_percent||0}% • RAM: ${n.ram_percent||0}% (${n.ram_used_gb||0}/${n.ram_total_gb||0} ${t('units_gb')}) • Disk: ${n.disk_percent||0}% • ${t('node_users')}: ${n.online_users||0}/${n.total_users||0}`
+            :`CPU: ${n.cpu_percent||0}% • RAM: ${n.ram_percent||0}% • ${t('node_users')}: ${n.online_users||0}/${n.total_users||0} • ${t('node_seen')}: ${lastSeen}`;
         return`<div class="card" style="display:flex;align-items:center;gap:16px;padding:16px;${isMain?'border:1px solid rgba(139,92,246,.2);background:rgba(139,92,246,.03)':''}">
             <div style="width:44px;height:44px;border-radius:12px;background:${iconBg};display:flex;align-items:center;justify-content:center">
                 <i class="fas fa-${isMain?'crown':'server'}" style="font-size:18px;color:${iconColor}"></i>
             </div>
             <div style="flex:1;min-width:0">
                 <div style="font-size:14px;font-weight:700">${n.name}${mainBadge}${isMain?'':` <button class="cp" onclick="editNodeName('${n.id}','${n.name}')" title="Изменить название" style="background:none;border:none;color:var(--t4);cursor:pointer;font-size:11px;padding:0 2px"><i class="fas fa-pen" style="font-size:10px"></i></button>`}</div>
-                <div style="font-size:11px;color:var(--t4)">${n.ip} • ${n.region||'—'} • <span style="color:${statusColor}">${statusText}</span></div>
+                <div style="font-size:11px;color:var(--t4)">${n.ip} • ${isMain?t('node_server_region'):n.region||'—'} • <span style="color:${statusColor}">${statusText}</span></div>
                 <div style="font-size:10px;color:var(--t4);margin-top:2px">${details}</div>
                 <div style="font-size:10px;color:var(--t3);margin-top:2px;font-family:monospace">🔗 ${domain}${isMain?'':' <button class="cp" onclick="editNodeDomain(\''+n.id+'\',\''+domain+'\')" title="Изменить домен" style="background:none;border:none;color:var(--ac2);cursor:pointer;font-size:10px;padding:0 4px"><i class="fas fa-pen"></i></button>'}</div>
             </div>
@@ -1564,7 +1585,7 @@ async function doDeploy(){
         const r=await fetch('/api/nodes/deploy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
         const d=await r.json();
         if(d.success){
-            if(log)log.textContent+='Сервер развёрнут!\nNode ID: '+d.node_id+'\nIP: '+d.ip+'\n';
+            if(log)log.textContent+=t('msg_deployed')+'\n'+t('msg_node_id')+': '+d.node_id+'\nIP: '+d.ip+'\n';
             if(d.output&&log)log.textContent+=d.output+'\n';
             toast('Нода добавлена!');
             loadNodes();
