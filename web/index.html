@@ -853,11 +853,11 @@ async function loadAll(){
 }
 
 function rMt(s,u){
-    const t=u.length,a=u.filter(x=>x.active).length;
+    const total=u.length,a=u.filter(x=>x.active).length;
     const ex=u.filter(x=>{try{return x.expire_date&&x.expire_date!=='Не указан'&&new Date(x.expire_date)<new Date()}catch{return false}}).length;
     const sn=u.filter(x=>{try{const d=new Date(x.expire_date),n=new Date();return d>n&&d-n<3*864e5&&x.active}catch{return false}}).length;
     const on=OD.online||0;
-    $('mt').innerHTML=`<div class="card mc cb"><div class="ic"><i class="fas fa-server"></i> ${t('metric_server_label')}</div><div class="v" style="font-size:20px">Польша</div><div class="sm">link.qmbox.ru</div></div><div class="card mc cv"><div class="ic"><i class="fas fa-users"></i> ${t('metric_total')}</div><div class="v">${t}</div><div class="sm">${t('metric_users_label')}</div></div><div class="card mc cg"><div class="ic"><i class="fas fa-check-circle"></i> ${t('metric_active')}</div><div class="v">${a}</div><div class="sm">${t('metric_subscriptions_label')}</div></div><div class="card mc cc"><div class="ic"><i class="fas fa-wifi"></i> ${t('metric_online')}</div><div class="v">${on}</div><div class="sm">${t('metric_now_label')}</div></div><div class="card mc co"><div class="ic"><i class="fas fa-hourglass-half"></i> ${t('metric_expiring')}</div><div class="v">${sn}</div><div class="sm">${t('metric_3days')}</div></div><div class="card mc cr"><div class="ic"><i class="fas fa-exclamation-triangle"></i> ${t('metric_expired')}</div><div class="v">${ex}</div><div class="sm">${t('metric_needs_delete')}</div></div>`;
+    $('mt').innerHTML=`<div class="card mc cb"><div class="ic"><i class="fas fa-server"></i> ${t('metric_server_label')}</div><div class="v" style="font-size:20px">Польша</div><div class="sm">link.qmbox.ru</div></div><div class="card mc cv"><div class="ic"><i class="fas fa-users"></i> ${t('metric_total')}</div><div class="v">${total}</div><div class="sm">${t('metric_users_label')}</div></div><div class="card mc cg"><div class="ic"><i class="fas fa-check-circle"></i> ${t('metric_active')}</div><div class="v">${a}</div><div class="sm">${t('metric_subscriptions_label')}</div></div><div class="card mc cc"><div class="ic"><i class="fas fa-wifi"></i> ${t('metric_online')}</div><div class="v">${on}</div><div class="sm">${t('metric_now_label')}</div></div><div class="card mc co"><div class="ic"><i class="fas fa-hourglass-half"></i> ${t('metric_expiring')}</div><div class="v">${sn}</div><div class="sm">${t('metric_3days')}</div></div><div class="card mc cr"><div class="ic"><i class="fas fa-exclamation-triangle"></i> ${t('metric_expired')}</div><div class="v">${ex}</div><div class="sm">${t('metric_needs_delete')}</div></div>`;
 }
 
 function rSy(s){
