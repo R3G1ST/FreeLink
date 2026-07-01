@@ -529,22 +529,22 @@ a{text-decoration:none;color:inherit}
             <div class="pg" id="p-settings">
                 <div class="pg-title"><i class="fas fa-cog"></i> Настройки</div>
                 <div class="set-group">
-                    <h3><i class="fas fa-users-cog"></i> Администраторы</h3>
+                    <h3><i class="fas fa-users-cog"></i> <span data-i18n="settings_admins">Администраторы</span></h3>
                     <div id="adminsList"></div>
-                    <button class="btn btn-g" onclick="showCreateAdmin()" style="margin-top:8px"><i class="fas fa-plus"></i> Добавить</button>
+                    <button class="btn btn-g" onclick="showCreateAdmin()" style="margin-top:8px"><i class="fas fa-plus"></i> <span data-i18n="btn_add">Добавить</span></button>
                 </div>
                 <div class="set-group">
-                    <h3><i class="fas fa-user-lock"></i> Мой аккаунт</h3>
-                    <div class="set-item"><div><div class="si-label">Сменить пароль</div><div class="si-desc">Минимум 6 символов</div></div><button class="btn btn-a btn-sm" onclick="showChangePw()">Изменить</button></div>
-                    <div class="set-item"><div><div class="si-label">Сменить логин</div><div class="si-desc">Латиница, цифры, _</div></div><button class="btn btn-b btn-sm" onclick="showChangeLogin()">Изменить</button></div>
+                    <h3><i class="fas fa-user-lock"></i> <span data-i18n="settings_account">Мой аккаунт</span></h3>
+                    <div class="set-item"><div><div class="si-label"><span data-i18n="settings_password">Сменить пароль</span></div><div class="si-desc">Минимум 6 символов</div></div><button class="btn btn-a btn-sm" onclick="showChangePw()"><span data-i18n="btn_edit">Изменить</span></button></div>
+                    <div class="set-item"><div><div class="si-label"><span data-i18n="settings_login">Сменить логин</span></div><div class="si-desc">Латиница, цифры, _</div></div><button class="btn btn-b btn-sm" onclick="showChangeLogin()"><span data-i18n="btn_edit">Изменить</span></button></div>
                 </div>
                 <div class="set-group">
                     <h3><i class="fas fa-globe"></i> <span data-i18n="settings_language">Язык</span></h3>
                     <div class="set-item">
                         <div class="si-label">Language / Язык</div>
-                        <select onchange="setLang(this.value)" style="padding:8px 12px;background:var(--g2);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-size:12px;font-family:inherit;cursor:pointer">
-                            <option value="ru" ${currentLang==='ru'?'selected':''}>Русский</option>
-                            <option value="en" ${currentLang==='en'?'selected':''}>English</option>
+                        <select id="langSelect" onchange="setLang(this.value)" style="padding:8px 12px;background:var(--g2);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-size:12px;font-family:inherit;cursor:pointer">
+                            <option value="ru">Русский</option>
+                            <option value="en">English</option>
                         </select>
                     </div>
                 </div>
@@ -677,6 +677,9 @@ settings_login:{ru:'Сменить логин',en:'Change login'},
 settings_system:{ru:'О системе',en:'About'},
 settings_version:{ru:'Версия',en:'Version'},
 settings_server:{ru:'Сервер',en:'Server'},
+settings_admins:{ru:'Администраторы',en:'Administrators'},
+settings_account:{ru:'Мой аккаунт',en:'My Account'},
+settings_language:{ru:'Язык',en:'Language'},
 units_mb:{ru:'МБ',en:'MB'},
 units_gb:{ru:'ГБ',en:'GB'},
 units_mbps:{ru:'Мбит/с',en:'Mbps'},
@@ -689,6 +692,9 @@ function setLang(lang){localStorage.setItem(LANG_KEY,lang);location.reload()}
 function applyLang(){
     document.querySelectorAll('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n)});
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el=>{el.placeholder=t(el.dataset.i18nPlaceholder)});
+    // Set language dropdown
+    const langSelect=document.getElementById('langSelect');
+    if(langSelect)langSelect.value=currentLang;
 }
 
 /* ===== THEME ===== */
@@ -758,6 +764,7 @@ function go(page,el){
     if(page==='audit')lAudit();
     if(page==='settings')loadAdmins();
     if(page==='config')loadConfig();
+    applyLang();
 }
 
 async function doLogout(){await fetch('/api/logout',{method:'POST'});window.location.href='/login'}
