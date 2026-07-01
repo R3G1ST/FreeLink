@@ -737,6 +737,10 @@ msg_editor_role:{ru:'Редактор',en:'Editor'},
 msg_viewer_role:{ru:'Наблюдатель',en:'Viewer'},
 msg_edit:{ru:'Редактировать',en:'Edit'},
 msg_days:{ru:'дн',en:'days'},
+msg_expired:{ru:'Истекло',en:'Expired'},
+msg_selected:{ru:'выбрано',en:'selected'},
+table_created:{ru:'Создан',en:'Created'},
+table_progress:{ru:'Прогресс подписки',en:'Subscription progress'},
 sys_network:{ru:'Сеть',en:'Network'},
 chart_status:{ru:'Статус пользователей',en:'User Status'},
 chart_top_traffic:{ru:'Топ по трафику',en:'Top by Traffic'},
@@ -928,11 +932,10 @@ function rU(){
         return 0;
     });
     const tb=$('uL');
-    if(!u.length){tb.innerHTML='<tr><td colspan="10"><div class="emp"><i class="fas fa-user-slash"></i><p>Не найдено</p></div></td></tr>';return}
-    tb.innerHTML=u.map(x=>{
-        const isEx=x.expire_date&&x.expire_date!=='Не указан'&&new Date(x.expire_date)<new Date();
-        let pc=x.active?'a':'i',pt=x.active?'Активен':'Неакт.';
-        if(isEx){pc='e';pt='Просрочен'}
+    if(!u.length){tb.innerHTML='<tr><td colspan="10"><div class="emp"><i class="fas fa-user-slash"></i><p>'+t('msg_not_found')+'</p></div></td></tr>';return}
+    tb.innerHTML=u.map(x=>{const isEx=x.expire_date&&x.expire_date!=='Не указан'&&new Date(x.expire_date)<new Date();
+        let pc=x.active?'a':'i',pt=x.active?t('status_active'):t('status_inactive');
+        if(isEx){pc='e';pt=t('status_expired')}
         const tr=x.traffic||{total_mb:0,limit_mb:0};
         const ld=tr.limit_mb>0?(tr.limit_mb>1e6?'∞':tr.limit_mb+' МБ'):'∞';
         const up=tr.limit_mb>0?Math.min(100,(tr.total_mb/tr.limit_mb)*100):0;
@@ -940,7 +943,7 @@ function rU(){
         const ln=x.link||'',isOn=x.online,sl=sel.has(x.id);
         const spd=x.speed_limit_mbps||0;
         const spdDisplay=spd>0?spd+' Мбит/с':'∞';
-        return`<tr class="${sl?'sel':''}"><td><input type="checkbox" class="chk" ${sl?'checked':''} onchange="tS('${x.id}')"></td><td><span class="pil ${pc}"><i class="fas fa-circle" style="font-size:5px"></i> ${pt}</span></td><td><strong>${x.name}</strong></td><td><code style="font-size:10px;background:var(--g2);padding:2px 7px;border-radius:6px;color:var(--t3)">${x.id}</code></td><td><span class="od ${isOn?'on':'off'}"><span class="d ${isOn?'on':'off'}"></span> ${isOn?'Онлайн':'Офлайн'}</span></td><td><div style="font-size:11px"><strong>${tr.total_mb} МБ</strong><div style="font-size:9px;color:var(--t4)">/ ${ld}</div>${tr.limit_mb>0?`<div class="tbr"><div class="f" style="width:${up}%;background:${bc}"></div></div>`:''}</div></td><td style="font-size:11px;color:${spd>0?'var(--or)':'var(--t4)'};font-weight:${spd>0?'600':'400'}">${spdDisplay}</td><td style="font-size:11px;color:${isEx?'var(--rd)':'var(--t3)'}">${x.expire_date||'—'}</td><td>${ln?`<div class="lk"><span>${ln.substring(0,24)}...</span><button class="cp" onclick="cpL('${x.id}')"><i class="fas fa-copy"></i></button></div>`:'—'}</td><td><div class="ab"><button class="cy" onclick="openUserModal('${x.id}')" title="Подробнее"><i class="fas fa-info-circle"></i></button><button class="p" onclick="showQRForUser('${x.id}')" title="QR-код"><i class="fas fa-qrcode"></i></button>${ln?`<button class="bl" onclick="cpL('${x.id}')" title="Копировать"><i class="fas fa-copy"></i></button>`:''}<button class="g" onclick="tU('${x.id}')" title="Вкл/Выкл"><i class="fas ${x.active?'fa-pause':'fa-play'}"></i></button><button class="p" onclick="eU('${x.id}')" title="Продлить"><i class="fas fa-clock"></i></button><button class="r" onclick="dU('${x.id}')" title="Удалить"><i class="fas fa-trash"></i></button></div></td></tr>`;
+        return`<tr class="${sl?'sel':''}"><td><input type="checkbox" class="chk" ${sl?'checked':''} onchange="tS('${x.id}')"></td><td><span class="pil ${pc}"><i class="fas fa-circle" style="font-size:5px"></i> ${pt}</span></td><td><strong>${x.name}</strong></td><td><code style="font-size:10px;background:var(--g2);padding:2px 7px;border-radius:6px;color:var(--t3)">${x.id}</code></td><td><span class="od ${isOn?'on':'off'}"><span class="d ${isOn?'on':'off'}"></span> ${isOn?t('status_online'):t('status_offline')}</span></td><td><div style="font-size:11px"><strong>${tr.total_mb} ${t('units_mb')}</strong><div style="font-size:9px;color:var(--t4)">/ ${ld}</div>${tr.limit_mb>0?`<div class="tbr"><div class="f" style="width:${up}%;background:${bc}"></div></div>`:''}</div></td><td style="font-size:11px;color:${spd>0?'var(--or)':'var(--t4)'};font-weight:${spd>0?'600':'400'}">${spdDisplay}</td><td style="font-size:11px;color:${isEx?'var(--rd)':'var(--t3)'}">${x.expire_date||'—'}</td><td>${ln?`<div class="lk"><span>${ln.substring(0,24)}...</span><button class="cp" onclick="cpL('${x.id}')"><i class="fas fa-copy"></i></button></div>`:'—'}</td><td><div class="ab"><button class="cy" onclick="openUserModal('${x.id}')" title="${t('btn_edit')}"><i class="fas fa-info-circle"></i></button><button class="p" onclick="showQRForUser('${x.id}')" title="QR">${t('btn_qr')}</button>${ln?`<button class="bl" onclick="cpL('${x.id}')" title="${t('btn_copy')}"><i class="fas fa-copy"></i></button>`:''}<button class="g" onclick="tU('${x.id}')" title="${t('btn_toggle')}"><i class="fas ${x.active?'fa-pause':'fa-play'}"></i></button><button class="p" onclick="eU('${x.id}')" title="${t('btn_extend')}"><i class="fas fa-clock"></i></button><button class="r" onclick="dU('${x.id}')" title="${t('btn_delete')}"><i class="fas fa-trash"></i></button></div></td></tr>`;
     }).join('');
 }
 
@@ -950,7 +953,7 @@ function fU(){rU()}
 function tS(id){if(sel.has(id))sel.delete(id);else sel.add(id);uB();rU()}
 function tAll(){const c=$('sA').checked;sel.clear();if(c)CU.forEach(u=>sel.add(u.id));uB();rU()}
 function cSel(){sel.clear();$('sA').checked=false;uB();rU()}
-function uB(){const n=sel.size;$('bulk').classList.toggle('show',n>0);$('bulkN').textContent=n+' выбрано'}
+function uB(){const n=sel.size;$('bulk').classList.toggle('show',n>0);$('bulkN').textContent=n+' '+t('msg_selected')}
 async function bD(){if(!sel.size)return;confirmModal(t('msg_confirm_delete')+' '+sel.size+'?',async()=>{await fB('/api/users/bulk-delete',{ids:[...sel]});toast(t('msg_deleted_count'));sel.clear();uB();loadAll()})}
 async function bT(){if(!sel.size)return;await fB('/api/users/bulk-toggle',{ids:[...sel]});toast(t('msg_ok'));sel.clear();uB();loadAll()}
 async function bE(){if(!sel.size)return;showPromptModal(t('btn_extend'),t('time_day')+':','30',async v=>{await fB('/api/users/bulk-extend',{ids:[...sel],days:parseInt(v)});toast(t('msg_extended'));sel.clear();uB();loadAll()})}
@@ -958,19 +961,19 @@ async function fB(u,b){return fetch(u,{method:'POST',headers:{'Content-Type':'ap
 function cpL(id){fetch('/api/users').then(r=>r.json()).then(d=>{const u=d.users.find(x=>x.id===id);if(u&&u.link){navigator.clipboard.writeText(u.link).then(()=>toast(t('msg_copied')))}})}
 function tU(id){fetch('/api/user/toggle/'+id,{method:'POST'}).then(()=>{toast(t('msg_ok'));loadAll()})}
 function dU(id){confirmModal(t('msg_confirm_delete'),()=>{fetch('/api/user/'+id,{method:'DELETE'}).then(()=>{toast(t('msg_deleted'));loadAll()})})}
-function eU(id){showPromptModal('Продление','Дней:','30',v=>{fetch('/api/user/extend/'+id+'?days='+v,{method:'POST'}).then(r=>r.json()).then(d=>{toast('До '+d.new_expire);loadAll()})})}
-function clExp(){confirmModal('Удалить просроченных?',()=>{fetch('/api/clean',{method:'POST'}).then(r=>r.json()).then(d=>{toast('Удалено: '+d.deleted);loadAll()})})}
+function eU(id){showPromptModal(t('btn_extend'),t('time_day')+':','30',v=>{fetch('/api/user/extend/'+id+'?days='+v,{method:'POST'}).then(r=>r.json()).then(d=>{toast(t('msg_extended_to')+' '+d.new_expire);loadAll()})})}
+function clExp(){confirmModal(t('msg_confirm_clear'),()=>{fetch('/api/clean',{method:'POST'}).then(r=>r.json()).then(d=>{toast(t('msg_deleted_count')+': '+d.deleted);loadAll()})})}
 function restSrv(){confirmModal(t('msg_confirm_restart'),()=>{fetch('/api/restart').then(()=>{toast(t('msg_restarted'));setTimeout(loadAll,3000)})})}
 function expU(){window.open('/api/export?fmt=json','_blank')}
 function downloadReport(){window.open('/api/report?fmt=csv','_blank')}
 
 /* ===== CREATE USER ===== */
 function showCreateUser(){
-    setModal('user-plus','green','Новый пользователь','Введите имя и выберите тариф',`
-        <div class="field"><label>Имя</label><input type="text" id="cuName" placeholder="ivan"></div>
-        <div class="field"><label>Тариф</label><select id="cuPlan"><option value="">— Свой срок —</option></select></div>
-        <div class="field"><label>Дней (если свой)</label><input type="number" id="cuDays" value="30" min="1"></div>
-    `,'<button class="btn btn-n" onclick="closeModal()">Отмена</button><button class="btn btn-g" id="cuBtn">Создать</button>');
+    setModal('user-plus','green',t('msg_new_user'),'',`
+        <div class="field"><label>${t('table_name')}</label><input type="text" id="cuName" placeholder="ivan"></div>
+        <div class="field"><label>${t('page_plans_title')}</label><select id="cuPlan"><option value="">— ${t('btn_edit')} —</option></select></div>
+        <div class="field"><label>${t('time_day')}</label><input type="number" id="cuDays" value="30" min="1"></div>
+    `,'<button class="btn btn-n" onclick="closeModal()">'+t('btn_cancel')+'</button><button class="btn btn-g" id="cuBtn">'+t('btn_create')+'</button>');
     fetch('/api/plans').then(r=>r.json()).then(d=>{const sel=$('cuPlan');(d.plans||[]).forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=`${p.name} — ${p.days}дн`;sel.appendChild(o)})});
     $('cuBtn').onclick=async()=>{const n=$('cuName')?.value?.trim();if(!n||n.length<2){toast(t('msg_min_chars'));return}const pid=$('cuPlan')?.value;const d=parseInt($('cuDays')?.value)||30;closeModal();
         if(pid){await fB('/api/user/create-with-plan',{name:n,plan_id:pid}).then(r=>r.json()).then(d=>{if(d.id)toast(t('msg_created'));else toast(t('msg_error'))})}
@@ -994,9 +997,9 @@ function renderUserModal(u){
     const spdText=spd>0?spd+' Мбит/с':'∞ Неограничена';
     $('umTitle').textContent=u.name;
     $('umBody').innerHTML=`
-    <div class="field-row"><div class="field"><label>Статус</label><div style="padding:10px;background:var(--g2);border-radius:8px;font-size:13px;font-weight:600;color:${isEx?'var(--or)':u.active?'var(--gn)':'var(--rd)'}">${isEx?'Просрочен':u.active?'Активен':'Неактивен'}</div></div><div class="field"><label>Онлайн</label><div style="padding:10px;background:var(--g2);border-radius:8px;font-size:13px;font-weight:600;color:${u.online?'var(--gn)':'#64748b'}">${u.online?'Подключён':'Не в сети'}</div></div></div>
-    <div class="field-row"><div class="field"><label>Создан</label><div style="padding:10px;background:var(--g2);border-radius:8px;font-size:12px">${u.created||'—'}</div></div><div class="field"><label>Действует до</label><div style="padding:10px;background:var(--g2);border-radius:8px;font-size:12px;color:${isEx?'var(--rd)':'inherit'}">${u.expire_date||'—'}</div></div></div>
-    <div class="field"><label>Прогресс подписки</label><div style="background:var(--g2);border-radius:4px;height:6px;overflow:hidden;margin-top:4px"><div style="height:100%;width:${Math.min(100,sp)}%;background:${sp>80?'var(--rd)':sp>50?'var(--or)':'var(--gn)'};border-radius:4px;transition:width .4s"></div></div><div style="font-size:10px;color:var(--t4);margin-top:3px;text-align:right">${dl>0?dl+' дн':'Истекло'} — ${Math.round(sp)}%</div></div>
+    <div class="field-row"><div class="field"><label>${t('table_status')}</label><div style="padding:10px;background:var(--g2);border-radius:8px;font-size:13px;font-weight:600;color:${isEx?'var(--or)':u.active?'var(--gn)':'var(--rd)'}">${isEx?t('status_expired'):u.active?t('status_active'):t('status_inactive')}</div></div><div class="field"><label>${t('table_online')}</label><div style="padding:10px;background:var(--g2);border-radius:8px;font-size:13px;font-weight:600;color:${u.online?'var(--gn)':'#64748b'}">${u.online?t('status_connected'):t('status_disconnected')}</div></div></div>
+    <div class="field-row"><div class="field"><label>${t('table_created')}</label><div style="padding:10px;background:var(--g2);border-radius:8px;font-size:12px">${u.created||'—'}</div></div><div class="field"><label>${t('table_expires')}</label><div style="padding:10px;background:var(--g2);border-radius:8px;font-size:12px;color:${isEx?'var(--rd)':'inherit'}">${u.expire_date||'—'}</div></div></div>
+    <div class="field"><label>${t('table_progress')}</label><div style="background:var(--g2);border-radius:4px;height:6px;overflow:hidden;margin-top:4px"><div style="height:100%;width:${Math.min(100,sp)}%;background:${sp>80?'var(--rd)':sp>50?'var(--or)':'var(--gn)'};border-radius:4px;transition:width .4s"></div></div><div style="font-size:10px;color:var(--t4);margin-top:3px;text-align:right">${dl>0?dl+' '+t('time_day'):t('msg_expired')} — ${Math.round(sp)}%</div></div>
     <div style="padding:14px;background:var(--g1);border:1px solid var(--b1);border-radius:8px;margin-top:12px">
     <div style="font-size:10px;color:var(--t3);text-transform:uppercase;font-weight:600;letter-spacing:.5px;margin-bottom:10px">Скорость</div>
     <div class="field-row"><div class="field"><label>Лимит скорости</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;font-weight:600;color:${spd>0?'var(--or)':'var(--t2)'}">${spdText}</div></div><div class="field"><label>IP-адрес</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;color:var(--t3)">${u.ip||'—'}</div></div></div>
