@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hysteria 2</title>
+    <title>FreeLink</title>
     <meta name="theme-color" content="#8b5cf6">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -187,7 +187,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 <div class="auth" id="authPage">
     <div class="auth-box">
         <div class="auth-icon"><i class="fas fa-bolt"></i></div>
-        <h1><em>Hysteria</em> 2</h1>
+        <h1><em>Free</em>Link</h1>
         <p>Управление VPN-сервером</p>
         <button class="auth-btn" onclick="doAuth()" id="authBtn"><i class="fab fa-telegram-plane"></i> Войти через Telegram</button>
     </div>
@@ -196,7 +196,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 <!-- APP -->
 <div id="appPage" style="display:none">
     <div class="hdr">
-        <h1><em>Hysteria</em> 2</h1>
+        <h1><em>Free</em>Link</h1>
         <div style="display:flex;gap:8px;align-items:center">
             <div class="notif-wrap"><button class="theme-btn" onclick="toggleNotifs()"><i class="fas fa-bell"></i></button><div class="notif-dot" id="notifDot" style="display:none"></div></div>
             <button class="theme-btn" onclick="setLang(currentLang==='ru'?'en':'ru')" title="Language"><i class="fas fa-globe"></i></button>
@@ -482,7 +482,7 @@ async function loadChart(hours,el){document.querySelectorAll('.filters .filter')
     chart=new Chart($('cChart'),{type:'line',data:{labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'},plugins:{legend:{labels:{color:'rgba(249,250,252,.4)',font:{size:9},usePointStyle:true,pointStyle:'circle'}}},scales:{x:{ticks:{color:'rgba(249,250,252,.2)',font:{size:8},maxTicksLimit:8},grid:{color:'rgba(255,255,255,.03)'},border:{display:false}},y:{ticks:{color:'rgba(249,250,252,.2)',font:{size:8},callback:v=>v+' МБ'},grid:{color:'rgba(255,255,255,.03)'},border:{display:false}}}}})
 }
 
-async function loadServices(){const r=await fetch('/api/miniapp/services');const d=await r.json();const nm={'hysteria-server':'Hysteria VPN','vpnbot-api':'API','vpnbot-auth':'Auth','vpnbot-traffic':'Traffic','vpnbot-bot':'Bot','vpnbot-online':'Online','vpnbot-history':'History'};
+async function loadServices(){const r=await fetch('/api/miniapp/services');const d=await r.json();const nm={'hysteria-server':'FreeLink VPN','vpnbot-api':'API','vpnbot-auth':'Auth','vpnbot-traffic':'Traffic','vpnbot-bot':'Bot','vpnbot-online':'Online','vpnbot-history':'History'};
     $('serviceList').innerHTML=d.services.map(s=>`<div class="card" style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px">
         <div style="display:flex;align-items:center;gap:10px"><span style="width:8px;height:8px;border-radius:50%;background:${s.active?'var(--gn)':'var(--rd)'}"></span><span style="font-size:13px;font-weight:500">${nm[s.name]||s.name}</span></div>
         <button class="btn btn-n" style="padding:6px 12px;font-size:11px" onclick="restartSvc('${s.name}')"><i class="fas fa-sync"></i></button>

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <title>Hysteria 2 — Панель управления</title>
+    <title>FreeLink — Панель управления</title>
     <link rel="stylesheet" href="/web/font-awesome.min.css">
     <link rel="stylesheet" href="/web/inter.css">
     <script src="/web/chart.umd.min.js"></script>
@@ -388,7 +388,7 @@ a{text-decoration:none;color:inherit}
 <div class="wrap">
     <div class="layout">
         <div class="sidebar">
-            <div class="sb-logo"><div class="icon"><i class="fas fa-bolt"></i></div><h2><em>Hysteria</em> 2</h2></div>
+            <div class="sb-logo"><div class="icon"><i class="fas fa-bolt"></i></div><h2><em>Free</em>Link</h2></div>
             <div class="nav-item on" onclick="go('dashboard',this)"><i class="fas fa-th-large"></i> <span data-i18n="nav_dashboard">Дашборд</span></div>
             <div class="nav-item" onclick="go('users',this)"><i class="fas fa-users"></i> <span data-i18n="nav_users">Пользователи</span></div>
             <div class="nav-item" onclick="go('traffic',this)"><i class="fas fa-chart-area"></i> <span data-i18n="nav_plans">Трафик</span></div>
@@ -559,7 +559,7 @@ a{text-decoration:none;color:inherit}
             </div>
         </div>
     </div>
-    <div class="ftr">Hysteria 2 Manager v3.8</div>
+    <div class="ftr">FreeLink Manager v3.8</div>
 </div>
 
 <!-- MODAL -->
@@ -668,7 +668,7 @@ msg_no_services:{ru:'Нет сервисов',en:'No services'},
 msg_no_traffic:{ru:'Нет активного трафика',en:'No active traffic'},
 msg_no_notifications:{ru:'Нет уведомлений',en:'No notifications'},
 msg_confirm_delete:{ru:'Удалить?',en:'Delete?'},
-msg_confirm_restart:{ru:'Перезапустить Hysteria 2?',en:'Restart Hysteria 2?'},
+msg_confirm_restart:{ru:'Перезапустить FreeLink?',en:'Restart FreeLink?'},
 msg_done:{ru:'Готово',en:'Done'},
 msg_value:{ru:'Значение',en:'Value'},
 msg_min_chars:{ru:'Мин. 2 символа',en:'Min. 2 characters'},
@@ -727,7 +727,7 @@ btn_copy_link:{ru:'Копировать ссылку',en:'Copy link'},
 msg_your_token:{ru:'Ваш токен:',en:'Your token:'},
 msg_sub_url:{ru:'Ссылка подписки:',en:'Subscription URL:'},
 msg_click_to_generate:{ru:'Нажмите для генерации',en:'Click to generate'},
-msg_qr_scan:{ru:'Отсканируйте в Hysteria 2',en:'Scan in Hysteria 2'},
+msg_qr_scan:{ru:'Отсканируйте в FreeLink',en:'Scan in FreeLink'},
 msg_fix_node:{ru:'Исправить ноду',en:'Fix node'},
 msg_password_saved:{ru:'Пароль сохранён',en:'Password saved'},
 msg_no_saved_password:{ru:'Нет сохранённого пароля',en:'No saved password'},
@@ -779,7 +779,7 @@ node_server_region:{ru:'Основной сервер',en:'Main server'},
 msg_deployed:{ru:'Сервер развёрнут!',en:'Server deployed!'},
 msg_node_id:{ru:'Node ID',en:'Node ID'},
 msg_qr_title:{ru:'QR-код',en:'QR Code'},
-msg_qr_scan:{ru:'Отсканируйте в Hysteria 2',en:'Scan in Hysteria 2'},
+msg_qr_scan:{ru:'Отсканируйте в FreeLink',en:'Scan in FreeLink'},
 msg_token_service:{ru:'Токен сервиса',en:'Service Token'},
 msg_token_desc:{ru:'Токен для доступа к кабинету и подписке',en:'Token for portal and subscription access'},
 msg_new_plan:{ru:'Новый тариф',en:'New Plan'},
@@ -1106,7 +1106,7 @@ function showQRModal(){
     if(!CUid)return;
     fetch('/api/qr/'+CUid).then(r=>r.json()).then(d=>{
         if(d.qr){
-            setModal('qrcode','blue','QR-код','Отсканируйте в Hysteria 2',`<div style="text-align:center"><img src="${d.qr}" style="max-width:220px;border-radius:8px"/></div><div style="font-size:10px;color:var(--t4);margin-top:10px;word-break:break-all;font-family:monospace">${d.link||''}</div>`,'<button class="btn btn-n" onclick="closeModal()">Закрыть</button>');
+            setModal('qrcode','blue',t('msg_qr_title'),t('msg_qr_scan'),`<div style="text-align:center"><img src="${d.qr}" style="max-width:220px;border-radius:8px"/></div><div style="font-size:10px;color:var(--t4);margin-top:10px;word-break:break-all;font-family:monospace">${d.link||''}</div>`,'<button class="btn btn-n" onclick="closeModal()">'+t('btn_close')+'</button>');
         }else{
             showQRModalWithData(d.link||'');
         }
@@ -1115,7 +1115,7 @@ function showQRModal(){
 
 function showQRModalWithData(link){
     if(!link){toast('Нет ссылки');return}
-    setModal('qrcode','blue','QR-код','Отсканируйте в Hysteria 2',`<div style="text-align:center;padding:16px;background:#fff;border-radius:8px;display:inline-block"><img src="/api/qr/${CUid}" style="max-width:200px" onerror="this.style.display='none'"/></div><div style="font-size:10px;color:var(--t4);margin-top:10px;word-break:break-all;font-family:monospace">${link}</div>`,'<button class="btn btn-n" onclick="closeModal()">Закрыть</button>');
+    setModal('qrcode','blue',t('msg_qr_title'),t('msg_qr_scan'),`<div style="text-align:center;padding:16px;background:#fff;border-radius:8px;display:inline-block"><img src="/api/qr/${CUid}" style="max-width:200px" onerror="this.style.display='none'"/></div><div style="font-size:10px;color:var(--t4);margin-top:10px;word-break:break-all;font-family:monospace">${link}</div>`,'<button class="btn btn-n" onclick="closeModal()">'+t('btn_close')+'</button>');
 }
 
 /* ===== SERVICE TOKEN ===== */
@@ -1252,7 +1252,7 @@ async function saveConfig(){
 }
 
 function restartHysteria(){
-    confirmModal('Перезапустить Hysteria 2?',async()=>{
+    confirmModal(t('msg_confirm_restart'),async()=>{
         const statusEl=$('configStatus');
         statusEl.innerHTML='<div class="config-status info"><i class="fas fa-spinner fa-spin"></i> Перезапуск...</div>';
         try{
@@ -1343,7 +1343,7 @@ function deletePlan(id){confirmModal('Удалить план?',()=>{fetch('/api
 async function lSv(){
     const r=await fetch('/api/services');
     const d=await r.json();
-    const nm={'hysteria-server':'Hysteria 2 VPN','vpnbot-api':'API','vpnbot-auth':t('svc_authorization'),'vpnbot-traffic':t('svc_traffic'),'vpnbot-bot':t('svc_telegram_bot'),'vpnbot-online':t('svc_online'),'vpnbot-history':t('svc_history')};
+    const nm={'hysteria-server':'FreeLink VPN','vpnbot-api':'API','vpnbot-auth':t('svc_authorization'),'vpnbot-traffic':t('svc_traffic'),'vpnbot-bot':t('svc_telegram_bot'),'vpnbot-online':t('svc_online'),'vpnbot-history':t('svc_history')};
     $('sL').innerHTML=d.services.map(s=>`<div class="card svc"><div class="sn"><span class="sd" style="background:${s.active?'var(--gn)':'var(--rd)'}"></span> ${nm[s.name]||s.name}</div><button class="sb" onclick="restartService('${s.name}')"><i class="fas fa-sync"></i></button></div>`).join('');
 }
 function restartService(n){confirmModal('Перезапустить '+n+'?',()=>{fetch('/api/services/'+n+'/restart',{method:'POST'}).then(()=>{toast(n+' OK');setTimeout(lSv,2000)})})}
