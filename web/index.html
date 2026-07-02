@@ -920,7 +920,7 @@ settings_theme:{ru:'Тема',en:'Theme'},
 theme_dark:{ru:'Тёмная',en:'Dark'},
 theme_light:{ru:'Светлая',en:'Light'},
 settings_update:{ru:'Обновление',en:'Update'},
-update_checking:{ru:'Проверка обновлений...',en:'Checking for updates...'},
+update_checking:{ru:'Нажмите «Проверить»',en:'Click "Check"'},
 update_check:{ru:'Проверить',en:'Check'},
 update_run:{ru:'Обновить',en:'Update'},
 update_available:{ru:'Доступно обновление',en:'Update available'},
@@ -1504,14 +1504,17 @@ async function lAudit(){const r=await fetch('/api/audit');const d=await r.json()
 /* ===== UPDATE ===== */
 let updatePollTimer=null;
 async function checkUpdate(){
-    $('updateStatusText').innerHTML='<span data-i18n="update_checking">'+t('update_checking')+'</span>';
+    $('updateStatusText').innerHTML='<span style="color:var(--ac2)">⏳ '+t('update_checking')+'</span>';
     $('updateDetail').textContent='';
     $('updateBtn').disabled=true;
     try{
+        $('updateDetail').textContent='Подключение к GitHub...';
         const r=await fetch('/api/update/check');
+        $('updateDetail').textContent='Получение данных...';
         const d=await r.json();
         if(!r.ok||d.error){
             $('updateStatusText').innerHTML='<span style="color:var(--rd)">✗ '+t('update_error')+(d.error_detail?' — '+d.error_detail:'')+'</span>';
+            $('updateDetail').textContent='';
             return;
         }
         if(d.update_available){
@@ -1524,19 +1527,22 @@ async function checkUpdate(){
         $('updateDetail').textContent='Local: '+d.local+' | Remote: '+d.remote;
     }catch(e){
         $('updateStatusText').innerHTML='<span style="color:var(--rd)">✗ '+t('update_error')+'</span>';
+        $('updateDetail').textContent=e.message||'';
     }
 }
 async function runUpdate(){
     if(!confirm(t('update_confirm')))return;
     $('updateBtn').disabled=true;
     $('updateLogBox').style.display='block';
-    $('updateLogBox').textContent='▶ Starting update...\n';
+    $('updateLogBox').textContent='▶ Запуск обновления...\n';
+    $('updateStatusText').innerHTML='<span style="color:var(--ac2)">⏳ Обновление...</span>';
     try{
         const r=await fetch('/api/update/run',{method:'POST'});
         const d=await r.json();
         if(!r.ok||d.error){
-            $('updateLogBox').textContent+='❌ '+(d.error||'Unknown error');
+            $('updateLogBox').textContent+='❌ '+(d.error||'Ошибка авторизации');
             $('updateBtn').disabled=false;
+            $('updateStatusText').innerHTML='<span style="color:var(--rd)">✗ '+t('update_failed')+'</span>';
             return;
         }
         pollUpdateStatus();
@@ -1564,7 +1570,7 @@ function pollUpdateStatus(){
                 }
             }
         }catch{}
-    },2000);
+    },1500);
 }
 
 /* ===== ADMIN MANAGEMENT ===== */
