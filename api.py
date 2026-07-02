@@ -3416,11 +3416,11 @@ async def subscription_urls(token: str, request: Request):
             proxy["obfs-password"] = obfs
         proxies.append(proxy)
 
-        # Plain text URI
+        # Plain text URI — original format that works with all clients
         if obfs:
-            uri = f"hysteria2://{enc_user}:{enc_pass}@{domain}:{node_port}?sni={sni}&obfs=salamander&obfs-password={obfs}&insecure=1#{name}"
+            uri = f"hysteria2://{enc_user}:{enc_pass}@{domain}:{node_port}?sni={sni}&obfs=salamander&obfs-password={obfs}&pinnedPeerCertSha256={cert_hash}#{name}"
         else:
-            uri = f"hysteria2://{enc_user}:{enc_pass}@{domain}:{node_port}?sni={sni}&insecure=1#{name}"
+            uri = f"hysteria2://{enc_user}:{enc_pass}@{domain}:{node_port}?sni={sni}&pinnedPeerCertSha256={cert_hash}#{name}"
         plain_lines.append(uri)
 
     if not proxies:
@@ -3430,17 +3430,12 @@ async def subscription_urls(token: str, request: Request):
     format_param = request.query_params.get("format", "")
     print(f"[SUB] token={token[:8]}... ua={ua[:60]} format={format_param}", flush=True)
 
-    import base64
     plain_content = "\n".join(plain_lines) + "\n"
-    b64_content = base64.b64encode(plain_content.encode()).decode()
-
-    # Base64 is the universal format (Happ, Shadowrocket, v2rayN, NekoBox)
-    if format_param == "plain":
-        return Response(content=plain_content, media_type="text/plain; charset=utf-8")
 
     # Clash YAML for Clash/Mihomo
     if format_param == "clash":
         import yaml as _yaml
+        import base64 as _b64
         clash_config = {
             "mixed-port": 7890, "allow-lan": False, "mode": "rule", "log-level": "info",
             "proxies": proxies,
@@ -3450,8 +3445,8 @@ async def subscription_urls(token: str, request: Request):
         content = _yaml.dump(clash_config, default_flow_style=False, allow_unicode=True)
         return Response(content=content, media_type="text/yaml; charset=utf-8")
 
-    # Default: base64
-    return Response(content=b64_content, media_type="text/plain; charset=utf-8")
+    # Default: plain text (same format as before migration — works with all clients)
+    return Response(content=plain_content, media_type="text/plain; charset=utf-8")
 
 # Client self-service: view subscription by token
 @app.get("/api/client/sub/{token}")
