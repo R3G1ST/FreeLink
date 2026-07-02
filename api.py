@@ -164,29 +164,8 @@ def get_all_users():
     return db.get_all_users()
 
 def get_aggregated_traffic():
-    """Aggregate per-user traffic from all nodes (main + remote)"""
-    traffic = {}
-    # Main server traffic from online_status.json
-    online = get_online_status()
-    for username, status in online.items():
-        if status.get("online"):
-            key = username.lower()
-            if key not in traffic:
-                traffic[key] = {"tx": 0, "rx": 0}
-            traffic[key]["tx"] = max(traffic[key]["tx"], status.get("tx", 0))
-            traffic[key]["rx"] = max(traffic[key]["rx"], status.get("rx", 0))
-    # Remote nodes traffic from heartbeat user_traffic
-    nodes = load_nodes()
-    for nid, node in nodes.items():
-        if node.get("is_main"):
-            continue
-        for username, ut in node.get("user_traffic", {}).items():
-            key = username.lower()
-            if key not in traffic:
-                traffic[key] = {"tx": 0, "rx": 0}
-            traffic[key]["tx"] = max(traffic[key]["tx"], ut.get("tx", 0))
-            traffic[key]["rx"] = max(traffic[key]["rx"], ut.get("rx", 0))
-    return traffic
+    """Aggregate per-user traffic from all nodes via traffic_snapshots table."""
+    return db.get_all_user_traffic()
 
 def save_user(uid, user_data):
     db.save_user(uid, user_data)
@@ -978,36 +957,8 @@ async def get_users():
     users = get_all_users()
     online_status = get_online_status()
 
-    # Main server traffic
-    traffic_data = {}
-    try:
-        response = requests.get("http://127.0.0.1:9999/traffic", timeout=2)
-        if response.status_code == 200:
-            traffic_data = response.json()
-    except:
-        pass
-
-    saved_traffic = {}
-    for uid, user in users.items():
-        ts = user.get("traffic_saved", {})
-        if ts:
-            saved_traffic[user.get("name", uid)] = {
-                "tx": ts.get("tx", 0),
-                "rx": ts.get("rx", 0)
-            }
-
-    # Remote nodes per-user traffic (case-insensitive)
-    nodes = load_nodes()
-    remote_traffic = {}
-    for nid, node in nodes.items():
-        if node.get("is_main"):
-            continue
-        for username, ut in node.get("user_traffic", {}).items():
-            key = username.lower()
-            if key not in remote_traffic:
-                remote_traffic[key] = {"tx": 0, "rx": 0}
-            remote_traffic[key]["tx"] = max(remote_traffic[key]["tx"], ut.get("tx", 0))
-            remote_traffic[key]["rx"] = max(remote_traffic[key]["rx"], ut.get("rx", 0))
+    # Aggregate traffic from traffic_snapshots table (no double-counting)
+    aggregated_traffic = db.get_all_user_traffic()
 
     result = []
     for uid, user in users.items():
@@ -1018,13 +969,10 @@ async def get_users():
         user_online = online_status.get(username, {})
         is_online = user_online.get("online", False)
 
-        current_traffic = traffic_data.get(username, {})
-        saved = saved_traffic.get(username, {})
-        remote = remote_traffic.get(username.lower(), {})
-
-        # Aggregate: sum of main server and remote nodes
-        tx_bytes = saved.get("tx", 0) + current_traffic.get("tx", 0) + remote.get("tx", 0)
-        rx_bytes = saved.get("rx", 0) + current_traffic.get("rx", 0) + remote.get("rx", 0)
+        # Traffic from snapshots: latest per node, summed across nodes
+        agg = aggregated_traffic.get(username.lower(), {})
+        tx_bytes = agg.get("tx", 0)
+        rx_bytes = agg.get("rx", 0)
         total_mb = round((tx_bytes + rx_bytes) / 1024 / 1024, 2)
 
         result.append({
@@ -2827,6 +2775,18 @@ async def node_heartbeat(request: Request):
     # Store per-user traffic from this node
     node["user_traffic"] = data.get("user_traffic", {})
     save_nodes(nodes)
+    # Save traffic snapshots from this node
+    user_traffic = data.get("user_traffic", {})
+    if user_traffic:
+        snapshots = []
+        for username, ut in user_traffic.items():
+            snapshots.append({
+                "username": username,
+                "node_id": node_id,
+                "tx": ut.get("tx", 0),
+                "rx": ut.get("rx", 0)
+            })
+        db.save_traffic_snapshots_batch(snapshots)
     # Return users for this node
     # If node has explicit assigned_users, use those; otherwise push ALL active users
     assigned = node.get("assigned_users", [])

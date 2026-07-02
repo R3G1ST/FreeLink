@@ -18,8 +18,19 @@ def save_traffic():
     current = get_current_traffic()
     if current is None:
         return
-    db.update_user_traffic_batch(current)
-    print(f"[{time.strftime('%H:%M:%S')}] Traffic saved: {len(current)} users", flush=True)
+    snapshots = []
+    for username, data in current.items():
+        snapshots.append({
+            "username": username,
+            "node_id": "__main__",
+            "tx": data.get("tx", 0),
+            "rx": data.get("rx", 0)
+        })
+    db.save_traffic_snapshots_batch(snapshots)
+    # Cleanup old snapshots every 10 minutes
+    if int(time.time()) % 600 < 60:
+        db.cleanup_old_snapshots()
+    print(f"[{time.strftime('%H:%M:%S')}] Traffic snapshots: {len(snapshots)} users", flush=True)
 
 if __name__ == '__main__':
     print('Traffic saver started (every 60 seconds)', flush=True)

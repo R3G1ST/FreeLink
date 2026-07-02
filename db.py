@@ -128,6 +128,17 @@ def init_db():
                 details TEXT
             )
         """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS traffic_snapshots (
+                id SERIAL PRIMARY KEY,
+                username TEXT NOT NULL,
+                node_id TEXT NOT NULL DEFAULT '__main__',
+                tx BIGINT DEFAULT 0,
+                rx BIGINT DEFAULT 0,
+                captured_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_traffic_user_node ON traffic_snapshots (username, node_id, captured_at DESC)")
         print("[DB] Tables initialized")
 
 # ===== USERS =====
@@ -410,3 +421,72 @@ def _row_to_user(row):
         "subscription_id": row["subscription_id"] or "",
         "ip": row["ip"] or ""
     }
+
+# ===== TRAFFIC SNAPSHOTS =====
+
+def save_traffic_snapshot(username, node_id, tx, rx):
+    """Save a cumulative traffic snapshot from a specific node."""
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO traffic_snapshots (username, node_id, tx, rx, captured_at)
+            VALUES (%s, %s, %s, %s, NOW())
+        """, (username.lower(), node_id, tx, rx))
+
+def save_traffic_snapshots_batch(snapshots):
+    """Batch save traffic snapshots. snapshots = [{username, node_id, tx, rx}, ...]"""
+    if not snapshots:
+        return
+    with get_conn() as conn:
+        cur = conn.cursor()
+        from psycopg2.extras import execute_values
+        execute_values(cur,
+            "INSERT INTO traffic_snapshots (username, node_id, tx, rx) VALUES %s",
+            [(s["username"].lower(), s.get("node_id", "__main__"), s["tx"], s["rx"]) for s in snapshots],
+            template=None, page_size=500
+        )
+
+def get_user_traffic_per_node(username):
+    """Get the latest traffic snapshot per node for a user (last 10 min)."""
+    with get_conn() as conn:
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("""
+            SELECT node_id, tx, rx, captured_at
+            FROM traffic_snapshots
+            WHERE username = %s AND captured_at > NOW() - INTERVAL '10 minutes'
+            AND id IN (
+                SELECT MAX(id) FROM traffic_snapshots
+                WHERE username = %s AND captured_at > NOW() - INTERVAL '10 minutes'
+                GROUP BY node_id
+            )
+        """, (username.lower(), username.lower()))
+        return {r["node_id"]: {"tx": r["tx"], "rx": r["rx"]} for r in cur.fetchall()}
+
+def get_all_user_traffic():
+    """Get aggregated traffic for ALL users across all nodes (latest snapshot per node per user)."""
+    with get_conn() as conn:
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("""
+            SELECT username, node_id, tx, rx
+            FROM traffic_snapshots t1
+            WHERE captured_at > NOW() - INTERVAL '10 minutes'
+            AND id = (
+                SELECT MAX(id) FROM traffic_snapshots t2
+                WHERE t2.username = t1.username AND t2.node_id = t1.node_id
+                AND t2.captured_at > NOW() - INTERVAL '10 minutes'
+            )
+        """)
+        result = {}
+        for r in cur.fetchall():
+            u = r["username"]
+            if u not in result:
+                result[u] = {"tx": 0, "rx": 0}
+            result[u]["tx"] += r["tx"]
+            result[u]["rx"] += r["rx"]
+        return result
+
+def cleanup_old_snapshots():
+    """Remove snapshots older than 1 hour."""
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM traffic_snapshots WHERE captured_at < NOW() - INTERVAL '1 hour'")
