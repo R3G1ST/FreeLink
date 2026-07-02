@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hysteria2-v1';
+const CACHE_NAME = 'hysteria2-v2';
 const STATIC_ASSETS = [
   '/web/telegram-web-app.js',
   '/web/chart.umd.min.js',
@@ -27,12 +27,14 @@ self.addEventListener('fetch', e => {
     return;
   }
   e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request).then(resp => {
-      if (resp.ok && e.request.method === 'GET') {
+    fetch(e.request).then(resp => {
+      const ct = resp.headers.get('content-type') || '';
+      const cc = resp.headers.get('cache-control') || '';
+      if (resp.ok && e.request.method === 'GET' && !ct.includes('text/html') && !cc.includes('no-store')) {
         const clone = resp.clone();
         caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
       }
       return resp;
-    }).catch(() => caches.match('/app')))
+    }).catch(() => caches.match(e.request).then(r => r || caches.match('/app')))
   );
 });
