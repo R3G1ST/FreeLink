@@ -204,11 +204,10 @@ def find_online_user(online_status, username):
     return online_status.get(username, {}) or online_status.get(username.lower(), {})
 
 def get_online_status():
-    """Get online status from DB snapshots (rolling window) + node heartbeats."""
+    """Online status based on traffic snapshots with activity detection."""
     try:
-        # Main server online from traffic snapshots (last 60 seconds)
         status = db.get_online_users(window_seconds=60)
-        # Merge online users from remote nodes (heartbeat data)
+        # Node heartbeat data: only update last_active, don't override online status
         nodes = load_nodes()
         for nid, node in nodes.items():
             if node.get("is_main"):
@@ -222,15 +221,12 @@ def get_online_status():
                 continue
             for username in node.get("online_usernames", []):
                 key = username.lower()
-                if key not in status or not status.get(key, {}).get("online"):
-                    status[key] = {
-                        "online": True,
-                        "tx": 0, "rx": 0,
-                        "tx_speed": 0, "rx_speed": 0,
-                        "last_active": node.get("last_seen", ""),
-                        "source": node.get("name", nid)
-                    }
-                    status[username] = status[key]
+                if key in status:
+                    # Node sees this user — update last_active if node is fresher
+                    node_time = node.get("last_seen", "")
+                    if node_time > status[key].get("last_active", ""):
+                        status[key]["last_active"] = node_time
+                # Don't add users from heartbeat — snapshot detection is the source of truth
         return status
     except Exception as e:
         print(f"[online] Error: {e}", flush=True)

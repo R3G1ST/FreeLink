@@ -493,54 +493,73 @@ def cleanup_old_snapshots():
 
 def get_online_users(window_seconds=60):
     """
-    Get online users based on recent snapshots.
-    A user is online if they had any snapshot in the last window_seconds.
-    Also returns speed (difference between latest and previous snapshot).
+    Get online users with traffic change detection.
+    User is "online" only if their traffic CHANGED between latest and previous snapshot.
+    Static counters = connected but idle = NOT online.
     """
     with get_conn() as conn:
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        # Get latest snapshot per user (any node)
+        # Get latest snapshot per user per node
         cur.execute("""
             SELECT username, node_id, tx, rx, captured_at
             FROM traffic_snapshots t1
             WHERE captured_at > NOW() - make_interval(secs => %s)
             AND id = (
                 SELECT MAX(id) FROM traffic_snapshots t2
-                WHERE t2.username = t1.username
+                WHERE t2.username = t1.username AND t2.node_id = t1.node_id
                 AND t2.captured_at > NOW() - make_interval(secs => %s)
             )
         """, (window_seconds, window_seconds))
-        latest = {r["username"]: r for r in cur.fetchall()}
+        latest = {}
+        for r in cur.fetchall():
+            key = r["username"]
+            if key not in latest:
+                latest[key] = []
+            latest[key].append(r)
 
-        # Get previous snapshot per user (for speed calculation)
+        # Get previous snapshot per user per node
         cur.execute("""
             SELECT username, node_id, tx, rx, captured_at
             FROM traffic_snapshots t1
             WHERE captured_at > NOW() - make_interval(secs => %s)
             AND id = (
                 SELECT MAX(id) FROM traffic_snapshots t2
-                WHERE t2.username = t1.username
+                WHERE t2.username = t1.username AND t2.node_id = t1.node_id
                 AND t2.captured_at < (
                     SELECT MAX(captured_at) FROM traffic_snapshots t3
-                    WHERE t3.username = t2.username
+                    WHERE t3.username = t2.username AND t3.node_id = t2.node_id
                     AND t3.captured_at > NOW() - make_interval(secs => %s)
                 )
             )
         """, (window_seconds * 3, window_seconds))
-        prev = {r["username"]: r for r in cur.fetchall()}
+        prev = {}
+        for r in cur.fetchall():
+            key = r["username"]
+            if key not in prev:
+                prev[key] = {}
+            prev[key][r["node_id"]] = r
 
         result = {}
-        for username, snap in latest.items():
-            p = prev.get(username, {})
-            tx_speed = max(0, snap["tx"] - p.get("tx", snap["tx"]))
-            rx_speed = max(0, snap["rx"] - p.get("rx", snap["rx"]))
+        for username, snaps in latest.items():
+            total_tx_speed = 0
+            total_rx_speed = 0
+            has_activity = False
+            for snap in snaps:
+                nid = snap["node_id"]
+                p = prev.get(username, {}).get(nid, {})
+                tx_delta = max(0, snap["tx"] - p.get("tx", snap["tx"]))
+                rx_delta = max(0, snap["rx"] - p.get("rx", snap["rx"]))
+                total_tx_speed += tx_delta
+                total_rx_speed += rx_delta
+                if tx_delta > 0 or rx_delta > 0:
+                    has_activity = True
+
             result[username] = {
-                "online": True,
-                "tx": snap["tx"],
-                "rx": snap["rx"],
-                "tx_speed": tx_speed,
-                "rx_speed": rx_speed,
-                "last_active": snap["captured_at"].strftime("%Y-%m-%d %H:%M:%S") if hasattr(snap["captured_at"], "strftime") else str(snap["captured_at"]),
-                "node_id": snap["node_id"]
+                "online": has_activity,
+                "tx": sum(s["tx"] for s in snaps),
+                "rx": sum(s["rx"] for s in snaps),
+                "tx_speed": total_tx_speed,
+                "rx_speed": total_rx_speed,
+                "last_active": max(str(s["captured_at"]) for s in snaps),
             }
         return result
