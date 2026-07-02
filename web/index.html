@@ -95,7 +95,7 @@ body::before{content:'';position:fixed;top:-300px;left:50%;transform:translateX(
 ::-webkit-scrollbar{width:5px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb);border-radius:3px}
-.wrap{max-width:1400px;margin:0 auto;padding:16px 24px 32px;position:relative;z-index:1}
+.wrap{max-width:1400px;margin:0 auto;padding:10px 24px 32px;position:relative;z-index:1}
 a{text-decoration:none;color:inherit}
 
 /* ===== ANIMATIONS ===== */
@@ -117,7 +117,7 @@ a{text-decoration:none;color:inherit}
 .layout.sidebar-collapsed{grid-template-columns:64px 1fr}
 
 /* ===== SIDEBAR ===== */
-.sidebar{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:12px;padding:12px 0;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);position:sticky;top:12px;height:fit-content;overflow:hidden;box-shadow:var(--shadow-sm);transition:width .3s ease,padding .3s ease;animation:slideInLeft .3s ease-out;width:240px}
+.sidebar{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:12px;padding:12px 0;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);position:sticky;top:8px;height:fit-content;overflow:hidden;box-shadow:var(--shadow-sm);transition:width .3s ease,padding .3s ease;animation:slideInLeft .3s ease-out;width:240px}
 .sidebar .sb-logo{display:flex;align-items:center;gap:10px;padding:0 20px 14px;border-bottom:1px solid var(--b1);margin-bottom:4px;position:relative}
 .sidebar .sb-logo .icon{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#8b5cf6,#6d28d9);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(139,92,246,0.3)}
 .sidebar .sb-logo .icon i{color:#fff;font-size:14px}
@@ -160,7 +160,7 @@ a{text-decoration:none;color:inherit}
 .card:hover{border-color:var(--b2)}
 
 /* ===== HEADER BAR ===== */
-.header-bar{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 0;margin-bottom:0}
+.header-bar{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:4px 0;margin-bottom:4px}
 .notif-bell{position:relative;width:36px;height:36px;border-radius:10px;border:1px solid var(--b1);background:var(--g2);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .25s}
 .notif-bell:hover{border-color:var(--ac);color:var(--ac2);background:var(--acg)}
 .notif-bell.shake i{animation:bellShake .5s ease}
