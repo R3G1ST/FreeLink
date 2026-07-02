@@ -1800,6 +1800,9 @@ def get_hysteria_remote_version():
                          timeout=10)
         if r.status_code == 200:
             tag = r.json().get("tag_name", "")
+            # tag format: "app/v2.9.3" — extract version part
+            if "/" in tag:
+                tag = tag.rsplit("/", 1)[-1]
             return tag if tag.startswith("v") else "v" + tag
     except:
         pass
@@ -1851,9 +1854,9 @@ def do_hysteria_update():
         hysteria_update_status["log"] += f"  ✓ Скачано: {downloaded // 1024 // 1024} MB\n"
 
         hysteria_update_status["log"] += "▶ Установка...\n"
-        subprocess.run(["chmod", "+x", tmp_path], check=True, timeout=5)
-        subprocess.run(["cp", tmp_path, "/usr/local/bin/hysteria"], check=True, timeout=10)
-        subprocess.run(["rm", "-f", tmp_path], timeout=5)
+        subprocess.run(["/usr/bin/chmod", "+x", tmp_path], check=True, timeout=5)
+        subprocess.run(["/usr/bin/cp", tmp_path, "/usr/local/bin/hysteria"], check=True, timeout=10)
+        subprocess.run(["/usr/bin/rm", "-f", tmp_path], timeout=5)
         hysteria_update_status["log"] += "  ✓ Бинарник заменён\n"
 
         hysteria_update_status["log"] += "▶ Перезапуск hysteria-server...\n"
