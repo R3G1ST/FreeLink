@@ -161,8 +161,6 @@ a{text-decoration:none;color:inherit}
 
 /* ===== HEADER BAR ===== */
 .header-bar{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-bottom:14px}
-.theme-toggle{width:36px;height:36px;border-radius:10px;border:1px solid var(--b1);background:var(--g2);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .25s}
-.theme-toggle:hover{border-color:var(--ac);color:var(--ac2);background:var(--acg);transform:rotate(30deg)}
 .notif-bell{position:relative;width:36px;height:36px;border-radius:10px;border:1px solid var(--b1);background:var(--g2);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .25s}
 .notif-bell:hover{border-color:var(--ac);color:var(--ac2);background:var(--acg)}
 .notif-bell.shake i{animation:bellShake .5s ease}
@@ -442,9 +440,6 @@ a{text-decoration:none;color:inherit}
                     <span class="notif-badge" id="notifBadge">0</span>
                 </div>
                 <div class="notif-panel" id="notifPanel"></div>
-                <button class="theme-toggle" onclick="toggleTheme()" title="Сменить тему">
-                    <i class="fas fa-moon" id="themeIcon"></i>
-                </button>
                 <div class="user-menu" id="userMenu">
                     <div class="user-avatar" onclick="toggleUserMenu()"><span id="avatar">A</span></div>
                     <div class="user-dropdown" id="userDropdown">
@@ -587,6 +582,16 @@ a{text-decoration:none;color:inherit}
                         <select id="langSelect" onchange="setLang(this.value)" class="lang-select">
                             <option value="ru">Русский</option>
                             <option value="en">English</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="set-group">
+                    <h3><i class="fas fa-palette"></i> <span data-i18n="settings_theme">Тема</span></h3>
+                    <div class="set-item">
+                        <div class="si-label"><span data-i18n="settings_theme">Тема</span></div>
+                        <select id="themeSelect" onchange="setTheme(this.value)" class="lang-select">
+                            <option value="dark">🌙 <span data-i18n="theme_dark">Тёмная</span></option>
+                            <option value="light">☀️ <span data-i18n="theme_light">Светлая</span></option>
                         </select>
                     </div>
                 </div>
@@ -869,7 +874,9 @@ settings_version:{ru:'Версия',en:'Version'},
 settings_server:{ru:'Сервер',en:'Server'},
 settings_admins:{ru:'Администраторы',en:'Administrators'},
 settings_account:{ru:'Мой аккаунт',en:'My Account'},
-settings_language:{ru:'Язык',en:'Language'},
+settings_theme:{ru:'Тема',en:'Theme'},
+theme_dark:{ru:'Тёмная',en:'Dark'},
+theme_light:{ru:'Светлая',en:'Light'},
 units_mb:{ru:'МБ',en:'MB'},
 units_gb:{ru:'ГБ',en:'GB'},
 units_mbps:{ru:'Мбит/с',en:'Mbps'},
@@ -885,6 +892,12 @@ function applyLang(){
     // Set language dropdown
     const langSelect=document.getElementById('langSelect');
     if(langSelect)langSelect.value=currentLang;
+    // Set theme dropdown options text
+    const themeSelect=document.getElementById('themeSelect');
+    if(themeSelect){
+        themeSelect.options[0].text='🌙 '+t('theme_dark');
+        themeSelect.options[1].text='☀️ '+t('theme_light');
+    }
     // Set footer text
     const footer=document.getElementById('footerText');
     if(footer)footer.innerHTML=t('footer_text');
@@ -894,18 +907,16 @@ function applyLang(){
 function initTheme(){
     const saved=localStorage.getItem('vpn_admin_theme')||'dark';
     document.documentElement.setAttribute('data-theme',saved);
-    updateThemeIcon(saved);
+    const sel=$('themeSelect');if(sel)sel.value=saved;
+}
+function setTheme(theme){
+    document.documentElement.setAttribute('data-theme',theme);
+    localStorage.setItem('vpn_admin_theme',theme);
+    const sel=$('themeSelect');if(sel)sel.value=theme;
 }
 function toggleTheme(){
     const current=document.documentElement.getAttribute('data-theme');
-    const next=current==='dark'?'light':'dark';
-    document.documentElement.setAttribute('data-theme',next);
-    localStorage.setItem('vpn_admin_theme',next);
-    updateThemeIcon(next);
-}
-function updateThemeIcon(theme){
-    const icon=$('themeIcon');
-    icon.className=theme==='dark'?'fas fa-moon':'fas fa-sun';
+    setTheme(current==='dark'?'light':'dark');
 }
 
 /* ===== SIDEBAR ===== */
