@@ -100,8 +100,8 @@ body::before{content:'';position:fixed;top:-300px;left:50%;transform:translateX(
 a{text-decoration:none;color:inherit}
 
 /* ===== LAYOUT ===== */
-.layout{display:grid;grid-template-columns:200px 1fr;transition:grid-template-columns .3s ease;align-items:start}
-.layout.sidebar-collapsed{grid-template-columns:56px 1fr}
+.layout{transition:margin-left .3s ease;margin-left:200px}
+.layout.sidebar-collapsed{margin-left:56px}
 
 /* ===== SIDEBAR ===== */
 .sidebar{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:0 12px 12px 0;padding:10px 0;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);position:fixed;left:0;top:0;bottom:0;width:200px;overflow:hidden;box-shadow:var(--shadow-sm);transition:width .3s ease;animation:slideInLeft .3s ease-out;z-index:100}
@@ -383,8 +383,7 @@ a{text-decoration:none;color:inherit}
     .header-bar{padding-right:16px}
 }
 @media(max-width:900px){
-    .layout{grid-template-columns:1fr}
-    .layout.sidebar-collapsed{grid-template-columns:1fr}
+    .layout{margin-left:0!important}
     .sidebar{position:static;display:flex;flex-wrap:wrap;padding:6px 8px;gap:2px;overflow:auto;width:auto!important;border-radius:0 0 10px 10px;border:1px solid var(--b1);border-top:none}
     .sidebar.collapsed{width:auto!important}
     .sidebar .sb-logo{display:none}
