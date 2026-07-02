@@ -1272,7 +1272,7 @@ function deleteUserModal(){if(!CUid)return;confirmModal('Удалить поль
 function showQRForUser(uid){
     fetch('/api/qr/'+uid).then(r=>r.json()).then(d=>{
         if(d.qr){
-            setModal('qrcode','blue',t('msg_qr_title'),t('msg_qr_scan'),`<div style="text-align:center"><img src="${d.qr}" style="max-width:220px;border-radius:8px" onerror="this.style.display='none';this.parentElement.innerHTML+='<div style=\\'padding:16px;color:var(--rd);font-size:12px\\'>${t('msg_qr_error')}</div>'"/></div><div style="font-size:10px;color:var(--t4);margin-top:10px;word-break:break-all;font-family:monospace">${d.link||''}</div>`,'<button class="btn btn-n" onclick="closeModal()">'+t('btn_close')+'</button>');
+            setModal('qrcode','blue',t('msg_qr_title'),t('msg_qr_scan'),`<div style="text-align:center"><img src="${d.qr}" style="max-width:220px;border-radius:8px" onerror="this.style.display='none';this.parentElement.innerHTML+='<div style=\\'padding:16px;color:var(--rd);font-size:12px\\'>${t('msg_qr_error')}</div>'"/></div><div style="margin-top:10px;text-align:center"><div style="font-size:10px;color:var(--ac2);word-break:break-all;font-family:monospace">${d.portal_url||''}</div><div style="font-size:10px;color:var(--t4);margin-top:6px">VPN: ${d.link?d.link.substring(0,40)+'...':''}</div></div>`,'<button class="btn btn-n" onclick="closeModal()">'+t('btn_close')+'</button>');
         }else if(d.link){
             showQRModalWithData(d.link);
         }else{
@@ -1285,7 +1285,7 @@ function showQRModal(){
     if(!CUid)return;
     fetch('/api/qr/'+CUid).then(r=>r.json()).then(d=>{
         if(d.qr){
-            setModal('qrcode','blue',t('msg_qr_title'),t('msg_qr_scan'),`<div style="text-align:center"><img src="${d.qr}" style="max-width:220px;border-radius:8px"/></div><div style="font-size:10px;color:var(--t4);margin-top:10px;word-break:break-all;font-family:monospace">${d.link||''}</div>`,'<button class="btn btn-n" onclick="closeModal()">'+t('btn_close')+'</button>');
+            setModal('qrcode','blue',t('msg_qr_title'),t('msg_qr_scan'),`<div style="text-align:center"><img src="${d.qr}" style="max-width:220px;border-radius:8px"/></div><div style="margin-top:10px;text-align:center"><div style="font-size:10px;color:var(--ac2);word-break:break-all;font-family:monospace">${d.portal_url||''}</div><div style="font-size:10px;color:var(--t4);margin-top:6px">VPN: ${d.link?d.link.substring(0,40)+'...':''}</div></div>`,'<button class="btn btn-n" onclick="closeModal()">'+t('btn_close')+'</button>');
         }else{
             showQRModalWithData(d.link||'');
         }

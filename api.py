@@ -1532,17 +1532,23 @@ async def get_qr(uid: str):
     user = get_user(uid)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    # QR links to client portal with subscription
+    service_token = user.get("service_token", "")
+    if not service_token:
+        service_token = secrets.token_urlsafe(24)
+        db.save_user(uid, {**user, "service_token": service_token})
+    portal_url = f"https://link.qmbox.ru/c?token={service_token}"
     link = get_user_link(uid, user)
     if not HAS_QR:
         return JSONResponse(status_code=500, content={"error": "qrcode not installed"})
     qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=6, border=2)
-    qr.add_data(link)
+    qr.add_data(portal_url)
     qr.make(fit=True)
     img = qr.make_image(fill_color="#000", back_color="#fff")
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     b64 = base64.b64encode(buf.getvalue()).decode()
-    return {"qr": f"data:image/png;base64,{b64}", "link": link}
+    return {"qr": f"data:image/png;base64,{b64}", "link": link, "portal_url": portal_url}
 
 @app.get("/api/miniapp/qr/{uid}")
 async def miniapp_get_qr(uid: str):
