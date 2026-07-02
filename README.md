@@ -11,7 +11,7 @@
 
 <p align="center">
   <b>Multi-server VPN management panel with subscription system</b><br>
-  <a href="#features">Features</a> &bull; <a href="#quick-start">Quick Start</a> &bull; <a href="#architecture">Architecture</a> &bull; <a href="#services">Services</a> &bull; <a href="#api">API</a>
+  <a href="#-features">Features</a> &bull; <a href="#-quick-start">Quick Start</a> &bull; <a href="#-architecture">Architecture</a> &bull; <a href="#-services">Services</a> &bull; <a href="#-api">API</a> &bull; <a href="#-русский">Русский</a>
 </p>
 
 > **ALPHA VERSION** — This project is in active development. APIs, features, and configuration may change without notice.
@@ -276,4 +276,273 @@ This handles:
 
 <p align="center">
   Made with care for the VPN community
+</p>
+
+---
+---
+
+# Русский
+
+> **АЛЬФА-ВЕРСИЯ** — Проект в активной разработке. API, функции и конфигурация могут изменяться без уведомления.
+
+---
+
+## Возможности
+
+| Возможность | Описание |
+|-------------|----------|
+| **Мульти-сервер** | Основной сервер + неограниченные ноды через SSH |
+| **Подписки** | Одна ссылка на все серверы (Hysteria2, Clash, v2rayN, Happ) |
+| **Telegram Бот** | Управление пользователями, уведомления, VPN-ссылки |
+| **Мини-апп** | Мобильная панель для Telegram |
+| **Веб-панель** | Панель администратора с метриками в реальном времени |
+| **Авто-деплой** | Настройка сервера в один клик через SSH |
+| **Учёт трафика** | Трафик по пользователям на всех нодах (PostgreSQL) |
+| **Онлайн-детект** | По изменению трафика: сравнивает снапшоты per (user, node) |
+| **Планы** | Гибкая система подписок с авто-истечением |
+| **Ограничение скорости** | Контроль пропускной способности per user |
+| **Auth-сервер** | Внешняя авторизация Hysteria для мульти-нод |
+| **История трафика** | Графики на JSON с выбором периода |
+
+---
+
+## Быстрый старт
+
+### Требования
+
+- Ubuntu 20.04+ / Debian 11+
+- Python 3.10+
+- PostgreSQL
+- Домен с DNS-записью на сервер
+- Telegram Bot Token (от [@BotFather](https://t.me/BotFather))
+
+### Установка
+
+```bash
+git clone https://github.com/R3G1ST/FreeLink.git /opt/freelink
+cd /opt/freelink
+chmod +x install.sh
+sudo ./install.sh
+```
+
+Установщик запросит:
+- Имя домена
+- IP сервера
+- Telegram Bot Token
+- Telegram Admin ID
+
+### После установки
+
+1. Открой `https://ваш-домен.com`
+2. Логин: `admin`
+3. Пароль: `admin123`
+4. **Смените пароль сразу!**
+
+---
+
+## Обновление
+
+```bash
+cd /opt/freelink
+sudo ./update.sh
+```
+
+---
+
+## Архитектура
+
+```
+                         +-----------------+
+                         |  Telegram Бот   |
+                         |    (bot.py)     |
+                         +--------+--------+
+                                  |
+                         +--------v--------+
+                         |    FastAPI       |
+          +------------>|    (api.py)      |<------------+
+          |             +--------+--------+             |
+          |                      |                      |
+   +------v------+       +------v------+       +-------v-------+
+   | Auth-сервер  |       |  PostgreSQL  |       |   Онлайн-     |
+   |  (auth.py)   |       |  (db.py)     |       |   детектор    |
+   |  :8001       |       |  снапшоты    |       |  (опрос 2с)   |
+   +--------------+       +--------------+       +-------+-------+
+          |                      |                      |
+   +------v------+       +------v------+       +-------v-------+
+   |  Hysteria 2  |       |  Node Agent  |       | Traffic Saver |
+   |  (main)     |       | (node_agent) |       | (опрос 60с)   |
+   +--------------+       +--------------+       +---------------+
+```
+
+### Поток данных (Онлайн-детект)
+
+```
+Hysteria API (кумулятивные tx/rx)
+       |
+       v (каждые 2с)
+online_detector.py --> PostgreSQL traffic_snapshots
+       |
+       v
+get_online_users() --> Сравнивает rank-1 vs rank-2 per (user, node)
+       |               Если tx/rx ИЗМЕНИЛИСЬ => онлайн
+       v               Скорость = delta_bytes / time_delta (байт/с)
+api.py get_online_status()
+       |
+       v
+/api/users, /api/online, /ws/live, Telegram Бот
+```
+
+---
+
+## Структура проекта
+
+```
+freelink/
+├── api.py                  # FastAPI бэкенд (REST + WebSocket)
+├── auth.py                 # Внешний auth-сервер Hysteria
+├── bot.py                  # Telegram бот
+├── db.py                   # PostgreSQL (traffic_snapshots, users, nodes)
+├── node_agent.py           # Агент удалённых нод (heartbeat + трафик)
+├── online_detector.py      # Онлайн-детект (опрос 2с, сравнение трафика)
+├── save_traffic.py         # Запись трафика (опрос 60с, дублирование)
+├── traffic_history.py      # История трафика для графиков (опрос 5мин)
+├── migrate.py              # Миграция БД
+├── install.sh              # Скрипт установки
+├── update.sh               # Скрипт обновления
+├── start.sh                # Скрипт запуска
+├── requirements.txt        # Python зависимости
+├── config.yaml             # Активный конфиг
+├── config.example.yaml     # Шаблон конфига
+├── admins.json             # Аккаунты администраторов
+├── nodes.json              # Реестр нод
+├── sessions.json           # Сессии пользователей
+├── plans.json              # Планы подписок
+├── subscriptions.json      # Подписки пользователей
+├── data.yaml               # Данные пользователей (legacy)
+├── data.db                 # SQLite (legacy)
+├── traffic_history.json    # Данные для графиков трафика
+├── online_status.json      # Кэш онлайн (пишется детектором)
+├── web/                    # Фронтенд
+│   ├── index.html          # Панель администратора
+│   ├── miniapp.html        # Telegram Мини-апп
+│   └── client.html         # Портал клиента
+├── scripts/                # Вспомогательные скрипты
+├── backups/                # Директория бэкапов
+├── logs/                   # Файлы логов
+└── venv/                   # Python virtualenv
+```
+
+---
+
+## Сервисы
+
+| Сервис | Описание | Интервал |
+|--------|----------|----------|
+| `freelink-api` | Основной API + WebSocket | - |
+| `freelink-auth` | Внешняя авторизация Hysteria | - |
+| `freelink-bot` | Telegram бот | - |
+| `freelink-online` | Онлайн-детектор (опрос Hysteria + снапшоты в БД) | 2с |
+| `freelink-traffic` | Запись трафика (дублирование для надёжности) | 60с |
+| `freelink-history` | История трафика для графиков | 5мин |
+
+### Управление
+
+```bash
+systemctl status freelink-api
+systemctl restart freelink-api
+journalctl -u freelink-api -f
+```
+
+---
+
+## Онлайн-детект
+
+Система определяет статус онлайн по сравнению последовательных снапшотов трафика:
+
+1. **Опрос**: Hysteria API возвращает кумулятивные `tx`/`rx` для всех подключённых пользователей каждые 2 секунды
+2. **Хранение**: Снапшоты сохраняются в PostgreSQL таблицу `traffic_snapshots` с таймстампом `captured_at`
+3. **Сравнение**: Для каждой пары `(user, node)` сравниваются rank-1 и rank-2 снапшоты
+4. **Решение**: Пользователь онлайн только если `tx` или `rx` **изменились** между снапшотами
+5. **Скорость**: Вычисляется как `delta_bytes / time_delta` в байтах/сек
+
+Обрабатывает:
+- **Основной Hysteria**: Опрос каждые 2с, много снапшотов на пользователя
+- **Удалённые ноды**: Heartbeat каждые ~30с через `node_agent.py`, меньше снапшотов
+- **Призраки**: Пользователи отключились, но Hysteria всё ещё выдаёт их со статичными totals
+
+### Ответ API
+
+```json
+{
+  "username": {
+    "online": true,
+    "tx": 26644909,
+    "rx": 890639108,
+    "tx_speed": 68,
+    "rx_speed": 67,
+    "last_active": "2026-07-02T21:32:47.534477",
+    "inactive_since": null
+  }
+}
+```
+
+- `tx_speed` / `rx_speed`: байты/сек (реальная пропускная способность, не сырая дельта)
+- `last_active`: таймстамп последнего снапшота
+- `inactive_since`: устанавливается когда пользователь прекращает передачу данных (>5 мин idle)
+
+---
+
+## API Эндпоинты
+
+| Эндпоинт | Метод | Описание |
+|-----------|-------|----------|
+| `/api/users` | GET | Список пользователей с онлайн, трафиком, скоростью |
+| `/api/user/{uid}` | GET | Детали одного пользователя |
+| `/api/online` | GET | Онлайн-статус всех пользователей |
+| `/api/status` | GET | Сводка дашборда |
+| `/api/server-info` | GET | Метрики системы (CPU/RAM/Disk) |
+| `/api/live-traffic` | GET | Онлайн-пользователи со скоростью |
+| `/api/traffic-history` | GET | История трафика для графиков |
+| `/api/nodes` | GET | Список нод со статусом |
+| `/api/node/heartbeat` | POST | Heartbeat удалённой ноды |
+| `/api/node/register` | POST | Регистрация новой ноды |
+| `/ws/live` | WebSocket | Трафик + онлайн в реальном времени |
+| `/s/{token}` | GET | Портал самообслуживания клиента |
+| `/api/client/sub/{token}` | GET | Данные подписки клиента |
+
+---
+
+## Дорожная карта
+
+### Высокий приоритет
+- [ ] Завершить перевод EN/RU (остатки контента в модалках)
+- [ ] Исправить проблемы подключения к нодам (обработка UDP файрволов)
+- [ ] Добавить ограничение скорости для пользователей
+- [ ] Реализовать графики истории трафика с выбором периода
+
+### Средний приоритет
+- [ ] Добавить 2FA аутентификацию для админ-панели
+- [ ] Реализовать управление сессиями пользователей
+- [ ] Добавить webhook уведомления (Discord, Slack)
+- [ ] Создать документацию API (Swagger/OpenAPI)
+- [ ] Реализовать группы пользователей и массовые операции
+
+### Низкий приоритет
+- [ ] Добавить больше языков (китайский, испанский, португальский)
+- [ ] Создать мобильное приложение (React Native / Flutter)
+- [ ] Реализовать дашборд мониторинга пропускной способности
+- [ ] Добавить гео-локацию для выбора сервера
+- [ ] Создать функционал бэкапа/восстановления
+- [ ] Добавить оповещения о ресурсах системы (пороги CPU/RAM/Disk)
+
+---
+
+## Лицензия
+
+[MIT License](LICENSE)
+
+---
+
+<p align="center">
+  Сделано с заботой для VPN-сообщества
 </p>
