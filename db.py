@@ -491,25 +491,24 @@ def cleanup_old_snapshots():
         cur = conn.cursor()
         cur.execute("DELETE FROM traffic_snapshots WHERE captured_at < NOW() - INTERVAL '1 hour'")
 
-def get_online_users(window_seconds=60):
+def get_online_users(window_seconds=30):
     """
-    Get online users with traffic change detection.
-    User is "online" only if their traffic CHANGED between latest and previous snapshot.
-    Static counters = connected but idle = NOT online.
+    Online detection: user is online if in latest snapshot AND traffic changed.
     """
     with get_conn() as conn:
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        # Get latest snapshot per user per node
+
+        # Latest snapshot per user per node (15 sec)
         cur.execute("""
             SELECT username, node_id, tx, rx, captured_at
             FROM traffic_snapshots t1
-            WHERE captured_at > NOW() - make_interval(secs => %s)
+            WHERE captured_at > NOW() - INTERVAL '15 seconds'
             AND id = (
                 SELECT MAX(id) FROM traffic_snapshots t2
                 WHERE t2.username = t1.username AND t2.node_id = t1.node_id
-                AND t2.captured_at > NOW() - make_interval(secs => %s)
+                AND t2.captured_at > NOW() - INTERVAL '15 seconds'
             )
-        """, (window_seconds, window_seconds))
+        """)
         latest = {}
         for r in cur.fetchall():
             key = r["username"]
@@ -517,21 +516,20 @@ def get_online_users(window_seconds=60):
                 latest[key] = []
             latest[key].append(r)
 
-        # Get previous snapshot per user per node
+        # Previous snapshot per user per node
         cur.execute("""
             SELECT username, node_id, tx, rx, captured_at
             FROM traffic_snapshots t1
-            WHERE captured_at > NOW() - make_interval(secs => %s)
-            AND id = (
+            WHERE id = (
                 SELECT MAX(id) FROM traffic_snapshots t2
                 WHERE t2.username = t1.username AND t2.node_id = t1.node_id
                 AND t2.captured_at < (
                     SELECT MAX(captured_at) FROM traffic_snapshots t3
                     WHERE t3.username = t2.username AND t3.node_id = t2.node_id
-                    AND t3.captured_at > NOW() - make_interval(secs => %s)
+                    AND t3.captured_at > NOW() - INTERVAL %s
                 )
             )
-        """, (window_seconds * 3, window_seconds))
+        """, (f"{window_seconds} seconds",))
         prev = {}
         for r in cur.fetchall():
             key = r["username"]
