@@ -4,9 +4,9 @@ from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ConversationHandler, ContextTypes
 
-CONFIG_FILE = "/opt/vpnbot/config.yaml"
-DATA_FILE = "/opt/vpnbot/data.yaml"
-ONLINE_FILE = "/opt/vpnbot/online_status.json"
+CONFIG_FILE = "/opt/freelink/config.yaml"
+DATA_FILE = "/opt/freelink/data.yaml"
+ONLINE_FILE = "/opt/freelink/online_status.json"
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 

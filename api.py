@@ -28,12 +28,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DATA_FILE = "/opt/vpnbot/data.yaml"
-CONFIG_FILE = "/opt/vpnbot/config.yaml"
-ONLINE_FILE = "/opt/vpnbot/online_status.json"
-ADMINS_FILE = "/opt/vpnbot/admins.json"
-SESSIONS_FILE = "/opt/vpnbot/sessions.json"
-AUDIT_FILE = "/opt/vpnbot/audit.log"
+DATA_FILE = "/opt/freelink/data.yaml"
+CONFIG_FILE = "/opt/freelink/config.yaml"
+ONLINE_FILE = "/opt/freelink/online_status.json"
+ADMINS_FILE = "/opt/freelink/admins.json"
+SESSIONS_FILE = "/opt/freelink/sessions.json"
+AUDIT_FILE = "/opt/freelink/audit.log"
 
 # ====== ADMIN AUTH ======
 
@@ -99,7 +99,7 @@ def validate_session(token):
 def load_env():
     env = {}
     try:
-        with open("/opt/vpnbot/.env", 'r') as f:
+        with open("/opt/freelink/.env", 'r') as f:
             for line in f:
                 if '=' in line and not line.startswith('#'):
                     key, val = line.strip().split('=', 1)
@@ -334,7 +334,7 @@ async def auth_user(request: Request):
 
 @app.get("/app")
 async def miniapp_page():
-    with open("/opt/vpnbot/web/miniapp.html", "r") as f:
+    with open("/opt/freelink/web/miniapp.html", "r") as f:
         return HTMLResponse(content=f.read(), headers={"Cache-Control": "no-cache"})
 
 @app.post("/api/miniapp/auth")
@@ -654,7 +654,7 @@ echo "=== DONE ==="
 
 @app.get("/api/miniapp/services")
 async def miniapp_services():
-    services = ["hysteria-server", "vpnbot-api", "vpnbot-auth", "vpnbot-traffic", "vpnbot-bot", "vpnbot-online", "vpnbot-history"]
+    services = ["hysteria-server", "freelink-api", "freelink-auth", "freelink-traffic", "freelink-bot", "freelink-online", "freelink-history"]
     result = []
     for svc in services:
         try:
@@ -666,7 +666,7 @@ async def miniapp_services():
 
 @app.post("/api/miniapp/services/{name}/restart")
 async def miniapp_restart_service(name: str):
-    allowed = ["hysteria-server", "vpnbot-api", "vpnbot-auth", "vpnbot-traffic", "vpnbot-bot", "vpnbot-online", "vpnbot-history"]
+    allowed = ["hysteria-server", "freelink-api", "freelink-auth", "freelink-traffic", "freelink-bot", "freelink-online", "freelink-history"]
     if name not in allowed:
         return JSONResponse(status_code=400, content={"error": "Not allowed"})
     try:
@@ -922,7 +922,7 @@ async def get_audit(request: Request):
 
 @app.get("/")
 async def root():
-    with open("/opt/vpnbot/web/index.html", "r") as f:
+    with open("/opt/freelink/web/index.html", "r") as f:
         content = f.read()
     ts = str(int(time.time()))
     content = content.replace("</head>", f'<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta name="version" content="{ts}"></head>')
@@ -936,7 +936,7 @@ async def root():
 
 @app.get("/login")
 async def login_page():
-    with open("/opt/vpnbot/web/login.html", "r") as f:
+    with open("/opt/freelink/web/login.html", "r") as f:
         return HTMLResponse(content=f.read())
 
 @app.get("/favicon.ico")
@@ -945,14 +945,14 @@ async def favicon():
 
 @app.get("/deploy-test")
 async def deploy_test_page():
-    with open("/opt/vpnbot/web/deploy-test.html", "r") as f:
+    with open("/opt/freelink/web/deploy-test.html", "r") as f:
         return HTMLResponse(content=f.read())
 
 @app.get("/client")
 @app.get("/c")
 @app.get("/client/{token}")
 async def client_portal(token: str = ""):
-    with open("/opt/vpnbot/web/client.html", "r") as f:
+    with open("/opt/freelink/web/client.html", "r") as f:
         content = f.read()
     return HTMLResponse(content=content, headers={"Cache-Control": "no-cache"})
 
@@ -1232,7 +1232,7 @@ async def bulk_extend(request: Request):
 
 # ====== PLANS ======
 
-PLANS_FILE = "/opt/vpnbot/plans.json"
+PLANS_FILE = "/opt/freelink/plans.json"
 
 def load_plans():
     if os.path.exists(PLANS_FILE):
@@ -1361,7 +1361,7 @@ async def export_users(fmt: str = "json"):
 
 @app.get("/api/services")
 async def get_services():
-    services = ["hysteria-server", "vpnbot-api", "vpnbot-auth", "vpnbot-traffic", "vpnbot-bot", "vpnbot-online"]
+    services = ["hysteria-server", "freelink-api", "freelink-auth", "freelink-traffic", "freelink-bot", "freelink-online"]
     result = []
     for svc in services:
         try:
@@ -1374,7 +1374,7 @@ async def get_services():
 
 @app.post("/api/services/{name}/restart")
 async def restart_service(name: str):
-    allowed = ["hysteria-server", "vpnbot-api", "vpnbot-auth", "vpnbot-traffic", "vpnbot-bot", "vpnbot-online"]
+    allowed = ["hysteria-server", "freelink-api", "freelink-auth", "freelink-traffic", "freelink-bot", "freelink-online"]
     if name not in allowed:
         raise HTTPException(status_code=400, detail="Service not allowed")
     try:
@@ -1385,7 +1385,7 @@ async def restart_service(name: str):
 
 # ====== TRAFFIC HISTORY ======
 
-TRAFFIC_HISTORY_FILE = "/opt/vpnbot/traffic_history.json"
+TRAFFIC_HISTORY_FILE = "/opt/freelink/traffic_history.json"
 
 def record_traffic_snapshot():
     stats = get_hysteria_stats()
@@ -1749,7 +1749,7 @@ async def broadcast_update():
 
 # ====== NOTIFICATIONS ======
 
-NOTIFICATIONS_FILE = "/opt/vpnbot/notifications.json"
+NOTIFICATIONS_FILE = "/opt/freelink/notifications.json"
 
 def load_notifications():
     if os.path.exists(NOTIFICATIONS_FILE):
@@ -2179,7 +2179,7 @@ echo "=== Agent started ==="
 # Serve agent script for download
 @app.get("/api/node/agent-script")
 async def get_agent_script():
-    with open("/opt/vpnbot/node_agent.py", "r") as f:
+    with open("/opt/freelink/node_agent.py", "r") as f:
         return Response(content=f.read(), media_type="text/plain")
 
 # Serve TLS certificates for nodes
@@ -2204,7 +2204,7 @@ async def get_cert():
             os.unlink(tmp.name)
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-NODES_FILE = "/opt/vpnbot/nodes.json"
+NODES_FILE = "/opt/freelink/nodes.json"
 MAIN_NODE_ID = "__main__"
 
 def load_nodes():
@@ -2733,8 +2733,8 @@ async def auto_assign_users():
 # ===== SUBSCRIPTION SYSTEM =====
 # ===================================================================
 
-SUBS_FILE = "/opt/vpnbot/subscriptions.json"
-PAYMENTS_FILE = "/opt/vpnbot/payments.json"
+SUBS_FILE = "/opt/freelink/subscriptions.json"
+PAYMENTS_FILE = "/opt/freelink/payments.json"
 
 def load_subscriptions():
     if os.path.exists(SUBS_FILE):

@@ -50,13 +50,13 @@ apt-get update -qq
 apt-get install -y -qq python3 python3-pip python3-venv nginx certbot curl git
 
 echo -e "${GREEN}Cloning project...${NC}"
-if [ -d "/opt/vpnbot" ]; then
-    echo "Directory /opt/vpnbot exists, updating..."
-    cd /opt/vpnbot
+if [ -d "/opt/freelink" ]; then
+    echo "Directory /opt/freelink exists, updating..."
+    cd /opt/freelink
     git pull
 else
-    git clone https://github.com/R3G1ST/FreeLink.git /opt/vpnbot
-    cd /opt/vpnbot
+    git clone https://github.com/R3G1ST/FreeLink.git /opt/freelink
+    cd /opt/freelink
 fi
 
 echo -e "${GREEN}Setting up Python environment...${NC}"
@@ -68,7 +68,7 @@ echo -e "${GREEN}Generating obfs password...${NC}"
 OBFS_PASS=$(openssl rand -hex 16)
 
 echo -e "${GREEN}Creating config...${NC}"
-cat > /opt/vpnbot/config.yaml << EOF
+cat > /opt/freelink/config.yaml << EOF
 domain: "${DOMAIN}"
 server_ip: "${SERVER_IP}"
 obfs_password: "${OBFS_PASS}"
@@ -98,7 +98,7 @@ if [ ! -f "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem" ]; then
 fi
 
 echo -e "${GREEN}Configuring Nginx...${NC}"
-cat > /etc/nginx/sites-available/vpnbot << EOF
+cat > /etc/nginx/sites-available/freelink << EOF
 server {
     listen 80;
     server_name ${DOMAIN};
@@ -131,29 +131,29 @@ server {
     }
 
     location /web/ {
-        alias /opt/vpnbot/web/;
+        alias /opt/freelink/web/;
         charset utf-8;
     }
 }
 EOF
 
-ln -sf /etc/nginx/sites-available/vpnbot /etc/nginx/sites-enabled/
+ln -sf /etc/nginx/sites-available/freelink /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl reload nginx
 
 echo -e "${GREEN}Creating systemd services...${NC}"
 
 # API service
-cat > /etc/systemd/system/vpnbot-api.service << EOF
+cat > /etc/systemd/system/freelink-api.service << EOF
 [Unit]
-Description=VPNBot API
+Description=FreeLink API
 After=network.target
 
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/opt/vpnbot
-ExecStart=/opt/vpnbot/venv/bin/python3 api.py
+WorkingDirectory=/opt/freelink
+ExecStart=/opt/freelink/venv/bin/python3 api.py
 Restart=always
 RestartSec=5
 
@@ -162,16 +162,16 @@ WantedBy=multi-user.target
 EOF
 
 # Auth service
-cat > /etc/systemd/system/vpnbot-auth.service << EOF
+cat > /etc/systemd/system/freelink-auth.service << EOF
 [Unit]
-Description=VPNBot Auth
+Description=FreeLink Auth
 After=network.target
 
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/opt/vpnbot
-ExecStart=/opt/vpnbot/venv/bin/python3 auth.py
+WorkingDirectory=/opt/freelink
+ExecStart=/opt/freelink/venv/bin/python3 auth.py
 Restart=always
 RestartSec=5
 
@@ -180,16 +180,16 @@ WantedBy=multi-user.target
 EOF
 
 # Bot service
-cat > /etc/systemd/system/vpnbot-bot.service << EOF
+cat > /etc/systemd/system/freelink-bot.service << EOF
 [Unit]
-Description=VPNBot Telegram Bot
+Description=FreeLink Telegram Bot
 After=network.target
 
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/opt/vpnbot
-ExecStart=/opt/vpnbot/venv/bin/python3 bot.py
+WorkingDirectory=/opt/freelink
+ExecStart=/opt/freelink/venv/bin/python3 bot.py
 Restart=always
 RestartSec=5
 
@@ -198,16 +198,16 @@ WantedBy=multi-user.target
 EOF
 
 # Online detector
-cat > /etc/systemd/system/vpnbot-online.service << EOF
+cat > /etc/systemd/system/freelink-online.service << EOF
 [Unit]
-Description=VPNBot Online Detector
+Description=FreeLink Online Detector
 After=network.target
 
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/opt/vpnbot
-ExecStart=/opt/vpnbot/venv/bin/python3 online_detector.py
+WorkingDirectory=/opt/freelink
+ExecStart=/opt/freelink/venv/bin/python3 online_detector.py
 Restart=always
 RestartSec=5
 
@@ -216,12 +216,12 @@ WantedBy=multi-user.target
 EOF
 
 # Traffic recorder
-cat > /opt/vpnbot/traffic_recorder.py << 'EOF'
-#!/opt/vpnbot/venv/bin/python3
+cat > /opt/freelink/traffic_recorder.py << 'EOF'
+#!/opt/freelink/venv/bin/python3
 import requests, yaml, time, json, os
 
-DATA_FILE = '/opt/vpnbot/data.yaml'
-HISTORY_FILE = '/opt/vpnbot/traffic_history.json'
+DATA_FILE = '/opt/freelink/data.yaml'
+HISTORY_FILE = '/opt/freelink/traffic_history.json'
 HYSTERIA_API = 'http://127.0.0.1:9999/traffic'
 
 def record():
@@ -275,16 +275,16 @@ if __name__ == '__main__':
         time.sleep(60)
 EOF
 
-cat > /etc/systemd/system/vpnbot-traffic.service << EOF
+cat > /etc/systemd/system/freelink-traffic.service << EOF
 [Unit]
-Description=VPNBot Traffic Recorder
+Description=FreeLink Traffic Recorder
 After=network.target
 
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/opt/vpnbot
-ExecStart=/opt/vpnbot/venv/bin/python3 traffic_recorder.py
+WorkingDirectory=/opt/freelink
+ExecStart=/opt/freelink/venv/bin/python3 traffic_recorder.py
 Restart=always
 RestartSec=5
 
@@ -294,8 +294,8 @@ EOF
 
 echo -e "${GREEN}Starting services...${NC}"
 systemctl daemon-reload
-systemctl enable vpnbot-api vpnbot-auth vpnbot-bot vpnbot-online vpnbot-traffic
-systemctl start vpnbot-api vpnbot-auth vpnbot-bot vpnbot-online vpnbot-traffic
+systemctl enable freelink-api freelink-auth freelink-bot freelink-online freelink-traffic
+systemctl start freelink-api freelink-auth freelink-bot freelink-online freelink-traffic
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}  Installation complete!${NC}"
@@ -308,6 +308,6 @@ echo ""
 echo -e "${YELLOW}Change admin password after first login!${NC}"
 echo ""
 echo -e "Services status:"
-systemctl is-active vpnbot-api && echo -e "  ${GREEN}✓${NC} API" || echo -e "  ${RED}✗${NC} API"
-systemctl is-active vpnbot-auth && echo -e "  ${GREEN}✓${NC} Auth" || echo -e "  ${RED}✗${NC} Auth"
-systemctl is-active vpnbot-bot && echo -e "  ${GREEN}✓${NC} Bot" || echo -e "  ${RED}✗${NC} Bot"
+systemctl is-active freelink-api && echo -e "  ${GREEN}✓${NC} API" || echo -e "  ${RED}✗${NC} API"
+systemctl is-active freelink-auth && echo -e "  ${GREEN}✓${NC} Auth" || echo -e "  ${RED}✗${NC} Auth"
+systemctl is-active freelink-bot && echo -e "  ${GREEN}✓${NC} Bot" || echo -e "  ${RED}✗${NC} Bot"

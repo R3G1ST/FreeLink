@@ -1,7 +1,7 @@
-#!/opt/vpnbot/venv/bin/python3
+#!/opt/freelink/venv/bin/python3
 import requests, yaml, time, sys
 
-DATA_FILE = '/opt/vpnbot/data.yaml'
+DATA_FILE = '/opt/freelink/data.yaml'
 HYSTERIA_API = 'http://127.0.0.1:9999/traffic'
 
 def get_current_traffic():

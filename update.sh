@@ -21,7 +21,7 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
-cd /opt/vpnbot
+cd /opt/freelink
 
 echo -e "${YELLOW}Current version:${NC}"
 grep -o "VERSION = .*" api.py 2>/dev/null || echo "Unknown"
@@ -37,7 +37,7 @@ source venv/bin/activate
 pip install -r requirements.txt -q
 
 echo -e "${GREEN}Restarting services...${NC}"
-systemctl restart vpnbot-api vpnbot-auth vpnbot-bot vpnbot-online vpnbot-traffic
+systemctl restart freelink-api freelink-auth freelink-bot freelink-online freelink-traffic
 
 echo ""
 echo -e "${GREEN}========================================${NC}"
@@ -48,6 +48,6 @@ echo -e "New version:"
 grep -o "VERSION = .*" api.py 2>/dev/null || echo "Unknown"
 echo ""
 echo -e "Services status:"
-systemctl is-active vpnbot-api && echo -e "  ${GREEN}✓${NC} API" || echo -e "  ${RED}✗${NC} API"
-systemctl is-active vpnbot-auth && echo -e "  ${GREEN}✓${NC} Auth" || echo -e "  ${RED}✗${NC} Auth"
-systemctl is-active vpnbot-bot && echo -e "  ${GREEN}✓${NC} Bot" || echo -e "  ${RED}✗${NC} Bot"
+systemctl is-active freelink-api && echo -e "  ${GREEN}✓${NC} API" || echo -e "  ${RED}✗${NC} API"
+systemctl is-active freelink-auth && echo -e "  ${GREEN}✓${NC} Auth" || echo -e "  ${RED}✗${NC} Auth"
+systemctl is-active freelink-bot && echo -e "  ${GREEN}✓${NC} Bot" || echo -e "  ${RED}✗${NC} Bot"

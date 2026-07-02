@@ -1,8 +1,8 @@
-#!/opt/vpnbot/venv/bin/python3
+#!/opt/freelink/venv/bin/python3
 import requests, yaml, time, json, os
 
-DATA_FILE = '/opt/vpnbot/data.yaml'
-SNAPSHOT_FILE = '/opt/vpnbot/online_snapshot.json'
+DATA_FILE = '/opt/freelink/data.yaml'
+SNAPSHOT_FILE = '/opt/freelink/online_snapshot.json'
 HYSTERIA_API = 'http://127.0.0.1:9999/traffic'
 CHECK_INTERVAL = 10
 
@@ -51,7 +51,7 @@ def detect_online():
 
     save_snapshot(current)
 
-    with open('/opt/vpnbot/online_status.json', 'w') as f:
+    with open('/opt/freelink/online_status.json', 'w') as f:
         json.dump(online_users, f)
 
     online_count = len(online_users)

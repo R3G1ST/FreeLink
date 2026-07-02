@@ -1348,7 +1348,7 @@ function deletePlan(id){confirmModal('Удалить план?',()=>{fetch('/api
 async function lSv(){
     const r=await fetch('/api/services');
     const d=await r.json();
-    const nm={'hysteria-server':'FreeLink VPN','vpnbot-api':'API','vpnbot-auth':t('svc_authorization'),'vpnbot-traffic':t('svc_traffic'),'vpnbot-bot':t('svc_telegram_bot'),'vpnbot-online':t('svc_online'),'vpnbot-history':t('svc_history')};
+    const nm={'hysteria-server':'FreeLink VPN','freelink-api':'API','freelink-auth':t('svc_authorization'),'freelink-traffic':t('svc_traffic'),'freelink-bot':t('svc_telegram_bot'),'freelink-online':t('svc_online'),'freelink-history':t('svc_history')};
     $('sL').innerHTML=d.services.map(s=>`<div class="card svc"><div class="sn"><span class="sd" style="background:${s.active?'var(--gn)':'var(--rd)'}"></span> ${nm[s.name]||s.name}</div><button class="sb" onclick="restartService('${s.name}')"><i class="fas fa-sync"></i></button></div>`).join('');
 }
 function restartService(n){confirmModal('Перезапустить '+n+'?',()=>{fetch('/api/services/'+n+'/restart',{method:'POST'}).then(()=>{toast(n+' OK');setTimeout(lSv,2000)})})}

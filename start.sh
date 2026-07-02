@@ -1,4 +1,4 @@
 #!/bin/bash
-cd /opt/vpnbot
+cd /opt/freelink
 source venv/bin/activate
 python3 bot.py

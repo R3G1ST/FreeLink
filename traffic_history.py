@@ -1,9 +1,9 @@
-#!/opt/vpnbot/venv/bin/python3
+#!/opt/freelink/venv/bin/python3
 import requests, json, os, time
 from datetime import datetime
 
 HYSTERIA_API = 'http://127.0.0.1:9999/traffic'
-HISTORY_FILE = '/opt/vpnbot/traffic_history.json'
+HISTORY_FILE = '/opt/freelink/traffic_history.json'
 MAX_ENTRIES = 2880
 
 def record():

@@ -1,8 +1,8 @@
 #!/bin/bash
-# Мониторинг VPNBot
+# Мониторинг FreeLink
 
-LOG="/opt/vpnbot/logs/monitor.log"
-mkdir -p /opt/vpnbot/logs
+LOG="/opt/freelink/logs/monitor.log"
+mkdir -p /opt/freelink/logs
 
 # Проверка Hysteria
 if ! systemctl is-active --quiet hysteria-server; then
@@ -11,14 +11,14 @@ if ! systemctl is-active --quiet hysteria-server; then
 fi
 
 # Проверка API
-if ! systemctl is-active --quiet vpnbot-api; then
+if ! systemctl is-active --quiet freelink-api; then
     echo "$(date): API down, restarting..." >> $LOG
-    systemctl restart vpnbot-api
+    systemctl restart freelink-api
 fi
 
 # Проверка, что API отвечает
 if ! curl -s -f http://127.0.0.1:8000/ > /dev/null; then
     echo "$(date): API not responding, restarting..." >> $LOG
-    systemctl restart vpnbot-api
+    systemctl restart freelink-api
 fi
 

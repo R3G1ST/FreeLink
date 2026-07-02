@@ -1,14 +1,14 @@
 #!/bin/bash
-# Скрипт бэкапа VPNBot
+# Скрипт бэкапа FreeLink
 
-BACKUP_DIR="/opt/vpnbot/backups"
+BACKUP_DIR="/opt/freelink/backups"
 DATE=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="$BACKUP_DIR/backup_$DATE.tar.gz"
 
 # Создаём бэкап
 tar -czf "$BACKUP_FILE" \
-    /opt/vpnbot/data.yaml \
-    /opt/vpnbot/config.yaml \
+    /opt/freelink/data.yaml \
+    /opt/freelink/config.yaml \
     /etc/hysteria/config.yaml \
     /etc/letsencrypt/live/link.qmbox.ru/ \
     2>/dev/null

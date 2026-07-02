@@ -54,8 +54,8 @@
 
 ```bash
 # Clone the project
-git clone https://github.com/R3G1ST/FreeLink.git /opt/vpnbot
-cd /opt/vpnbot
+git clone https://github.com/R3G1ST/FreeLink.git /opt/freelink
+cd /opt/freelink
 
 # Run installer
 chmod +x install.sh
@@ -80,7 +80,7 @@ The installer will ask for:
 ## 🔄 Update
 
 ```bash
-cd /opt/vpnbot
+cd /opt/freelink
 sudo ./update.sh
 ```
 
@@ -116,8 +116,8 @@ sudo ./update.sh
 
 ```bash
 # Клонируем проект
-git clone https://github.com/R3G1ST/FreeLink.git /opt/vpnbot
-cd /opt/vpnbot
+git clone https://github.com/R3G1ST/FreeLink.git /opt/freelink
+cd /opt/freelink
 
 # Запускаем установщик
 chmod +x install.sh
@@ -140,7 +140,7 @@ sudo ./install.sh
 ### 🔄 Обновление
 
 ```bash
-cd /opt/vpnbot
+cd /opt/freelink
 sudo ./update.sh
 ```
 
@@ -149,7 +149,7 @@ sudo ./update.sh
 ## 📁 Project Structure
 
 ```
-vpnbot/
+freelink/
 ├── api.py              # FastAPI backend
 ├── auth.py             # Hysteria auth server
 ├── bot.py              # Telegram bot
@@ -175,17 +175,17 @@ After installation, these services run automatically:
 
 | Service | Description |
 |---------|-------------|
-| `vpnbot-api` | Main API server (port 8000) |
-| `vpnbot-auth` | Hysteria auth (port 8001) |
-| `vpnbot-bot` | Telegram bot |
-| `vpnbot-online` | Online detection |
-| `vpnbot-traffic` | Traffic recording |
+| `freelink-api` | Main API server (port 8000) |
+| `freelink-auth` | Hysteria auth (port 8001) |
+| `freelink-bot` | Telegram bot |
+| `freelink-online` | Online detection |
+| `freelink-traffic` | Traffic recording |
 
 Manage services:
 ```bash
-systemctl status vpnbot-api
-systemctl restart vpnbot-api
-journalctl -u vpnbot-api -f
+systemctl status freelink-api
+systemctl restart freelink-api
+journalctl -u freelink-api -f
 ```
 
 ---

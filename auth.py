@@ -15,7 +15,7 @@ class AuthHandler(BaseHTTPRequestHandler):
             auth = data.get('auth', '')
             
             # Загружаю базу пользователей
-            with open('/opt/vpnbot/data.yaml', 'r') as f:
+            with open('/opt/freelink/data.yaml', 'r') as f:
                 db = yaml.safe_load(f)
             
             # Пробуем новый формат "username:password"
