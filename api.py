@@ -3432,10 +3432,7 @@ async def subscription_urls(token: str, request: Request):
     plain_content = "\n".join(plain_lines) + "\n"
     b64_content = base64.b64encode(plain_content.encode()).decode()
 
-    # Default: base64 (works with all clients including Happ)
-    if format_param == "plain":
-        return Response(content=plain_content, media_type="text/plain; charset=utf-8")
-
+    # Clash YAML format
     if format_param == "clash":
         import yaml as _yaml
         clash_config = {
@@ -3447,8 +3444,12 @@ async def subscription_urls(token: str, request: Request):
         content = _yaml.dump(clash_config, default_flow_style=False, allow_unicode=True)
         return Response(content=content, media_type="text/yaml; charset=utf-8")
 
-    # Base64 for all clients by default
-    return Response(content=b64_content, media_type="text/plain; charset=utf-8")
+    # Base64 for most clients (Shadowrocket, v2rayN, etc.)
+    if format_param == "base64":
+        return Response(content=b64_content, media_type="text/plain; charset=utf-8")
+
+    # Default: plain text (works with Happ, NekoBox, Hiddify, sing-box)
+    return Response(content=plain_content, media_type="text/plain; charset=utf-8")
 
 # Client self-service: view subscription by token
 @app.get("/api/client/sub/{token}")
