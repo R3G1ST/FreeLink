@@ -493,108 +493,55 @@ def cleanup_old_snapshots():
 
 def get_online_users(window_seconds=30):
     """
-    Online detection with grace period to prevent flicker.
-    1. Primary: latest snapshot within 15s with traffic change → online
-    2. Grace: snapshot within 30s but no traffic change → still online (brief pause)
-    3. No snapshot in 30s → offline (disconnected)
+    Online detection — Marzban style:
+    User is online if they appear in ANY traffic snapshot within the window.
+    No traffic change required — connected = online.
     """
     with get_conn() as conn:
         cur = conn.cursor(cursor_factory=RealDictCursor)
 
-        # Primary: latest snapshot per user per node (15 sec)
+        # Latest snapshot per user (any node) within window
         cur.execute("""
-            SELECT username, node_id, tx, rx, captured_at
-            FROM traffic_snapshots t1
-            WHERE captured_at > NOW() - INTERVAL '15 seconds'
-            AND id = (
-                SELECT MAX(id) FROM traffic_snapshots t2
-                WHERE t2.username = t1.username AND t2.node_id = t1.node_id
-                AND t2.captured_at > NOW() - INTERVAL '15 seconds'
-            )
-        """)
-        latest = {}
-        for r in cur.fetchall():
-            key = r["username"]
-            if key not in latest:
-                latest[key] = []
-            latest[key].append(r)
+            SELECT username,
+                   SUM(tx) as tx, SUM(rx) as rx,
+                   MAX(captured_at) as last_active
+            FROM (
+                SELECT DISTINCT ON (username, node_id)
+                       username, node_id, tx, rx, captured_at
+                FROM traffic_snapshots
+                WHERE captured_at > NOW() - make_interval(secs => %s)
+                ORDER BY username, node_id, captured_at DESC
+            ) sub
+            GROUP BY username
+        """, (window_seconds,))
+        latest = {r["username"]: r for r in cur.fetchall()}
 
-        # Grace fallback: snapshot within 30s (covers restart gaps)
+        # Previous snapshot for speed calculation
         cur.execute("""
-            SELECT username, node_id, tx, rx, captured_at
-            FROM traffic_snapshots t1
-            WHERE captured_at > NOW() - INTERVAL '30 seconds'
-            AND id = (
-                SELECT MAX(id) FROM traffic_snapshots t2
-                WHERE t2.username = t1.username AND t2.node_id = t1.node_id
-                AND t2.captured_at > NOW() - INTERVAL '30 seconds'
-            )
-        """)
-        grace = {}
-        for r in cur.fetchall():
-            key = r["username"]
-            if key not in grace:
-                grace[key] = []
-            grace[key].append(r)
-
-        # Previous snapshot per user per node
-        cur.execute("""
-            SELECT username, node_id, tx, rx, captured_at
-            FROM traffic_snapshots t1
-            WHERE id = (
-                SELECT MAX(id) FROM traffic_snapshots t2
-                WHERE t2.username = t1.username AND t2.node_id = t1.node_id
-                AND t2.captured_at < (
-                    SELECT MAX(captured_at) FROM traffic_snapshots t3
-                    WHERE t3.username = t2.username AND t3.node_id = t2.node_id
-                    AND t3.captured_at > NOW() - INTERVAL %s
-                )
-            )
-        """, (f"{window_seconds} seconds",))
-        prev = {}
-        for r in cur.fetchall():
-            key = r["username"]
-            if key not in prev:
-                prev[key] = {}
-            prev[key][r["node_id"]] = r
+            SELECT username,
+                   SUM(tx) as tx, SUM(rx) as rx
+            FROM (
+                SELECT DISTINCT ON (username, node_id)
+                       username, node_id, tx, rx
+                FROM traffic_snapshots
+                WHERE captured_at > NOW() - make_interval(secs => %s)
+                ORDER BY username, node_id, captured_at DESC
+            ) sub
+            GROUP BY username
+        """, (window_seconds * 3,))
+        prev = {r["username"]: r for r in cur.fetchall()}
 
         result = {}
-
-        # Process primary (15s window) — full activity check
-        for username, snaps in latest.items():
-            total_tx_speed = 0
-            total_rx_speed = 0
-            has_activity = False
-            for snap in snaps:
-                nid = snap["node_id"]
-                p = prev.get(username, {}).get(nid, {})
-                tx_delta = max(0, snap["tx"] - p.get("tx", snap["tx"]))
-                rx_delta = max(0, snap["rx"] - p.get("rx", snap["rx"]))
-                total_tx_speed += tx_delta
-                total_rx_speed += rx_delta
-                if tx_delta > 0 or rx_delta > 0:
-                    has_activity = True
-
+        for username, snap in latest.items():
+            p = prev.get(username, {})
+            tx_speed = max(0, snap["tx"] - p.get("tx", snap["tx"]))
+            rx_speed = max(0, snap["rx"] - p.get("rx", snap["rx"]))
             result[username] = {
-                "online": has_activity,
-                "tx": sum(s["tx"] for s in snaps),
-                "rx": sum(s["rx"] for s in snaps),
-                "tx_speed": total_tx_speed,
-                "rx_speed": total_rx_speed,
-                "last_active": max(str(s["captured_at"]) for s in snaps),
+                "online": True,
+                "tx": snap["tx"],
+                "rx": snap["rx"],
+                "tx_speed": tx_speed,
+                "rx_speed": rx_speed,
+                "last_active": str(snap["last_active"]),
             }
-
-        # Grace: users in 30s window but not in 15s window → keep online
-        for username, snaps in grace.items():
-            if username in result:
-                continue  # Already processed
-            result[username] = {
-                "online": True,  # Grace period — keep online
-                "tx": sum(s["tx"] for s in snaps),
-                "rx": sum(s["rx"] for s in snaps),
-                "tx_speed": 0,
-                "rx_speed": 0,
-                "last_active": max(str(s["captured_at"]) for s in snaps),
-            }
-
         return result
