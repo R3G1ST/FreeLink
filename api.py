@@ -1537,7 +1537,7 @@ async def get_qr(uid: str):
     if not service_token:
         service_token = secrets.token_urlsafe(24)
         db.save_user(uid, {**user, "service_token": service_token})
-    portal_url = f"https://link.qmbox.ru/c?token={service_token}"
+    portal_url = f"https://link.qmbox.ru/sub/{service_token}"
     link = get_user_link(uid, user)
     if not HAS_QR:
         return JSONResponse(status_code=500, content={"error": "qrcode not installed"})
