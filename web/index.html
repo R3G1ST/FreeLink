@@ -113,7 +113,7 @@ a{text-decoration:none;color:inherit}
 @keyframes toastOut{from{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}to{opacity:0;transform:translateX(-50%) translateY(20px) scale(0.95)}}
 
 /* ===== LAYOUT ===== */
-.layout{display:grid;grid-template-columns:240px 1fr;gap:16px;min-height:calc(100vh - 70px);transition:grid-template-columns .3s ease;align-items:start}
+.layout{display:grid;grid-template-columns:240px 1fr;gap:16px;transition:grid-template-columns .3s ease;align-items:start}
 .layout.sidebar-collapsed{grid-template-columns:64px 1fr}
 
 /* ===== SIDEBAR ===== */
@@ -160,7 +160,7 @@ a{text-decoration:none;color:inherit}
 .card:hover{border-color:var(--b2)}
 
 /* ===== HEADER BAR ===== */
-.header-bar{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:12px}
+.header-bar{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 0;margin-bottom:0}
 .notif-bell{position:relative;width:36px;height:36px;border-radius:10px;border:1px solid var(--b1);background:var(--g2);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .25s}
 .notif-bell:hover{border-color:var(--ac);color:var(--ac2);background:var(--acg)}
 .notif-bell.shake i{animation:bellShake .5s ease}
@@ -418,6 +418,22 @@ a{text-decoration:none;color:inherit}
 </head>
 <body>
 <div class="wrap">
+    <div class="header-bar">
+        <div class="notif-bell" id="notifBell" onclick="toggleNotifPanel()">
+            <i class="fas fa-bell"></i>
+            <span class="notif-badge" id="notifBadge">0</span>
+        </div>
+        <div class="notif-panel" id="notifPanel"></div>
+        <div class="user-menu" id="userMenu">
+            <div class="user-avatar" onclick="toggleUserMenu()"><span id="avatar">A</span></div>
+            <div class="user-dropdown" id="userDropdown">
+                <div class="ud-header"><div class="ud-avatar" id="udAvatar">A</div><div><div class="ud-name" id="udName">admin</div><div class="ud-role" id="udRole">Админ</div></div></div>
+                <div class="ud-sep"></div>
+                <div class="ud-item" onclick="go('settings');closeUserMenu()"><i class="fas fa-cog"></i> <span data-i18n="nav_settings">Настройки</span></div>
+                <div class="ud-item ud-danger" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> <span data-i18n="nav_logout">Выйти</span></div>
+            </div>
+        </div>
+    </div>
     <div class="layout">
         <div class="sidebar" id="sidebar">
             <div class="sb-logo"><div class="icon"><i class="fas fa-bolt"></i></div><h2><em>Free</em>Link</h2><button class="sb-collapse" onclick="toggleSidebar()" title="Свернуть"><i class="fas fa-chevron-left"></i></button></div>
@@ -433,23 +449,6 @@ a{text-decoration:none;color:inherit}
             <div class="nav-item" onclick="go('audit',this)" data-tip="Аудит"><i class="fas fa-shield-alt"></i> <span data-i18n="nav_audit">Аудит</span></div>
         </div>
         <div class="main">
-            <!-- Header bar -->
-            <div class="header-bar">
-                <div class="notif-bell" id="notifBell" onclick="toggleNotifPanel()">
-                    <i class="fas fa-bell"></i>
-                    <span class="notif-badge" id="notifBadge">0</span>
-                </div>
-                <div class="notif-panel" id="notifPanel"></div>
-                <div class="user-menu" id="userMenu">
-                    <div class="user-avatar" onclick="toggleUserMenu()"><span id="avatar">A</span></div>
-                    <div class="user-dropdown" id="userDropdown">
-                        <div class="ud-header"><div class="ud-avatar" id="udAvatar">A</div><div><div class="ud-name" id="udName">admin</div><div class="ud-role" id="udRole">Админ</div></div></div>
-                        <div class="ud-sep"></div>
-                        <div class="ud-item" onclick="go('settings');closeUserMenu()"><i class="fas fa-cog"></i> <span data-i18n="nav_settings">Настройки</span></div>
-                        <div class="ud-item ud-danger" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> <span data-i18n="nav_logout">Выйти</span></div>
-                    </div>
-                </div>
-            </div>
 
             <!-- DASHBOARD -->
             <div class="pg on" id="p-dashboard">
