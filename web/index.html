@@ -595,6 +595,24 @@ a{text-decoration:none;color:inherit}
             <div class="pg" id="p-settings">
                 <div class="pg-title"><i class="fas fa-cog"></i> <span data-i18n="page_settings">Настройки</span></div>
                 <div class="set-group">
+                    <h3><i class="fab fa-telegram"></i> Telegram Bot</h3>
+                    <div class="set-item">
+                        <div style="flex:1"><div class="si-label">Bot Token</div><div class="si-desc">Токен от @BotFather</div></div>
+                        <div style="display:flex;gap:6px;align-items:center">
+                            <input type="text" id="tgBotToken" class="lang-select" style="width:260px;font-family:monospace;font-size:11px" placeholder="123456:ABC...">
+                            <button class="btn btn-a btn-sm" onclick="saveBotToken()"><i class="fas fa-save"></i> <span data-i18n="btn_save">Сохранить</span></button>
+                        </div>
+                    </div>
+                    <div class="set-item" style="flex-direction:column;align-items:stretch;gap:8px">
+                        <div class="si-label">Админы бота (Telegram ID)</div>
+                        <div id="tgAdminsList" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+                        <div style="display:flex;gap:6px">
+                            <input type="number" id="tgNewAdminId" class="lang-select" style="width:160px" placeholder="Telegram ID">
+                            <button class="btn btn-g btn-sm" onclick="addBotAdmin()"><i class="fas fa-plus"></i> Добавить</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="set-group">
                     <h3><i class="fas fa-users-cog"></i> <span data-i18n="settings_admins">Администраторы</span></h3>
                     <div id="adminsList"></div>
                     <button class="btn btn-g" onclick="showCreateAdmin()" style="margin-top:8px"><i class="fas fa-plus"></i> <span data-i18n="btn_add">Добавить</span></button>
@@ -1049,7 +1067,7 @@ function go(page,el){
     if(page==='nodes')loadNodes();
     if(page==='logs')lLg();
     if(page==='audit')lAudit();
-    if(page==='settings'){loadAdmins();loadVersion()}
+    if(page==='settings'){loadAdmins();loadVersion();loadTelegramConfig()}
     if(page==='config')loadConfig();
     applyLang();
 }
@@ -1580,6 +1598,41 @@ async function loadVersion(){
         const d=await r.json();
         if(d.version)$('settingsVersion').textContent='v'+d.version;
     }catch{}
+}
+async function loadTelegramConfig(){
+    try{
+        const r=await fetch('/api/telegram/config');
+        const d=await r.json();
+        $('tgBotToken').value=d.token||'';
+        renderTgAdmins(d.admins||[]);
+    }catch{}
+}
+function renderTgAdmins(admins){
+    const el=$('tgAdminsList');
+    if(!admins.length){el.innerHTML='<span style="font-size:11px;color:var(--t4)">Нет админов</span>';return}
+    el.innerHTML=admins.map(id=>'<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--g2);border:1px solid var(--b1);border-radius:6px;font-size:12px"><i class="fab fa-telegram" style="color:var(--ac2);font-size:10px"></i>'+id+'<button onclick="removeBotAdmin('+id+')" style="background:none;border:none;color:var(--rd);cursor:pointer;font-size:14px;padding:0 2px">&times;</button></span>').join('');
+}
+async function saveBotToken(){
+    const token=$('tgBotToken').value.trim();
+    if(!token){toast('Введите токен','error');return}
+    const r=await fetch('/api/telegram/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});
+    const d=await r.json();
+    if(d.success){toast('Токен сохранён! Перезапустите бота')}
+    else{toast(d.error||'Ошибка','error')}
+}
+async function addBotAdmin(){
+    const id=parseInt($('tgNewAdminId').value);
+    if(!id||id<1){toast('Введите Telegram ID','error');return}
+    const r=await fetch('/api/telegram/admins/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_id:id})});
+    const d=await r.json();
+    if(d.success){toast('Добавлен!');$('tgNewAdminId').value='';loadTelegramConfig()}
+    else{toast(d.error||'Ошибка','error')}
+}
+async function removeBotAdmin(id){
+    const r=await fetch('/api/telegram/admins/remove',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_id:id})});
+    const d=await r.json();
+    if(d.success){loadTelegramConfig()}
+    else{toast(d.error||'Ошибка','error')}
 }
 async function loadAdmins(){
     const r=await fetch('/api/admins');

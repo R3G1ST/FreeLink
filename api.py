@@ -1704,6 +1704,81 @@ async def restart_after_config():
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
+# ====== TELEGRAM BOT CONFIG ======
+
+@app.get("/api/telegram/config")
+async def get_telegram_config():
+    config = load_config()
+    tg = config.get("telegram", {})
+    token = tg.get("token", "")
+    admins = tg.get("admins", [])
+    return {"token": token, "admins": admins}
+
+@app.post("/api/telegram/token")
+async def save_telegram_token(request: Request):
+    token = request.cookies.get("session")
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    data = await request.json()
+    new_token = data.get("token", "").strip()
+    if not new_token:
+        return JSONResponse(status_code=400, content={"error": "Токен не может быть пустым"})
+    config = load_config()
+    if "telegram" not in config:
+        config["telegram"] = {}
+    config["telegram"]["token"] = new_token
+    with open(CONFIG_FILE, "w") as f:
+        yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
+    audit_log(user, "BOT_TOKEN_CHANGED")
+    return {"success": True}
+
+@app.post("/api/telegram/admins/add")
+async def add_telegram_admin(request: Request):
+    token = request.cookies.get("session")
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    data = await request.json()
+    admin_id = data.get("admin_id")
+    if admin_id is None:
+        return JSONResponse(status_code=400, content={"error": "admin_id required"})
+    admin_id = int(admin_id)
+    config = load_config()
+    if "telegram" not in config:
+        config["telegram"] = {}
+    admins = config["telegram"].get("admins", [])
+    if admin_id in admins:
+        return JSONResponse(status_code=400, content={"error": "Уже добавлен"})
+    admins.append(admin_id)
+    config["telegram"]["admins"] = admins
+    with open(CONFIG_FILE, "w") as f:
+        yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
+    audit_log(user, f"BOT_ADMIN_ADDED id={admin_id}")
+    return {"success": True, "admins": admins}
+
+@app.post("/api/telegram/admins/remove")
+async def remove_telegram_admin(request: Request):
+    token = request.cookies.get("session")
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    data = await request.json()
+    admin_id = data.get("admin_id")
+    if admin_id is None:
+        return JSONResponse(status_code=400, content={"error": "admin_id required"})
+    admin_id = int(admin_id)
+    config = load_config()
+    admins = config.get("telegram", {}).get("admins", [])
+    if admin_id not in admins:
+        return JSONResponse(status_code=400, content={"error": "Не найден"})
+    admins.remove(admin_id)
+    config["telegram"]["admins"] = admins
+    with open(CONFIG_FILE, "w") as f:
+        yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
+    audit_log(user, f"BOT_ADMIN_REMOVED id={admin_id}")
+    return {"success": True, "admins": admins}
+
 # ====== UPDATE ======
 
 VERSION_FILE = "/opt/freelink/VERSION"
