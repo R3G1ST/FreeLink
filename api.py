@@ -1855,7 +1855,11 @@ def do_hysteria_update():
 
         hysteria_update_status["log"] += "▶ Установка...\n"
         subprocess.run(["/usr/bin/chmod", "+x", tmp_path], check=True, timeout=5)
-        subprocess.run(["/usr/bin/cp", tmp_path, "/usr/local/bin/hysteria"], check=True, timeout=10)
+
+        hysteria_update_status["log"] += "  ▶ Остановка hysteria-server...\n"
+        subprocess.run(["/usr/bin/systemctl", "stop", "hysteria-server"], timeout=15)
+
+        subprocess.run(["/usr/bin/cp", "-f", tmp_path, "/usr/local/bin/hysteria"], check=True, timeout=10)
         subprocess.run(["/usr/bin/rm", "-f", tmp_path], timeout=5)
         hysteria_update_status["log"] += "  ✓ Бинарник заменён\n"
 
