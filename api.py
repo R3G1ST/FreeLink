@@ -939,6 +939,15 @@ async def login_page():
     with open("/opt/freelink/web/login.html", "r") as f:
         return HTMLResponse(content=f.read())
 
+@app.get("/api/language")
+async def get_language():
+    try:
+        with open(CONFIG_FILE, 'r') as f:
+            cfg = yaml.safe_load(f) or {}
+        return {"language": cfg.get("language", "ru")}
+    except:
+        return {"language": "ru"}
+
 @app.get("/favicon.ico")
 async def favicon():
     return HTMLResponse(content="", status_code=204)

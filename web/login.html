@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <title>Вход — FreeLink</title>
+    <title>FreeLink</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
@@ -19,11 +19,15 @@ body::before{content:'';position:fixed;top:-200px;left:50%;transform:translateX(
 .logo h1{font-size:20px;font-weight:800;letter-spacing:-.4px}
 .logo h1 em{font-style:normal;background:linear-gradient(135deg,#c4b5fd,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .logo p{font-size:12px;color:var(--t3);margin-top:4px}
+.lang-bar{display:flex;justify-content:flex-end;margin-bottom:20px}
+.lang-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border:1px solid var(--b1);border-radius:8px;background:var(--g2);color:var(--t2);font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit}
+.lang-btn:hover{border-color:var(--ac);color:var(--ac2)}
+.lang-btn i{font-size:12px}
 .form{display:flex;flex-direction:column;gap:14px}
 .field{display:flex;flex-direction:column;gap:0}
 .field label{font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px}
 .field input{width:100%;padding:10px 14px;background:var(--g2)!important;border:1px solid var(--b1);border-radius:8px;color:var(--t1)!important;font-size:13px;outline:none;transition:all .25s;font-family:inherit;-webkit-box-shadow:0 0 0 30px var(--g2) inset!important;-webkit-text-fill-color:var(--t1)!important}
-.field input:focus{border-color:var(--ac)!important;box-shadow:0 0 0 3px rgba(139,92,246,0.1)!important,-webkit-box-shadow:0 0 0 3px rgba(139,92,246,0.1)!important}
+.field input:focus{border-color:var(--ac)!important;box-shadow:0 0 0 3px rgba(139,92,246,0.1)!important}
 .field input::placeholder{color:var(--t4)!important}
 .field input:-webkit-autofill,.field input:-webkit-autofill:hover,.field input:-webkit-autofill:focus{-webkit-background-clip:text;-webkit-text-fill-color:var(--t1)!important;-webkit-box-shadow:0 0 0 30px var(--g2) inset!important;transition:background-color 5000s ease-in-out 0s}
 .btn{padding:11px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;transition:all .2s;font-family:inherit;background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff;box-shadow:0 2px 8px rgba(139,92,246,0.2);margin-top:4px}
@@ -39,18 +43,21 @@ body::before{content:'';position:fixed;top:-200px;left:50%;transform:translateX(
 </head>
 <body>
 <div class="login-box">
+    <div class="lang-bar">
+        <button class="lang-btn" onclick="toggleLang()" id="langBtn"><i class="fas fa-globe"></i> <span id="langLabel">EN</span></button>
+    </div>
     <div class="logo">
         <div class="logo-icon"><i class="fas fa-bolt"></i></div>
         <h1><em>FreeLink</em></h1>
-        <p>Панель управления VPN-сервером</p>
+        <p id="logoDesc">Панель управления VPN-сервером</p>
     </div>
     <form class="form" onsubmit="doLogin(event)">
         <div class="field">
-            <label>Логин</label>
+            <label id="lblUser">Логин</label>
             <input type="text" id="user" placeholder="Введите логин" autocomplete="username" autofocus>
         </div>
         <div class="field">
-            <label>Пароль</label>
+            <label id="lblPass">Пароль</label>
             <input type="password" id="pass" placeholder="Введите пароль" autocomplete="current-password">
         </div>
         <div class="error" id="err"><i class="fas fa-exclamation-circle"></i><span id="errMsg"></span></div>
@@ -59,19 +66,62 @@ body::before{content:'';position:fixed;top:-200px;left:50%;transform:translateX(
     <div class="ftr">&copy; 2026 FreeLink</div>
 </div>
 <script>
+const LANG_KEY='vpn_lang';
+const I18N={
+    desc:{ru:'Панель управления VPN-сервером',en:'VPN Server Management Panel'},
+    login:{ru:'Логин',en:'Login'},
+    password:{ru:'Пароль',en:'Password'},
+    placeholder_user:{ru:'Введите логин',en:'Enter login'},
+    placeholder_pass:{ru:'Введите пароль',en:'Enter password'},
+    btn_login:{ru:'Войти в панель',en:'Sign in'},
+    btn_logging:{ru:'Вход...',en:'Signing in...'},
+    err_login:{ru:'Ошибка входа',en:'Login error'},
+    err_network:{ru:'Ошибка сети',en:'Network error'}
+};
+let currentLang=localStorage.getItem(LANG_KEY)||'ru';
+
+async function initLang(){
+    try{
+        const r=await fetch('/api/language');
+        const d=await r.json();
+        if(!localStorage.getItem(LANG_KEY)&&d.language){currentLang=d.language}
+    }catch{}
+    applyLang();
+}
+
+function applyLang(){
+    const l=currentLang;
+    document.getElementById('langLabel').textContent=l==='ru'?'EN':'RU';
+    document.getElementById('logoDesc').textContent=I18N.desc[l];
+    document.getElementById('lblUser').textContent=I18N.login[l];
+    document.getElementById('lblPass').textContent=I18N.password[l];
+    document.getElementById('user').placeholder=I18N.placeholder_user[l];
+    document.getElementById('pass').placeholder=I18N.placeholder_pass[l];
+    document.getElementById('loginBtn').textContent=I18N.btn_login[l];
+    document.title=l==='ru'?'Вход — FreeLink':'Login — FreeLink';
+}
+
+function toggleLang(){
+    currentLang=currentLang==='ru'?'en':'ru';
+    localStorage.setItem(LANG_KEY,currentLang);
+    applyLang();
+}
+
 async function doLogin(e){
     e.preventDefault();
-    const btn=$('loginBtn');const err=$('err');
-    btn.disabled=true;btn.textContent='Вход...';err.classList.remove('show');
+    const btn=document.getElementById('loginBtn');
+    const err=document.getElementById('err');
+    btn.disabled=true;btn.textContent=I18N.btn_logging[currentLang];err.classList.remove('show');
     try{
-        const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:$('user').value,password:$('pass').value})});
+        const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('user').value,password:document.getElementById('pass').value})});
         const d=await r.json();
         if(r.ok){window.location.href='/'}
-        else{$('errMsg').textContent=d.error||'Ошибка входа';err.classList.add('show')}
-    }catch{$('errMsg').textContent='Ошибка сети';err.classList.add('show')}
-    btn.disabled=false;btn.textContent='Войти в панель';
+        else{document.getElementById('errMsg').textContent=d.error||I18N.err_login[currentLang];err.classList.add('show')}
+    }catch{document.getElementById('errMsg').textContent=I18N.err_network[currentLang];err.classList.add('show')}
+    btn.disabled=false;btn.textContent=I18N.btn_login[currentLang];
 }
-const $=id=>document.getElementById(id);
+
+initLang();
 </script>
 </body>
 </html>
