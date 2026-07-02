@@ -614,6 +614,20 @@ a{text-decoration:none;color:inherit}
                     </div>
                 </div>
                 <div class="set-group">
+                    <h3><i class="fas fa-server"></i> Hysteria 2</h3>
+                    <div class="set-item">
+                        <div><div class="si-label">Текущая версия</div><div class="si-desc" id="hyLocalVer">—</div></div>
+                        <div style="display:flex;gap:6px">
+                            <button class="btn btn-n btn-sm" onclick="checkHysteriaVersion()"><i class="fas fa-sync"></i> Проверить</button>
+                            <button class="btn btn-g btn-sm" onclick="runHysteriaUpdate()" id="hyUpdateBtn" style="display:none"><i class="fas fa-download"></i> Обновить</button>
+                        </div>
+                    </div>
+                    <div class="set-item">
+                        <div><div class="si-label" id="hyStatusText">Нажмите «Проверить»</div><div class="si-desc" id="hyDetail"></div></div>
+                    </div>
+                    <div id="hyLogBox" style="display:none;margin-top:10px;padding:12px;background:rgba(0,0,0,0.3);border:1px solid var(--b1);border-radius:8px;font-family:monospace;font-size:11px;color:var(--t3);max-height:250px;overflow-y:auto;white-space:pre-wrap;line-height:1.6"></div>
+                </div>
+                <div class="set-group">
                     <h3><i class="fas fa-users-cog"></i> <span data-i18n="settings_admins">Администраторы</span></h3>
                     <div id="adminsList"></div>
                     <button class="btn btn-g" onclick="showCreateAdmin()" style="margin-top:8px"><i class="fas fa-plus"></i> <span data-i18n="btn_add">Добавить</span></button>
@@ -1641,6 +1655,78 @@ async function restartBot(){
     if(d.success){toast('Бот перезапущен!')}
     else{toast(d.error||'Ошибка','error')}
 }
+
+/* ===== HYSTERIA UPDATE ===== */
+let hyPollTimer=null;
+async function checkHysteriaVersion(){
+    $('hyStatusText').innerHTML='<span style="color:var(--ac2)">⏳ Проверка...</span>';
+    $('hyDetail').textContent='';
+    $('hyUpdateBtn').style.display='none';
+    try{
+        $('hyDetail').textContent='Подключение к GitHub...';
+        const r=await fetch('/api/hysteria/version');
+        const d=await r.json();
+        if(!r.ok||d.error){
+            $('hyStatusText').innerHTML='<span style="color:var(--rd)">✗ Ошибка</span>';
+            $('hyDetail').textContent=d.error||'';
+            return;
+        }
+        $('hyLocalVer').textContent=d.local||'unknown';
+        if(d.update_available){
+            $('hyStatusText').innerHTML='<span style="color:var(--or)">⬆ Доступно: '+d.local+' → '+d.remote+'</span>';
+            $('hyUpdateBtn').style.display='inline-flex';
+        }else{
+            $('hyStatusText').innerHTML='<span style="color:var(--gn)">✓ Последняя версия</span>';
+            $('hyUpdateBtn').style.display='none';
+        }
+        $('hyDetail').textContent='Local: '+d.local+' | Remote: '+d.remote;
+    }catch(e){
+        $('hyStatusText').innerHTML='<span style="color:var(--rd)">✗ '+e.message+'</span>';
+    }
+}
+async function runHysteriaUpdate(){
+    if(!confirm('Обновить Hysteria до последней версии? Сервер будет перезапущен на несколько секунд.'))return;
+    $('hyUpdateBtn').disabled=true;
+    $('hyLogBox').style.display='block';
+    $('hyLogBox').textContent='▶ Запуск обновления...\n';
+    $('hyStatusText').innerHTML='<span style="color:var(--ac2)">⏳ Обновление...</span>';
+    try{
+        const r=await fetch('/api/hysteria/update',{method:'POST'});
+        const d=await r.json();
+        if(!r.ok||d.error){
+            $('hyLogBox').textContent+='❌ '+(d.error||'Ошибка');
+            $('hyUpdateBtn').disabled=false;
+            $('hyStatusText').innerHTML='<span style="color:var(--rd)">✗ Ошибка</span>';
+            return;
+        }
+        pollHysteriaStatus();
+    }catch(e){
+        $('hyLogBox').textContent+='❌ '+e.message;
+        $('hyUpdateBtn').disabled=false;
+    }
+}
+function pollHysteriaStatus(){
+    if(hyPollTimer)clearInterval(hyPollTimer);
+    hyPollTimer=setInterval(async()=>{
+        try{
+            const r=await fetch('/api/hysteria/update/status');const d=await r.json();
+            if(!r.ok)return;
+            $('hyLogBox').textContent=d.log;
+            $('hyLogBox').scrollTop=$('hyLogBox').scrollHeight;
+            if(d.done){
+                clearInterval(hyPollTimer);hyPollTimer=null;
+                $('hyUpdateBtn').disabled=false;
+                if(d.success){
+                    $('hyStatusText').innerHTML='<span style="color:var(--gn)">✓ Обновлено!</span>';
+                    checkHysteriaVersion();
+                }else{
+                    $('hyStatusText').innerHTML='<span style="color:var(--rd)">✗ Ошибка</span>';
+                }
+            }
+        }catch{}
+    },1500);
+}
+
 async function loadAdmins(){
     const r=await fetch('/api/admins');
     const d=await r.json();

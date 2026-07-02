@@ -1779,7 +1779,123 @@ async def remove_telegram_admin(request: Request):
     audit_log(user, f"BOT_ADMIN_REMOVED id={admin_id}")
     return {"success": True, "admins": admins}
 
-# ====== UPDATE ======
+# ====== HYSTERIA VERSION ======
+
+import re as _re
+
+def get_hysteria_local_version():
+    try:
+        r = subprocess.run(["/usr/local/bin/hysteria", "version"],
+                          capture_output=True, text=True, timeout=5)
+        m = _re.search(r"Version:\s*v?([\d.]+)", r.stdout)
+        if m:
+            return "v" + m.group(1)
+    except:
+        pass
+    return None
+
+def get_hysteria_remote_version():
+    try:
+        r = requests.get("https://api.github.com/repos/apernet/hysteria/releases/latest",
+                         timeout=10)
+        if r.status_code == 200:
+            tag = r.json().get("tag_name", "")
+            return tag if tag.startswith("v") else "v" + tag
+    except:
+        pass
+    return None
+
+@app.get("/api/hysteria/version")
+async def get_hysteria_version(request: Request):
+    token = request.cookies.get("session")
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    local = get_hysteria_local_version()
+    remote = get_hysteria_remote_version()
+    return {
+        "local": local or "unknown",
+        "remote": remote or "unknown",
+        "update_available": local and remote and local != remote
+    }
+
+hysteria_update_status = {"running": False, "log": "", "done": False, "success": False}
+
+def do_hysteria_update():
+    global hysteria_update_status
+    hysteria_update_status = {"running": True, "log": "", "done": False, "success": False}
+    try:
+        hysteria_update_status["log"] += "▶ Проверка последней версии...\n"
+        remote = get_hysteria_remote_version()
+        if not remote:
+            hysteria_update_status["log"] += "  ❌ Не удалось получить версию с GitHub\n"
+            hysteria_update_status["success"] = False
+            return
+        hysteria_update_status["log"] += f"  ✓ Найдена: {remote}\n"
+
+        hysteria_update_status["log"] += "▶ Скачивание бинарника...\n"
+        url = "https://github.com/apernet/hysteria/releases/latest/download/hysteria-linux-amd64"
+        r = requests.get(url, timeout=60, stream=True)
+        if r.status_code != 200:
+            hysteria_update_status["log"] += f"  ❌ Ошибка скачивания: HTTP {r.status_code}\n"
+            hysteria_update_status["success"] = False
+            return
+
+        tmp_path = "/tmp/hysteria-new"
+        total = int(r.headers.get("content-length", 0))
+        downloaded = 0
+        with open(tmp_path, "wb") as f:
+            for chunk in r.iter_content(chunk_size=1024 * 1024):
+                f.write(chunk)
+                downloaded += len(chunk)
+        hysteria_update_status["log"] += f"  ✓ Скачано: {downloaded // 1024 // 1024} MB\n"
+
+        hysteria_update_status["log"] += "▶ Установка...\n"
+        subprocess.run(["chmod", "+x", tmp_path], check=True, timeout=5)
+        subprocess.run(["cp", tmp_path, "/usr/local/bin/hysteria"], check=True, timeout=10)
+        subprocess.run(["rm", "-f", tmp_path], timeout=5)
+        hysteria_update_status["log"] += "  ✓ Бинарник заменён\n"
+
+        hysteria_update_status["log"] += "▶ Перезапуск hysteria-server...\n"
+        r = subprocess.run(["/usr/bin/systemctl", "restart", "hysteria-server"],
+                          capture_output=True, text=True, timeout=30)
+        if r.returncode != 0:
+            hysteria_update_status["log"] += f"  ⚠ {r.stderr.strip()[:200]}\n"
+        else:
+            hysteria_update_status["log"] += "  ✓ Сервис перезапущен\n"
+
+        new_ver = get_hysteria_local_version()
+        hysteria_update_status["log"] += f"\n✅ Hysteria обновлена до {new_ver or remote}\n"
+        hysteria_update_status["success"] = True
+    except Exception as e:
+        hysteria_update_status["log"] += f"\n❌ Ошибка: {str(e)}\n"
+        hysteria_update_status["success"] = False
+    finally:
+        hysteria_update_status["done"] = True
+        hysteria_update_status["running"] = False
+
+@app.post("/api/hysteria/update")
+async def run_hysteria_update(request: Request):
+    token = request.cookies.get("session")
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    admins = load_admins()
+    if admins.get(user, {}).get("role") != "admin":
+        return JSONResponse(status_code=403, content={"error": "Only admin"})
+    if hysteria_update_status["running"]:
+        return JSONResponse(status_code=409, content={"error": "Already in progress"})
+    thread = threading.Thread(target=do_hysteria_update, daemon=True)
+    thread.start()
+    return {"success": True}
+
+@app.get("/api/hysteria/update/status")
+async def hysteria_update_status_ep(request: Request):
+    token = request.cookies.get("session")
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    return hysteria_update_status
 
 VERSION_FILE = "/opt/freelink/VERSION"
 GITHUB_REPO = "R3G1ST/FreeLink"
