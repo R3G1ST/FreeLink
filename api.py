@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 import random, string
 import psutil
 import uvicorn
+import db
 try:
     import qrcode
     HAS_QR = True
@@ -31,50 +32,35 @@ app.add_middleware(
 DATA_FILE = "/opt/freelink/data.yaml"
 CONFIG_FILE = "/opt/freelink/config.yaml"
 ONLINE_FILE = "/opt/freelink/online_status.json"
-ADMINS_FILE = "/opt/freelink/admins.json"
-SESSIONS_FILE = "/opt/freelink/sessions.json"
 AUDIT_FILE = "/opt/freelink/audit.log"
 
 # ====== ADMIN AUTH ======
 
 def load_admins():
-    if os.path.exists(ADMINS_FILE):
-        try:
-            with open(ADMINS_FILE, 'r') as f:
-                return json.load(f)
-        except:
-            pass
-    default_pw = secrets.token_urlsafe(16)
-    admins = {"admin": {"password_hash": hash_pw(default_pw), "role": "admin", "created": datetime.now().isoformat()}}
-    save_admins(admins)
-    print(f"!!! Default admin created. Login: admin, Password: {default_pw}")
-    print(f"!!! Change password immediately!")
+    admins = db.load_admins()
+    if not admins:
+        default_pw = secrets.token_urlsafe(16)
+        admins = {"admin": {"password_hash": hash_pw(default_pw), "role": "admin", "created": datetime.now().isoformat()}}
+        db.save_admin("admin", admins["admin"])
+        print(f"!!! Default admin created. Login: admin, Password: {default_pw}")
     return admins
 
 def save_admins(admins):
-    with open(ADMINS_FILE, 'w') as f:
-        json.dump(admins, f, ensure_ascii=False, indent=2)
+    for username, data in admins.items():
+        db.save_admin(username, data)
 
 def hash_pw(pw):
     return hashlib.sha256(pw.encode()).hexdigest()
 
 def load_sessions():
-    if os.path.exists(SESSIONS_FILE):
-        try:
-            with open(SESSIONS_FILE, 'r') as f:
-                return json.load(f)
-        except:
-            pass
-    return {}
+    return db.load_sessions()
 
 def save_sessions(sessions):
-    with open(SESSIONS_FILE, 'w') as f:
-        json.dump(sessions, f, ensure_ascii=False, indent=2)
+    for token, data in sessions.items():
+        db.save_session(token, data)
 
 def audit_log(user, action, details=""):
-    line = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {user}: {action} {details}\n"
-    with open(AUDIT_FILE, 'a') as f:
-        f.write(line)
+    db.audit_log(user, action, details)
 
 def create_session(username):
     token = secrets.token_urlsafe(32)
@@ -161,25 +147,21 @@ def load_config():
         return {}
 
 def load_data():
-    if not os.path.exists(DATA_FILE):
-        return {"servers": {}, "users": {}}
-    with open(DATA_FILE, 'r') as f:
-        return yaml.safe_load(f) or {"servers": {}, "users": {}}
+    users = db.get_all_users()
+    return {"servers": {}, "users": users}
 
 def save_data(data):
-    with open(DATA_FILE, 'w') as f:
-        yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
+    for uid, user_data in data.get("users", {}).items():
+        db.save_user(uid, user_data)
 
 def gen_id():
     return ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
 
 def get_user(uid):
-    data = load_data()
-    return data.get("users", {}).get(uid)
+    return db.get_user(uid)
 
 def get_all_users():
-    data = load_data()
-    return data.get("users", {})
+    return db.get_all_users()
 
 def get_aggregated_traffic():
     """Aggregate per-user traffic from all nodes (main + remote)"""
@@ -207,17 +189,10 @@ def get_aggregated_traffic():
     return traffic
 
 def save_user(uid, user_data):
-    data = load_data()
-    data["users"][uid] = user_data
-    save_data(data)
+    db.save_user(uid, user_data)
 
 def delete_user(uid):
-    data = load_data()
-    if uid in data.get("users", {}):
-        del data["users"][uid]
-        save_data(data)
-        return True
-    return False
+    return db.delete_user(uid)
 
 def get_user_link(uid, user):
     if "link" in user and user["link"]:
@@ -1250,21 +1225,18 @@ async def bulk_extend(request: Request):
 PLANS_FILE = "/opt/freelink/plans.json"
 
 def load_plans():
-    if os.path.exists(PLANS_FILE):
-        try:
-            with open(PLANS_FILE, 'r') as f:
-                return json.load(f)
-        except:
-            pass
-    return [
-        {"id": "basic", "name": "Базовый", "days": 30, "traffic_limit_mb": 10240, "price": ""},
-        {"id": "pro", "name": "Про", "days": 30, "traffic_limit_mb": 51200, "price": ""},
-        {"id": "unlimited", "name": "Безлимит", "days": 30, "traffic_limit_mb": 0, "price": ""}
-    ]
+    plans = db.load_plans()
+    if not plans:
+        plans = [
+            {"id": "basic", "name": "Базовый", "days": 30, "traffic_limit_mb": 10240, "price": ""},
+            {"id": "pro", "name": "Про", "days": 30, "traffic_limit_mb": 51200, "price": ""},
+            {"id": "unlimited", "name": "Безлимит", "days": 30, "traffic_limit_mb": 0, "price": ""}
+        ]
+        db.save_plans(plans)
+    return plans
 
 def save_plans(plans):
-    with open(PLANS_FILE, 'w') as f:
-        json.dump(plans, f, ensure_ascii=False, indent=2)
+    db.save_plans(plans)
 
 @app.get("/api/plans")
 async def get_plans():
@@ -1944,11 +1916,21 @@ async def create_backup(request: Request):
     backup_path = os.path.join(BACKUP_DIR, backup_name)
     try:
         with tarfile.open(backup_path, "w:gz") as tar:
-            for fname in BACKUP_FILES:
+            # PostgreSQL dump
+            pg_dump_path = f"/tmp/freelink_pg_{ts}.sql"
+            r = subprocess.run(
+                ["/usr/bin/pg_dump", "-U", "freelink", "-h", "127.0.0.1", "freelink_db"],
+                capture_output=True, text=True, timeout=60, env={**os.environ, "PGPASSWORD": "freelink_pass"})
+            if r.returncode == 0 and r.stdout:
+                with open(pg_dump_path, "w") as f:
+                    f.write(r.stdout)
+                tar.add(pg_dump_path, arcname="freelink_db.sql")
+                os.unlink(pg_dump_path)
+            # Config files
+            for fname in ["config.yaml"]:
                 fpath = os.path.join("/opt/freelink", fname)
                 if os.path.exists(fpath):
                     tar.add(fpath, arcname=fname)
-            # Add Hysteria config
             hy_config = "/etc/hysteria/config.yaml"
             if os.path.exists(hy_config):
                 tar.add(hy_config, arcname="hysteria_config.yaml")
@@ -1983,7 +1965,22 @@ async def restore_backup(request: Request):
         with tarfile.open(backup_path, "r:gz") as tar:
             for member in tar.getmembers():
                 basename = member.name
-                if basename in BACKUP_FILES:
+                if basename == "freelink_db.sql":
+                    # Restore PostgreSQL from dump
+                    tar.extract(member, "/tmp")
+                    sql_path = f"/tmp/freelink_db.sql"
+                    # Drop and recreate
+                    subprocess.run(["/usr/bin/psql", "-U", "freelink", "-h", "127.0.0.1", "-d", "freelink_db",
+                                   "-c", "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"],
+                                  capture_output=True, timeout=30, env={**os.environ, "PGPASSWORD": "freelink_pass"})
+                    r = subprocess.run(["/usr/bin/psql", "-U", "freelink", "-h", "127.0.0.1", "-d", "freelink_db",
+                                       "-f", sql_path],
+                                      capture_output=True, text=True, timeout=60,
+                                      env={**os.environ, "PGPASSWORD": "freelink_pass"})
+                    os.unlink(sql_path)
+                    if r.returncode != 0:
+                        audit_log(user, "BACKUP_RESTORE_WARNING", f"pg_restore: {r.stderr[:200]}")
+                elif basename == "config.yaml":
                     tar.extract(member, "/opt/freelink")
                 elif basename == "hysteria_config.yaml":
                     member.name = "config.yaml"
@@ -2666,13 +2663,7 @@ NODES_FILE = "/opt/freelink/nodes.json"
 MAIN_NODE_ID = "__main__"
 
 def load_nodes():
-    if os.path.exists(NODES_FILE):
-        try:
-            with open(NODES_FILE, "r") as f:
-                return json.load(f)
-        except:
-            pass
-    return {}
+    return db.load_nodes()
 
 def load_panel_config():
     try:
@@ -2753,8 +2744,7 @@ def ensure_main_node():
     print(f"[MAIN NODE] Registered main server as node: {srv.get('name', 'Основной')} ({srv.get('ip', '127.0.0.1')})")
 
 def save_nodes(nodes):
-    with open(NODES_FILE, "w") as f:
-        json.dump(nodes, f, ensure_ascii=False, indent=2)
+    db.save_nodes(nodes)
 
 def gen_node_token():
     return secrets.token_urlsafe(32)
@@ -3490,4 +3480,5 @@ async def startup_event():
         print("[PLANS] Default plans created")
 
 if __name__ == "__main__":
+    db.init_db()
     uvicorn.run(app, host="0.0.0.0", port=8000)

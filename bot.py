@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-import os, yaml, logging, subprocess, random, string, json, secrets, requests
+import os, sys, yaml, logging, subprocess, random, string, json, secrets, requests
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ConversationHandler, ContextTypes
 
+sys.path.insert(0, "/opt/freelink")
+import db
+
 CONFIG_FILE = "/opt/freelink/config.yaml"
-DATA_FILE = "/opt/freelink/data.yaml"
 ONLINE_FILE = "/opt/freelink/online_status.json"
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -20,17 +22,12 @@ def load_config():
         return None
 
 def load_data():
-    if not os.path.exists(DATA_FILE):
-        return {"servers": {}, "users": {}}
-    try:
-        with open(DATA_FILE, 'r') as f:
-            return yaml.safe_load(f) or {"servers": {}, "users": {}}
-    except:
-        return {"servers": {}, "users": {}}
+    users = db.get_all_users()
+    return {"servers": {}, "users": users}
 
 def save_data(data):
-    with open(DATA_FILE, 'w') as f:
-        yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
+    for uid, user_data in data.get("users", {}).items():
+        db.save_user(uid, user_data)
 
 def is_admin(user_id):
     config = load_config()
@@ -528,6 +525,7 @@ async def user_info_cb(query, uid):
 # ====== MAIN ======
 
 def main():
+    db.init_db()
     config = load_config()
     if not config:
         logger.error("Cannot load config.yaml")
