@@ -3416,9 +3416,9 @@ async def subscription_urls(token: str, request: Request):
 
         # Plain text URI
         if obfs:
-            uri = f"hysteria2://{enc_user}:{enc_pass}@{domain}:{node_port}?sni={sni}&obfs=salamander&obfs-password={obfs}&pinnedPeerCertSha256={cert_hash}#{name}"
+            uri = f"hysteria2://{enc_user}:{enc_pass}@{domain}:{node_port}?sni={sni}&obfs=salamander&obfs-password={obfs}&insecure=1#{name}"
         else:
-            uri = f"hysteria2://{enc_user}:{enc_pass}@{domain}:{node_port}?sni={sni}&pinnedPeerCertSha256={cert_hash}#{name}"
+            uri = f"hysteria2://{enc_user}:{enc_pass}@{domain}:{node_port}?sni={sni}&insecure=1#{name}"
         plain_lines.append(uri)
 
     if not proxies:
