@@ -149,6 +149,8 @@ a{text-decoration:none;color:inherit}
 
 /* ===== HEADER BAR ===== */
 .header-bar{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:6px 24px 6px 0;position:sticky;top:0;z-index:50;background:var(--bg);border-bottom:1px solid var(--b1)}
+.gh-link{width:36px;height:36px;border-radius:10px;border:1px solid var(--b1);background:var(--g2);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .25s;text-decoration:none}
+.gh-link:hover{border-color:var(--ac);color:var(--ac2);background:var(--acg)}
 .notif-bell{position:relative;width:36px;height:36px;border-radius:10px;border:1px solid var(--b1);background:var(--g2);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .25s}
 .notif-bell:hover{border-color:var(--ac);color:var(--ac2);background:var(--acg)}
 .notif-bell.shake i{animation:bellShake .5s ease}
@@ -446,6 +448,7 @@ a{text-decoration:none;color:inherit}
 <body>
 <div class="wrap">
     <div class="header-bar">
+        <a href="https://github.com/R3G1ST/FreeLink" target="_blank" class="gh-link" title="GitHub"><i class="fab fa-github"></i></a>
         <div class="notif-bell" id="notifBell" onclick="toggleNotifPanel()">
             <i class="fas fa-bell"></i>
             <span class="notif-badge" id="notifBadge">0</span>
