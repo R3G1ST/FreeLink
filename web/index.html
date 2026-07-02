@@ -438,7 +438,7 @@ a{text-decoration:none;color:inherit}
             <div class="nav-item" onclick="go('audit',this)" data-tip="Аудит"><i class="fas fa-shield-alt"></i> <span data-i18n="nav_audit">Аудит</span></div>
             <div class="nav-item" onclick="go('settings',this)" data-tip="Настройки"><i class="fas fa-cog"></i> <span data-i18n="nav_settings">Настройки</span></div>
             <div class="nav-bottom">
-                <div class="user-pill"><div class="avatar" id="avatar">A</div><span id="username">admin</span></div>
+                <div class="user-pill"><div class="avatar" id="avatar">A</div><span id="userRole">Админ</span></div>
                 <button class="logout" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> <span data-i18n="nav_logout">Выйти</span></button>
             </div>
         </div>
@@ -575,6 +575,7 @@ a{text-decoration:none;color:inherit}
                 </div>
                 <div class="set-group">
                     <h3><i class="fas fa-user-lock"></i> <span data-i18n="settings_account">Мой аккаунт</span></h3>
+                    <div class="set-item"><div><div class="si-label"><span data-i18n="settings_role">Роль</span></div><div class="si-desc" id="settingsRole" style="font-weight:600;color:var(--ac2)">—</div></div></div>
                     <div class="set-item"><div><div class="si-label"><span data-i18n="settings_password">Сменить пароль</span></div><div class="si-desc">Минимум 6 символов</div></div><button class="btn btn-a btn-sm" onclick="showChangePw()"><span data-i18n="btn_edit">Изменить</span></button></div>
                     <div class="set-item"><div><div class="si-label"><span data-i18n="settings_login">Сменить логин</span></div><div class="si-desc">Латиница, цифры, _</div></div><button class="btn btn-b btn-sm" onclick="showChangeLogin()"><span data-i18n="btn_edit">Изменить</span></button></div>
                 </div>
@@ -860,6 +861,7 @@ msg_config_loaded:{ru:'Конфигурация загружена',en:'Configur
 msg_config_saved:{ru:'Конфигурация сохранена',en:'Configuration saved'},
 settings_language:{ru:'Язык',en:'Language'},
 settings_password:{ru:'Сменить пароль',en:'Change password'},
+settings_role:{ru:'Роль',en:'Role'},
 settings_login:{ru:'Сменить логин',en:'Change login'},
 settings_system:{ru:'О системе',en:'About'},
 settings_version:{ru:'Версия',en:'Version'},
@@ -987,7 +989,7 @@ function go(page,el){
 }
 
 async function doLogout(){await fetch('/api/logout',{method:'POST'});window.location.href='/login'}
-async function loadMe(){try{const r=await fetch('/api/me');if(!r.ok){window.location.href='/login';return}const d=await r.json();$('username').textContent=d.username;$('avatar').textContent=d.username[0].toUpperCase()}catch{window.location.href='/login'}}
+async function loadMe(){try{const r=await fetch('/api/me');if(!r.ok){window.location.href='/login';return}const d=await r.json();const roleNames={admin:{ru:'Админ',en:'Admin'},editor:{ru:'Саппорт',en:'Support'},viewer:{ru:'Юзер',en:'User'}};const roleLabel=roleNames[d.role]?.[currentLang]||roleNames[d.role]?.['ru']||d.role;$('userRole').textContent=roleLabel;$('avatar').textContent=d.username[0].toUpperCase();const sr=$('settingsRole');if(sr)sr.textContent=roleLabel}catch{window.location.href='/login'}}
 
 /* ===== DASHBOARD ===== */
 async function loadAll(){

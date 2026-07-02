@@ -770,7 +770,9 @@ async def get_me(request: Request):
     user = validate_session(token)
     if not user:
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    return {"username": user}
+    admins = load_admins()
+    role = admins.get(user, {}).get("role", "admin")
+    return {"username": user, "role": role}
 
 @app.post("/api/change-password")
 async def change_password(request: Request):
