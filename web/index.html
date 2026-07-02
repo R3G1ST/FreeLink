@@ -95,7 +95,8 @@ body::before{content:'';position:fixed;top:-300px;left:50%;transform:translateX(
 ::-webkit-scrollbar{width:5px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb);border-radius:3px}
-.wrap{max-width:1400px;margin:0 auto;padding:2px 24px 32px;position:relative;z-index:1}
+.wrap{width:100%;padding:2px 0 32px;position:relative;z-index:1}
+.wrap-inner{max-width:1400px;margin:0 auto;padding:0 24px}
 a{text-decoration:none;color:inherit}
 
 /* ===== ANIMATIONS ===== */
@@ -160,7 +161,7 @@ a{text-decoration:none;color:inherit}
 .card:hover{border-color:var(--b2)}
 
 /* ===== HEADER BAR ===== */
-.header-bar{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:0;margin-bottom:0}
+.header-bar{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:4px 24px 0;max-width:1400px;margin:0 auto}
 .notif-bell{position:relative;width:36px;height:36px;border-radius:10px;border:1px solid var(--b1);background:var(--g2);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .25s}
 .notif-bell:hover{border-color:var(--ac);color:var(--ac2);background:var(--acg)}
 .notif-bell.shake i{animation:bellShake .5s ease}
@@ -393,6 +394,7 @@ a{text-decoration:none;color:inherit}
     .mrow{grid-template-columns:repeat(3,1fr)}
     .srow{grid-template-columns:repeat(2,1fr)}
     .wrap{padding:2px 16px 32px}
+    .wrap-inner{padding:0 16px}
 }
 @media(max-width:900px){
     .layout{grid-template-columns:1fr}
@@ -408,6 +410,7 @@ a{text-decoration:none;color:inherit}
     .mrow{grid-template-columns:repeat(2,1fr)}
     .header-bar{justify-content:flex-end}
     .wrap{padding:2px 12px 32px}
+    .wrap-inner{padding:0 12px}
     .pg-title{font-size:16px;margin-bottom:12px}
     .mc{padding:12px 10px}
     .mc .v{font-size:22px}
@@ -431,7 +434,8 @@ a{text-decoration:none;color:inherit}
     .tbar .btn{font-size:10px;padding:5px 8px}
     .pg-title{font-size:14px;margin-bottom:10px}
     .wrap{padding:2px 8px 32px}
-    .header-bar{gap:6px}
+    .wrap-inner{padding:0 8px}
+    .header-bar{padding:4px 16px 0;gap:6px}
     .user-avatar{width:32px;height:32px;font-size:12px}
     .notif-bell{width:32px;height:32px;font-size:13px}
     .modal{margin:8px;max-width:calc(100vw - 16px);border-radius:12px}
@@ -452,6 +456,7 @@ a{text-decoration:none;color:inherit}
     .tbar .btn{justify-content:center}
     .sbox{width:100%}
     .fgr{width:100%;justify-content:center}
+    .header-bar{padding:4px 8px 0}
 }
 </style>
 </head>
@@ -473,6 +478,7 @@ a{text-decoration:none;color:inherit}
             </div>
         </div>
     </div>
+    <div class="wrap-inner">
     <div class="layout">
         <div class="sidebar" id="sidebar">
             <div class="sb-logo"><div class="icon"><i class="fas fa-bolt"></i></div><h2><em>Free</em>Link</h2><button class="sb-collapse" onclick="toggleSidebar()" title="Свернуть"><i class="fas fa-chevron-left"></i></button></div>
@@ -640,6 +646,7 @@ a{text-decoration:none;color:inherit}
                 </div>
             </div>
         </div>
+    </div>
     </div>
     <div class="ftr" id="footerText"></div>
 </div>
