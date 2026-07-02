@@ -10,13 +10,18 @@
 <h1 align="center">FreeLink</h1>
 
 <p align="center">
-  <b>Multi-server VPN management panel with subscription system</b><br>
-  <a href="#-features">Features</a> &bull; <a href="#-quick-start">Quick Start</a> &bull; <a href="#-architecture">Architecture</a> &bull; <a href="#-services">Services</a> &bull; <a href="#-api">API</a> &bull; <a href="#-русский">Русский</a>
+  <b>Multi-server VPN management panel with subscription system</b><br><br>
+  <a href="#english"><img src="https://img.shields.io/badge/English-blue?style=for-the-badge" alt="English"></a>
+  <a href="#русский"><img src="https://img.shields.io/badge/Русский-red?style=for-the-badge" alt="Русский"></a>
 </p>
 
-> **ALPHA VERSION** — This project is in active development. APIs, features, and configuration may change without notice.
-
 ---
+
+<a id="english"></a>
+
+# English
+
+> **ALPHA VERSION** — This project is in active development. APIs, features, and configuration may change without notice.
 
 ## Features
 
@@ -279,13 +284,12 @@ This handles:
 </p>
 
 ---
----
+
+<a id="русский"></a>
 
 # Русский
 
 > **АЛЬФА-ВЕРСИЯ** — Проект в активной разработке. API, функции и конфигурация могут изменяться без уведомления.
-
----
 
 ## Возможности
 
