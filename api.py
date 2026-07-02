@@ -204,10 +204,10 @@ def find_online_user(online_status, username):
     return online_status.get(username, {}) or online_status.get(username.lower(), {})
 
 def get_online_status():
-    """Online status — Marzban style: snapshot-based + node heartbeat merge."""
+    """Online status — traffic-change based: online only if tx/rx differs between snapshots."""
     try:
-        status = db.get_online_users(window_seconds=30)
-        # Merge users from remote node heartbeats
+        status = db.get_online_users(window_seconds=60)
+        # Merge last_active from remote node heartbeats (don't override online status)
         nodes = load_nodes()
         for nid, node in nodes.items():
             if node.get("is_main"):
@@ -219,22 +219,11 @@ def get_online_status():
                 is_online = False
             if not is_online:
                 continue
+            node_time = node.get("last_seen", "")
             for username in node.get("online_usernames", []):
                 key = username.lower()
-                if key not in status:
-                    # User seen on remote node but not in main snapshots — add as online
-                    status[key] = {
-                        "online": True,
-                        "tx": 0, "rx": 0,
-                        "tx_speed": 0, "rx_speed": 0,
-                        "last_active": node.get("last_seen", ""),
-                    }
-                    status[username] = status[key]
-                else:
-                    # User exists — update last_active if node is fresher
-                    node_time = node.get("last_seen", "")
-                    if node_time > status[key].get("last_active", ""):
-                        status[key]["last_active"] = node_time
+                if key in status and node_time > status[key].get("last_active", ""):
+                    status[key]["last_active"] = node_time
         return status
     except Exception as e:
         print(f"[online] Error: {e}", flush=True)
@@ -990,6 +979,9 @@ async def get_users():
             "ip": user_ip,
             "online": is_online,
             "last_seen": user_online.get("last_active", ""),
+            "tx_speed": user_online.get("tx_speed", 0),
+            "rx_speed": user_online.get("rx_speed", 0),
+            "inactive_since": user_online.get("inactive_since"),
             "traffic": {
                 "total_mb": total_mb,
                 "tx_mb": round(tx_bytes / 1024 / 1024, 2),
@@ -1431,7 +1423,8 @@ async def online():
             "online": is_online,
             "last_seen": user_status.get("last_active", ""),
             "tx_speed": user_status.get("tx_speed", 0),
-            "rx_speed": user_status.get("rx_speed", 0)
+            "rx_speed": user_status.get("rx_speed", 0),
+            "inactive_since": user_status.get("inactive_since"),
         })
         if is_online:
             online_count += 1
@@ -2124,7 +2117,8 @@ async def websocket_live(websocket: WebSocket):
                         "user": username,
                         "tx_speed_mb": round(user_status.get("tx_speed", 0) / 1024 / 1024, 2),
                         "rx_speed_mb": round(user_status.get("rx_speed", 0) / 1024 / 1024, 2),
-                        "last_active": user_status.get("last_active", "")
+                        "last_active": user_status.get("last_active", ""),
+                        "inactive_since": user_status.get("inactive_since"),
                     })
             online_count = sum(1 for u in online_status.values() if u.get("online"))
             await websocket.send_json({"traffic": traffic, "online": online_count, "time": time.strftime("%H:%M:%S")})
@@ -2150,7 +2144,8 @@ async def broadcast_update():
                 "user": username,
                 "tx_speed_mb": round(user_status.get("tx_speed", 0) / 1024 / 1024, 2),
                 "rx_speed_mb": round(user_status.get("rx_speed", 0) / 1024 / 1024, 2),
-                "last_active": user_status.get("last_active", "")
+                "last_active": user_status.get("last_active", ""),
+                "inactive_since": user_status.get("inactive_since"),
             })
     online_count = sum(1 for u in online_status.values() if u.get("online"))
     dead = set()

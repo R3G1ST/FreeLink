@@ -67,12 +67,11 @@ def format_traffic(bytes_val):
 
 def get_online_status():
     try:
-        if os.path.exists(ONLINE_FILE):
-            with open(ONLINE_FILE, 'r') as f:
-                return json.load(f)
-    except:
-        pass
-    return {}
+        db.init_db()
+        return db.get_online_users(window_seconds=60)
+    except Exception as e:
+        logger.error(f"Failed to get online status: {e}")
+        return {}
 
 def get_server_info():
     try:

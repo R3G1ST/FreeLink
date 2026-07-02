@@ -451,15 +451,16 @@ def get_user_traffic_per_node(username):
     with get_conn() as conn:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute("""
-            SELECT node_id, tx, rx, captured_at
-            FROM traffic_snapshots
-            WHERE username = %s AND captured_at > NOW() - INTERVAL '10 minutes'
-            AND id IN (
-                SELECT MAX(id) FROM traffic_snapshots
-                WHERE username = %s AND captured_at > NOW() - INTERVAL '10 minutes'
-                GROUP BY node_id
+            WITH latest AS (
+                SELECT DISTINCT ON (username, node_id)
+                       username, node_id, tx, rx, captured_at
+                FROM traffic_snapshots
+                WHERE username = %s
+                  AND captured_at > NOW() - INTERVAL '10 minutes'
+                ORDER BY username, node_id, captured_at DESC
             )
-        """, (username.lower(), username.lower()))
+            SELECT node_id, tx, rx, captured_at FROM latest
+        """, (username.lower(),))
         return {r["node_id"]: {"tx": r["tx"], "rx": r["rx"]} for r in cur.fetchall()}
 
 def get_all_user_traffic():
@@ -467,23 +468,18 @@ def get_all_user_traffic():
     with get_conn() as conn:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute("""
-            SELECT username, node_id, tx, rx
-            FROM traffic_snapshots t1
-            WHERE captured_at > NOW() - INTERVAL '10 minutes'
-            AND id = (
-                SELECT MAX(id) FROM traffic_snapshots t2
-                WHERE t2.username = t1.username AND t2.node_id = t1.node_id
-                AND t2.captured_at > NOW() - INTERVAL '10 minutes'
+            WITH latest AS (
+                SELECT DISTINCT ON (username, node_id)
+                       username, node_id, tx, rx
+                FROM traffic_snapshots
+                WHERE captured_at > NOW() - INTERVAL '10 minutes'
+                ORDER BY username, node_id, captured_at DESC
             )
+            SELECT username, SUM(tx) as tx, SUM(rx) as rx
+            FROM latest
+            GROUP BY username
         """)
-        result = {}
-        for r in cur.fetchall():
-            u = r["username"]
-            if u not in result:
-                result[u] = {"tx": 0, "rx": 0}
-            result[u]["tx"] += r["tx"]
-            result[u]["rx"] += r["rx"]
-        return result
+        return {r["username"]: {"tx": r["tx"], "rx": r["rx"]} for r in cur.fetchall()}
 
 def cleanup_old_snapshots():
     """Remove snapshots older than 1 hour."""
@@ -491,57 +487,98 @@ def cleanup_old_snapshots():
         cur = conn.cursor()
         cur.execute("DELETE FROM traffic_snapshots WHERE captured_at < NOW() - INTERVAL '1 hour'")
 
-def get_online_users(window_seconds=30):
+def get_online_users(window_seconds=60):
     """
-    Online detection — Marzban style:
-    User is online if they appear in ANY traffic snapshot within the window.
-    No traffic change required — connected = online.
+    Professional online detection.
+    Compares rank-1 and rank-2 snapshots per (user, node).
+    Calculates real speed in bytes/sec using time delta.
+    Detects inactive users (connected but idle >5 min).
     """
     with get_conn() as conn:
         cur = conn.cursor(cursor_factory=RealDictCursor)
 
-        # Latest snapshot per user (any node) within window
         cur.execute("""
-            SELECT username,
-                   SUM(tx) as tx, SUM(rx) as rx,
-                   MAX(captured_at) as last_active
-            FROM (
-                SELECT DISTINCT ON (username, node_id)
-                       username, node_id, tx, rx, captured_at
+            WITH ranked AS (
+                SELECT username, node_id, tx, rx, captured_at,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY username, node_id
+                           ORDER BY captured_at DESC
+                       ) as rn
                 FROM traffic_snapshots
                 WHERE captured_at > NOW() - make_interval(secs => %s)
-                ORDER BY username, node_id, captured_at DESC
-            ) sub
-            GROUP BY username
+            )
+            SELECT username, node_id,
+                   MAX(CASE WHEN rn = 1 THEN tx END) as tx,
+                   MAX(CASE WHEN rn = 1 THEN rx END) as rx,
+                   MAX(CASE WHEN rn = 1 THEN captured_at END) as last_active,
+                   MAX(CASE WHEN rn = 2 THEN tx END) as prev_tx,
+                   MAX(CASE WHEN rn = 2 THEN rx END) as prev_rx,
+                   MAX(CASE WHEN rn = 2 THEN captured_at END) as prev_active
+            FROM ranked
+            WHERE rn IN (1, 2)
+            GROUP BY username, node_id
         """, (window_seconds,))
-        latest = {r["username"]: r for r in cur.fetchall()}
 
-        # Previous snapshot for speed calculation
-        cur.execute("""
-            SELECT username,
-                   SUM(tx) as tx, SUM(rx) as rx
-            FROM (
-                SELECT DISTINCT ON (username, node_id)
-                       username, node_id, tx, rx
-                FROM traffic_snapshots
-                WHERE captured_at > NOW() - make_interval(secs => %s)
-                ORDER BY username, node_id, captured_at DESC
-            ) sub
-            GROUP BY username
-        """, (window_seconds * 3,))
-        prev = {r["username"]: r for r in cur.fetchall()}
+        by_user = {}
+        for r in cur.fetchall():
+            u = r["username"]
+            if u not in by_user:
+                by_user[u] = {
+                    "tx": 0, "rx": 0,
+                    "has_change": False,
+                    "best_tx_speed": 0.0,
+                    "best_rx_speed": 0.0,
+                    "last_active": None,
+                    "last_change": None,
+                }
 
+            cur_tx = r["tx"] or 0
+            cur_rx = r["rx"] or 0
+            prev_tx = r["prev_tx"]
+            prev_rx = r["prev_rx"]
+            last_active = r["last_active"]
+            prev_active = r["prev_active"]
+
+            dtx = max(0, cur_tx - (prev_tx if prev_tx is not None else cur_tx))
+            drx = max(0, cur_rx - (prev_rx if prev_rx is not None else cur_rx))
+
+            by_user[u]["tx"] += cur_tx
+            by_user[u]["rx"] += cur_rx
+
+            if dtx > 0 or drx > 0:
+                by_user[u]["has_change"] = True
+                if last_active and (by_user[u]["last_change"] is None or last_active > by_user[u]["last_change"]):
+                    by_user[u]["last_change"] = last_active
+
+                if last_active and prev_active:
+                    dt = max(1, (last_active - prev_active).total_seconds())
+                    tx_speed = dtx / dt
+                    rx_speed = drx / dt
+                    by_user[u]["best_tx_speed"] = max(by_user[u]["best_tx_speed"], tx_speed)
+                    by_user[u]["best_rx_speed"] = max(by_user[u]["best_rx_speed"], rx_speed)
+
+            if last_active and (by_user[u]["last_active"] is None or last_active > by_user[u]["last_active"]):
+                by_user[u]["last_active"] = last_active
+
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
         result = {}
-        for username, snap in latest.items():
-            p = prev.get(username, {})
-            tx_speed = max(0, snap["tx"] - p.get("tx", snap["tx"]))
-            rx_speed = max(0, snap["rx"] - p.get("rx", snap["rx"]))
+        for username, data in by_user.items():
+            inactive_since = None
+            if not data["has_change"] and data["last_active"]:
+                inactive_since = data["last_active"].isoformat()
+            elif data["has_change"] and data["last_change"]:
+                gap = (now - data["last_change"].replace(tzinfo=timezone.utc)).total_seconds()
+                if gap > 300:
+                    inactive_since = data["last_change"].isoformat()
+
             result[username] = {
-                "online": True,
-                "tx": snap["tx"],
-                "rx": snap["rx"],
-                "tx_speed": tx_speed,
-                "rx_speed": rx_speed,
-                "last_active": str(snap["last_active"]),
+                "online": data["has_change"],
+                "tx": data["tx"],
+                "rx": data["rx"],
+                "tx_speed": round(data["best_tx_speed"]),
+                "rx_speed": round(data["best_rx_speed"]),
+                "last_active": data["last_active"].isoformat() if data["last_active"] else "",
+                "inactive_since": inactive_since,
             }
         return result
