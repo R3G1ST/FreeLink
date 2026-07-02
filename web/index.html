@@ -433,7 +433,6 @@ a{text-decoration:none;color:inherit}
             <div class="nav-item" onclick="go('config',this)" data-tip="Конфиг"><i class="fas fa-file-code"></i> <span data-i18n="nav_config">Конфиг</span></div>
             <div class="nav-item" onclick="go('logs',this)" data-tip="Логи"><i class="fas fa-scroll"></i> <span data-i18n="nav_logs">Логи</span></div>
             <div class="nav-item" onclick="go('audit',this)" data-tip="Аудит"><i class="fas fa-shield-alt"></i> <span data-i18n="nav_audit">Аудит</span></div>
-            <div class="nav-item" onclick="go('settings',this)" data-tip="Настройки"><i class="fas fa-cog"></i> <span data-i18n="nav_settings">Настройки</span></div>
         </div>
         <div class="main">
             <!-- Header bar -->
@@ -451,6 +450,7 @@ a{text-decoration:none;color:inherit}
                     <div class="user-dropdown" id="userDropdown">
                         <div class="ud-header"><div class="ud-avatar" id="udAvatar">A</div><div><div class="ud-name" id="udName">admin</div><div class="ud-role" id="udRole">Админ</div></div></div>
                         <div class="ud-sep"></div>
+                        <div class="ud-item" onclick="go('settings');closeUserMenu()"><i class="fas fa-cog"></i> <span data-i18n="nav_settings">Настройки</span></div>
                         <div class="ud-item ud-danger" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> <span data-i18n="nav_logout">Выйти</span></div>
                     </div>
                 </div>
@@ -975,7 +975,7 @@ function go(page,el){
     document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
     document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('on'));
     $('p-'+page).classList.add('on');
-    el.classList.add('on');
+    if(el)el.classList.add('on');
     currentPage=page;
     if(page==='dashboard')setTimeout(()=>{renderPieChart();renderBarChart()},100);
     if(page==='traffic')lCh(1,document.querySelector('#p-traffic .cpd button.on'));
