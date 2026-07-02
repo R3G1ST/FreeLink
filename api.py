@@ -2,7 +2,7 @@
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse, Response, HTMLResponse, RedirectResponse
-import yaml, os, subprocess, re, json, requests, time, hashlib, secrets, base64, io, sys
+import yaml, os, subprocess, re, json, requests, time, hashlib, secrets, base64, io, sys, tarfile
 from datetime import datetime, timedelta
 import random, string
 import psutil
