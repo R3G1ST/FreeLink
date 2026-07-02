@@ -206,7 +206,7 @@ def find_online_user(online_status, username):
 def get_online_status():
     """Online status based on traffic snapshots with activity detection."""
     try:
-        status = db.get_online_users(window_seconds=60)
+        status = db.get_online_users(window_seconds=30)
         # Node heartbeat data: only update last_active, don't override online status
         nodes = load_nodes()
         for nid, node in nodes.items():
@@ -2120,7 +2120,7 @@ async def websocket_live(websocket: WebSocket):
                     })
             online_count = sum(1 for u in online_status.values() if u.get("online"))
             await websocket.send_json({"traffic": traffic, "online": online_count, "time": time.strftime("%H:%M:%S")})
-            await asyncio.sleep(3)
+            await asyncio.sleep(2)
     except WebSocketDisconnect:
         ws_clients.discard(websocket)
     except:
