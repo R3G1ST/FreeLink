@@ -132,34 +132,6 @@ a{text-decoration:none;color:inherit}
 .nav-item i{width:18px;text-align:center;font-size:13px;flex-shrink:0}
 .nav-item span{transition:opacity .2s,width .3s;overflow:hidden}
 .nav-sep{height:1px;background:var(--b1);margin:4px 20px}
-.nav-bottom{padding:10px 20px 0;border-top:1px solid var(--b1);margin-top:4px}
-.nav-bottom .user-pill{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2);margin-bottom:8px;overflow:hidden}
-.nav-bottom .user-pill .avatar{width:28px;height:28px;border-radius:50%;background:var(--acg);display:flex;align-items:center;justify-content:center;color:var(--ac2);font-size:11px;font-weight:700;flex-shrink:0}
-.nav-bottom .logout{display:block;width:100%;text-align:center;padding:7px;border:none;border-radius:8px;background:var(--rdg);color:var(--rd);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}
-.nav-bottom .logout:hover{background:rgba(239,68,68,0.15);transform:translateY(-1px)}
-.nav-bottom .logout span{transition:opacity .2s}
-
-/* ===== SIDEBAR COLLAPSED ===== */
-.sidebar.collapsed{width:64px;padding:16px 0}
-.sidebar.collapsed .sb-logo{justify-content:center;padding:0 0 14px}
-.sidebar.collapsed .sb-logo .icon{margin:0;cursor:pointer}
-.sidebar.collapsed .sb-logo .icon:hover{filter:brightness(1.2)}
-.sidebar.collapsed .sb-logo h2{display:none}
-.sidebar.collapsed .sb-logo .sb-collapse{display:none}
-.sidebar.collapsed .nav-item{padding:9px 0;justify-content:center;border-left:none;border-radius:8px;margin:0 8px}
-.sidebar.collapsed .nav-item.on{border-left:none}
-.sidebar.collapsed .nav-item span{opacity:0;width:0;position:absolute;pointer-events:none}
-.sidebar.collapsed .nav-item i{margin:0}
-.sidebar.collapsed .nav-item::after{content:attr(data-tip);position:absolute;left:calc(100% + 8px);top:50%;transform:translateY(-50%);background:var(--c3);color:var(--t1);padding:5px 10px;border-radius:6px;font-size:11px;font-weight:500;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:100;box-shadow:var(--shadow-md);border:1px solid var(--b2)}
-.sidebar.collapsed .nav-item:hover::after{opacity:1}
-.sidebar.collapsed .nav-sep{margin:4px 12px}
-.sidebar.collapsed .nav-bottom{padding:10px 0 0;text-align:center}
-.sidebar.collapsed .nav-bottom .user-pill{justify-content:center;margin-bottom:8px}
-.sidebar.collapsed .nav-bottom .user-pill span{opacity:0;width:0;overflow:hidden;position:absolute;pointer-events:none}
-.sidebar.collapsed .nav-bottom .logout{padding:7px;width:calc(100% - 16px);margin:0 8px;position:relative}
-.sidebar.collapsed .nav-bottom .logout i{display:none}
-.sidebar.collapsed .nav-bottom .logout span{opacity:0;width:0;overflow:hidden;position:absolute;pointer-events:none}
-.sidebar.collapsed .nav-bottom .logout::after{content:'\f2f5';font-family:'Font Awesome 6 Free';font-weight:900;font-size:12px}
 
 .main{min-width:0}
 .pg{display:none}
@@ -191,6 +163,23 @@ a{text-decoration:none;color:inherit}
 .notif-item .ni-time{font-size:10px;color:var(--t4);margin-top:2px}
 .notif-item .ni-unread{width:6px;height:6px;border-radius:50%;background:var(--ac);flex-shrink:0;margin-top:5px}
 .notif-empty{padding:24px;text-align:center;color:var(--t4);font-size:12px}
+
+/* ===== USER MENU ===== */
+.user-menu{position:relative}
+.user-avatar{width:36px;height:36px;border-radius:10px;border:1px solid var(--b1);background:var(--acg);color:var(--ac2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;transition:all .25s}
+.user-avatar:hover{border-color:var(--ac);background:rgba(139,92,246,0.15)}
+.user-dropdown{position:absolute;top:44px;right:0;width:220px;background:var(--c3);border:1px solid var(--b2);border-radius:12px;box-shadow:var(--shadow-lg);display:none;z-index:100;overflow:hidden;animation:scaleIn .15s ease-out}
+.user-dropdown.show{display:block}
+.ud-header{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--b1)}
+.ud-avatar{width:36px;height:36px;border-radius:50%;background:var(--acg);color:var(--ac2);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0}
+.ud-name{font-size:13px;font-weight:600;color:var(--t1)}
+.ud-role{font-size:10px;color:var(--ac2);font-weight:600;text-transform:uppercase;letter-spacing:0.3px}
+.ud-sep{height:1px;background:var(--b1);margin:4px 0}
+.ud-item{display:flex;align-items:center;gap:10px;padding:10px 16px;font-size:12px;color:var(--t2);cursor:pointer;transition:all .15s}
+.ud-item:hover{background:var(--g2);color:var(--t1)}
+.ud-item i{width:16px;text-align:center;font-size:12px}
+.ud-danger{color:var(--rd)}
+.ud-danger:hover{background:var(--rdg);color:var(--rd)}
 
 /* ===== METRICS ===== */
 .mrow{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:18px}
@@ -398,13 +387,6 @@ a{text-decoration:none;color:inherit}
     .nav-item span{opacity:1;width:auto;position:static}
     .nav-item::after{display:none!important}
     .nav-sep{display:none}
-    .nav-bottom{position:static;border-top:none;padding:6px 0 0;display:flex;gap:6px;align-items:center;flex-shrink:0}
-    .nav-bottom .logout{width:auto;margin:0;padding:6px 12px}
-    .nav-bottom .logout i{display:inline}
-    .nav-bottom .logout span{opacity:1;width:auto;position:static}
-    .nav-bottom .logout::after{display:none}
-    .nav-bottom .user-pill span{opacity:1;width:auto;position:static}
-    .nav-bottom .user-pill{margin:0}
     .mrow{grid-template-columns:repeat(2,1fr)}
     .header-bar{justify-content:flex-start}
 }
@@ -437,10 +419,6 @@ a{text-decoration:none;color:inherit}
             <div class="nav-item" onclick="go('logs',this)" data-tip="Логи"><i class="fas fa-scroll"></i> <span data-i18n="nav_logs">Логи</span></div>
             <div class="nav-item" onclick="go('audit',this)" data-tip="Аудит"><i class="fas fa-shield-alt"></i> <span data-i18n="nav_audit">Аудит</span></div>
             <div class="nav-item" onclick="go('settings',this)" data-tip="Настройки"><i class="fas fa-cog"></i> <span data-i18n="nav_settings">Настройки</span></div>
-            <div class="nav-bottom">
-                <div class="user-pill"><div class="avatar" id="avatar">A</div><span id="userRole">Админ</span></div>
-                <button class="logout" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> <span data-i18n="nav_logout">Выйти</span></button>
-            </div>
         </div>
         <div class="main">
             <!-- Header bar -->
@@ -453,6 +431,15 @@ a{text-decoration:none;color:inherit}
                 <button class="theme-toggle" onclick="toggleTheme()" title="Сменить тему">
                     <i class="fas fa-moon" id="themeIcon"></i>
                 </button>
+                <div class="user-menu" id="userMenu">
+                    <div class="user-avatar" onclick="toggleUserMenu()"><span id="avatar">A</span></div>
+                    <div class="user-dropdown" id="userDropdown">
+                        <div class="ud-header"><div class="ud-avatar" id="udAvatar">A</div><div><div class="ud-name" id="udName">admin</div><div class="ud-role" id="udRole">Админ</div></div></div>
+                        <div class="ud-sep"></div>
+                        <div class="ud-item" onclick="go('settings',document.querySelector('.nav-item[data-tip]'))"><i class="fas fa-cog"></i> <span data-i18n="nav_settings">Настройки</span></div>
+                        <div class="ud-item ud-danger" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> <span data-i18n="nav_logout">Выйти</span></div>
+                    </div>
+                </div>
             </div>
 
             <!-- DASHBOARD -->
@@ -989,7 +976,7 @@ function go(page,el){
 }
 
 async function doLogout(){await fetch('/api/logout',{method:'POST'});window.location.href='/login'}
-async function loadMe(){try{const r=await fetch('/api/me');if(!r.ok){window.location.href='/login';return}const d=await r.json();const roleNames={admin:{ru:'Админ',en:'Admin'},editor:{ru:'Саппорт',en:'Support'},viewer:{ru:'Юзер',en:'User'}};const roleLabel=roleNames[d.role]?.[currentLang]||roleNames[d.role]?.['ru']||d.role;$('userRole').textContent=roleLabel;$('avatar').textContent=d.username[0].toUpperCase();const sr=$('settingsRole');if(sr)sr.textContent=roleLabel}catch{window.location.href='/login'}}
+async function loadMe(){try{const r=await fetch('/api/me');if(!r.ok){window.location.href='/login';return}const d=await r.json();const roleNames={admin:{ru:'Админ',en:'Admin'},editor:{ru:'Саппорт',en:'Support'},viewer:{ru:'Юзер',en:'User'}};const roleLabel=roleNames[d.role]?.[currentLang]||roleNames[d.role]?.['ru']||d.role;const initial=d.username[0].toUpperCase();$('avatar').textContent=initial;$('udAvatar').textContent=initial;$('udName').textContent=d.username;$('udRole').textContent=roleLabel;const sr=$('settingsRole');if(sr)sr.textContent=roleLabel}catch{window.location.href='/login'}}
 
 /* ===== DASHBOARD ===== */
 async function loadAll(){
@@ -1227,6 +1214,17 @@ function generateServiceToken(){
         if(area)area.innerHTML='<div style="color:var(--rd);font-size:12px;padding:10px">Ошибка соединения</div>';
     });
 }
+
+/* ===== USER MENU ===== */
+let userMenuOpen=false;
+function toggleUserMenu(){
+    userMenuOpen=!userMenuOpen;
+    const dd=$('userDropdown');
+    if(userMenuOpen){dd.classList.add('show')}
+    else{dd.classList.remove('show')}
+}
+function closeUserMenu(){userMenuOpen=false;const dd=$('userDropdown');if(dd)dd.classList.remove('show')}
+document.addEventListener('click',e=>{const m=$('userMenu');if(m&&!m.contains(e.target))closeUserMenu()});
 
 /* ===== NOTIFICATIONS ===== */
 let notifCount=0;
