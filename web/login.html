@@ -22,9 +22,10 @@ body::before{content:'';position:fixed;top:-200px;left:50%;transform:translateX(
 .form{display:flex;flex-direction:column;gap:14px}
 .field{display:flex;flex-direction:column;gap:0}
 .field label{font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px}
-.field input{width:100%;padding:10px 14px;background:var(--g2);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-size:13px;outline:none;transition:all .25s;font-family:inherit}
-.field input:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(139,92,246,0.1)}
-.field input::placeholder{color:var(--t4)}
+.field input{width:100%;padding:10px 14px;background:var(--g2)!important;border:1px solid var(--b1);border-radius:8px;color:var(--t1)!important;font-size:13px;outline:none;transition:all .25s;font-family:inherit;-webkit-box-shadow:0 0 0 30px var(--g2) inset!important;-webkit-text-fill-color:var(--t1)!important}
+.field input:focus{border-color:var(--ac)!important;box-shadow:0 0 0 3px rgba(139,92,246,0.1)!important,-webkit-box-shadow:0 0 0 3px rgba(139,92,246,0.1)!important}
+.field input::placeholder{color:var(--t4)!important}
+.field input:-webkit-autofill,.field input:-webkit-autofill:hover,.field input:-webkit-autofill:focus{-webkit-background-clip:text;-webkit-text-fill-color:var(--t1)!important;-webkit-box-shadow:0 0 0 30px var(--g2) inset!important;transition:background-color 5000s ease-in-out 0s}
 .btn{padding:11px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;transition:all .2s;font-family:inherit;background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff;box-shadow:0 2px 8px rgba(139,92,246,0.2);margin-top:4px}
 .btn:hover{filter:brightness(1.1);transform:translateY(-1px);box-shadow:0 4px 20px rgba(139,92,246,0.4)}
 .btn:active{transform:scale(0.97)}
