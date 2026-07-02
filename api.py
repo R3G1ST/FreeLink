@@ -1635,9 +1635,11 @@ async def gen_service_token(uid: str):
     user = get_user(uid)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    token = secrets.token_urlsafe(24)
-    user["service_token"] = token
-    save_user(uid, user)
+    token = user.get("service_token", "")
+    if not token:
+        token = secrets.token_urlsafe(24)
+        user["service_token"] = token
+        save_user(uid, user)
     return {"success": True, "token": token, "url": f"/s/{token}"}
 
 @app.post("/api/miniapp/user/gen-service-token/{uid}")
