@@ -607,8 +607,9 @@ a{text-decoration:none;color:inherit}
                         <div class="si-label">Админы бота (Telegram ID)</div>
                         <div id="tgAdminsList" style="display:flex;flex-wrap:wrap;gap:6px"></div>
                         <div style="display:flex;gap:6px">
-                            <input type="number" id="tgNewAdminId" class="lang-select" style="width:160px" placeholder="Telegram ID">
-                            <button class="btn btn-g btn-sm" onclick="addBotAdmin()"><i class="fas fa-plus"></i> Добавить</button>
+                            <input type="text" id="tgBotToken" class="lang-select" style="width:260px;font-family:monospace;font-size:11px" placeholder="123456:ABC...">
+                            <button class="btn btn-a btn-sm" onclick="saveBotToken()"><i class="fas fa-save"></i> <span data-i18n="btn_save">Сохранить</span></button>
+                            <button class="btn btn-o btn-sm" onclick="restartBot()"><i class="fas fa-redo"></i> Перезапустить</button>
                         </div>
                     </div>
                 </div>
@@ -1632,6 +1633,12 @@ async function removeBotAdmin(id){
     const r=await fetch('/api/telegram/admins/remove',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_id:id})});
     const d=await r.json();
     if(d.success){loadTelegramConfig()}
+    else{toast(d.error||'Ошибка','error')}
+}
+async function restartBot(){
+    const r=await fetch('/api/services/freelink-bot/restart',{method:'POST'});
+    const d=await r.json();
+    if(d.success){toast('Бот перезапущен!')}
     else{toast(d.error||'Ошибка','error')}
 }
 async function loadAdmins(){
