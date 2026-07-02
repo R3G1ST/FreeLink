@@ -3347,7 +3347,7 @@ async def add_payment(request: Request):
 
 # Subscription URL: returns plain text with hysteria2:// URIs for all online nodes
 @app.get("/sub/{token}")
-async def subscription_urls(token: str):
+async def subscription_urls(token: str, request: Request):
     users = load_data().get("users", {})
     user = None
     uid = None
@@ -3371,9 +3371,9 @@ async def subscription_urls(token: str):
 
     nodes = load_nodes()
     now = datetime.now()
-    lines = []
+    proxies = []
+    plain_lines = []
     for nid, node in nodes.items():
-        # Main server is always online, remote nodes need recent heartbeat
         is_main = node.get("is_main", False)
         if is_main:
             is_online = True
@@ -3393,28 +3393,57 @@ async def subscription_urls(token: str):
 
         name = node.get("name", domain)
         node_port = node.get("port", port)
-        # All nodes use main domain as SNI (they share the same cert)
         sni = h.get("domain", "link.qmbox.ru")
-        import re
         from urllib.parse import quote
-        # Get cert hash for pinnedPeerCertSha256
         cert_hash = get_cert_hash()
-        # URL-encode special characters in username and password
         enc_user = quote(username, safe='')
         enc_pass = quote(password, safe='')
 
+        # Clash/Happ proxy config
+        proxy = {
+            "name": name,
+            "type": "hysteria2",
+            "server": domain,
+            "port": node_port,
+            "password": password,
+            "sni": sni,
+            "skip-cert-verify": False,
+        }
+        if obfs:
+            proxy["obfs"] = {"type": "salamander", "password": obfs}
+        proxies.append(proxy)
+
+        # Plain text URI
         if obfs:
             uri = f"hysteria2://{enc_user}:{enc_pass}@{domain}:{node_port}?sni={sni}&obfs=salamander&obfs-password={obfs}&pinnedPeerCertSha256={cert_hash}#{name}"
         else:
             uri = f"hysteria2://{enc_user}:{enc_pass}@{domain}:{node_port}?sni={sni}&pinnedPeerCertSha256={cert_hash}#{name}"
-        lines.append(uri)
+        plain_lines.append(uri)
 
-    if not lines:
+    if not proxies:
         return Response(content="# No online servers available\n", media_type="text/plain; charset=utf-8")
 
-    # Return plain text (one URI per line) - compatible with most clients
-    content = "\n".join(lines) + "\n"
-    return Response(content=content, media_type="text/plain; charset=utf-8")
+    # Detect format: Clash YAML for Happ, Clash, v2rayN; plain for others
+    ua = request.headers.get("user-agent", "").lower()
+    accept = request.headers.get("accept", "")
+    format_param = request.query_params.get("format", "")
+
+    use_clash = format_param == "clash" or "happ" in ua or "clash" in ua or "v2ray" in ua or "stash" in ua
+
+    if use_clash:
+        # Clash/Happ YAML format
+        import yaml as _yaml
+        clash_config = {
+            "proxies": proxies,
+            "proxy-groups": [{"name": "PROXY", "type": "select", "proxies": [p["name"] for p in proxies]}],
+            "rules": ["MATCH,PROXY"]
+        }
+        content = _yaml.dump(clash_config, default_flow_style=False, allow_unicode=True)
+        return Response(content=content, media_type="text/yaml; charset=utf-8")
+    else:
+        # Plain text URIs
+        content = "\n".join(plain_lines) + "\n"
+        return Response(content=content, media_type="text/plain; charset=utf-8")
 
 # Client self-service: view subscription by token
 @app.get("/api/client/sub/{token}")
