@@ -3399,7 +3399,7 @@ async def subscription_urls(token: str, request: Request):
         enc_user = quote(username, safe='')
         enc_pass = quote(password, safe='')
 
-        # Clash/Happ proxy config
+        # Clash/Happ proxy config (Clash Meta / Mihomo format)
         proxy = {
             "name": name,
             "type": "hysteria2",
@@ -3410,7 +3410,8 @@ async def subscription_urls(token: str, request: Request):
             "skip-cert-verify": False,
         }
         if obfs:
-            proxy["obfs"] = {"type": "salamander", "password": obfs}
+            proxy["obfs"] = "salamander"
+            proxy["obfs-password"] = obfs
         proxies.append(proxy)
 
         # Plain text URI
@@ -3431,9 +3432,13 @@ async def subscription_urls(token: str, request: Request):
     use_clash = format_param == "clash" or "happ" in ua or "clash" in ua or "v2ray" in ua or "stash" in ua
 
     if use_clash:
-        # Clash/Happ YAML format
+        # Clash/Happ YAML format (Clash Meta / Mihomo compatible)
         import yaml as _yaml
         clash_config = {
+            "mixed-port": 7890,
+            "allow-lan": False,
+            "mode": "rule",
+            "log-level": "info",
             "proxies": proxies,
             "proxy-groups": [{"name": "PROXY", "type": "select", "proxies": [p["name"] for p in proxies]}],
             "rules": ["MATCH,PROXY"]
