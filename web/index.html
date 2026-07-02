@@ -113,25 +113,50 @@ a{text-decoration:none;color:inherit}
 @keyframes toastOut{from{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}to{opacity:0;transform:translateX(-50%) translateY(20px) scale(0.95)}}
 
 /* ===== LAYOUT ===== */
-.layout{display:grid;grid-template-columns:240px 1fr;gap:20px;min-height:calc(100vh - 80px)}
+.layout{display:grid;grid-template-columns:240px 1fr;gap:20px;min-height:calc(100vh - 80px);transition:grid-template-columns .3s ease}
+.layout.sidebar-collapsed{grid-template-columns:64px 1fr}
 
 /* ===== SIDEBAR ===== */
-.sidebar{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:12px;padding:16px 0;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);position:sticky;top:16px;height:fit-content;overflow:hidden;box-shadow:var(--shadow-sm);transition:all .3s ease;animation:slideInLeft .3s ease-out}
-.sidebar .sb-logo{display:flex;align-items:center;gap:10px;padding:0 20px 14px;border-bottom:1px solid var(--b1);margin-bottom:4px}
+.sidebar{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:12px;padding:16px 0;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);position:sticky;top:16px;height:fit-content;overflow:hidden;box-shadow:var(--shadow-sm);transition:width .3s ease,padding .3s ease;animation:slideInLeft .3s ease-out;width:240px}
+.sidebar .sb-logo{display:flex;align-items:center;gap:10px;padding:0 20px 14px;border-bottom:1px solid var(--b1);margin-bottom:4px;position:relative}
 .sidebar .sb-logo .icon{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#8b5cf6,#6d28d9);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(139,92,246,0.3)}
 .sidebar .sb-logo .icon i{color:#fff;font-size:14px}
-.sidebar .sb-logo h2{font-size:15px;font-weight:700;letter-spacing:-0.3px}
+.sidebar .sb-logo h2{font-size:15px;font-weight:700;letter-spacing:-0.3px;overflow:hidden;transition:opacity .2s,width .3s}
 .sidebar .sb-logo h2 em{font-style:normal;color:var(--ac2)}
+.sidebar .sb-collapse{position:absolute;right:0;top:50%;transform:translateY(-50%);width:22px;height:22px;border-radius:6px;border:1px solid var(--b1);background:var(--g2);color:var(--t3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;transition:all .2s;z-index:2}
+.sidebar .sb-collapse:hover{border-color:var(--ac);color:var(--ac2);background:var(--acg)}
+.sidebar .sb-collapse i{transition:transform .3s}
 .nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;font-size:13px;font-weight:500;color:var(--t3);cursor:pointer;transition:all .2s;border-left:2px solid transparent;margin:0;white-space:nowrap;position:relative}
 .nav-item:hover{color:var(--t1);background:var(--g2)}
 .nav-item.on{color:var(--ac2);background:var(--acg);border-left-color:var(--ac);font-weight:600}
 .nav-item i{width:18px;text-align:center;font-size:13px;flex-shrink:0}
+.nav-item span{transition:opacity .2s,width .3s;overflow:hidden}
 .nav-sep{height:1px;background:var(--b1);margin:4px 20px}
 .nav-bottom{padding:10px 20px 0;border-top:1px solid var(--b1);margin-top:4px}
-.nav-bottom .user-pill{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2);margin-bottom:8px}
+.nav-bottom .user-pill{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2);margin-bottom:8px;overflow:hidden}
 .nav-bottom .user-pill .avatar{width:28px;height:28px;border-radius:50%;background:var(--acg);display:flex;align-items:center;justify-content:center;color:var(--ac2);font-size:11px;font-weight:700;flex-shrink:0}
 .nav-bottom .logout{display:block;width:100%;text-align:center;padding:7px;border:none;border-radius:8px;background:var(--rdg);color:var(--rd);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}
 .nav-bottom .logout:hover{background:rgba(239,68,68,0.15);transform:translateY(-1px)}
+.nav-bottom .logout span{transition:opacity .2s}
+
+/* ===== SIDEBAR COLLAPSED ===== */
+.sidebar.collapsed{width:64px;padding:16px 0}
+.sidebar.collapsed .sb-logo{justify-content:center;padding:0 0 14px}
+.sidebar.collapsed .sb-logo h2{opacity:0;width:0}
+.sidebar.collapsed .sb-logo .sb-collapse{position:static;transform:none;margin-left:auto;margin-right:12px}
+.sidebar.collapsed .sb-logo .sb-collapse i{transform:rotate(180deg)}
+.sidebar.collapsed .nav-item{padding:9px 0;justify-content:center;border-left:none;border-radius:0;margin:0 8px;border-radius:8px}
+.sidebar.collapsed .nav-item.on{border-left:none}
+.sidebar.collapsed .nav-item span{opacity:0;width:0;position:absolute}
+.sidebar.collapsed .nav-item::after{content:attr(data-tip);position:absolute;left:calc(100% + 8px);top:50%;transform:translateY(-50%);background:var(--c3);color:var(--t1);padding:5px 10px;border-radius:6px;font-size:11px;font-weight:500;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:100;box-shadow:var(--shadow-md);border:1px solid var(--b2)}
+.sidebar.collapsed .nav-item:hover::after{opacity:1}
+.sidebar.collapsed .nav-sep{margin:4px 12px}
+.sidebar.collapsed .nav-bottom{padding:10px 0 0;text-align:center}
+.sidebar.collapsed .nav-bottom .user-pill{justify-content:center;margin-bottom:8px}
+.sidebar.collapsed .nav-bottom .user-pill span{display:none}
+.sidebar.collapsed .nav-bottom .logout{padding:7px;width:calc(100% - 16px);margin:0 8px}
+.sidebar.collapsed .nav-bottom .logout span{opacity:0;width:0;position:absolute}
+.sidebar.collapsed .nav-bottom .logout::after{content:'\f2f5';font-family:'Font Awesome 6 Free';font-weight:900;font-size:12px}
 
 .main{min-width:0}
 .pg{display:none}
@@ -362,12 +387,18 @@ a{text-decoration:none;color:inherit}
 @media(max-width:1200px){.mrow{grid-template-columns:repeat(3,1fr)}.srow{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:900px){
     .layout{grid-template-columns:1fr}
-    .sidebar{position:static;display:flex;flex-wrap:wrap;padding:8px;gap:2px;overflow:auto}
+    .layout.sidebar-collapsed{grid-template-columns:1fr}
+    .sidebar{position:static;display:flex;flex-wrap:wrap;padding:8px;gap:2px;overflow:auto;width:auto}
+    .sidebar.collapsed{width:auto}
     .sidebar .sb-logo{display:none}
     .nav-item{padding:7px 12px;font-size:11px;border-left:none;border-radius:8px;margin:0}
+    .nav-item span{opacity:1;width:auto;position:static}
+    .nav-item::after{display:none!important}
     .nav-sep{display:none}
     .nav-bottom{position:static;border-top:none;padding:6px 0 0;display:flex;gap:6px;align-items:center;flex-shrink:0}
     .nav-bottom .logout{width:auto;margin:0;padding:6px 12px}
+    .nav-bottom .logout span{opacity:1;width:auto;position:static}
+    .nav-bottom .logout::after{display:none}
     .nav-bottom .user-pill{margin:0}
     .mrow{grid-template-columns:repeat(2,1fr)}
     .header-bar{justify-content:flex-start}
@@ -388,19 +419,19 @@ a{text-decoration:none;color:inherit}
 <body>
 <div class="wrap">
     <div class="layout">
-        <div class="sidebar">
-            <div class="sb-logo"><div class="icon"><i class="fas fa-bolt"></i></div><h2><em>Free</em>Link</h2></div>
-            <div class="nav-item on" onclick="go('dashboard',this)"><i class="fas fa-th-large"></i> <span data-i18n="nav_dashboard">Дашборд</span></div>
-            <div class="nav-item" onclick="go('users',this)"><i class="fas fa-users"></i> <span data-i18n="nav_users">Пользователи</span></div>
-            <div class="nav-item" onclick="go('traffic',this)"><i class="fas fa-chart-area"></i> <span data-i18n="nav_plans">Трафик</span></div>
-            <div class="nav-item" onclick="go('plans',this)"><i class="fas fa-tags"></i> <span data-i18n="nav_plans">Планы</span></div>
-            <div class="nav-item" onclick="go('nodes',this)"><i class="fas fa-server"></i> <span data-i18n="nav_nodes">Ноды</span></div>
+        <div class="sidebar" id="sidebar">
+            <div class="sb-logo"><div class="icon"><i class="fas fa-bolt"></i></div><h2><em>Free</em>Link</h2><button class="sb-collapse" onclick="toggleSidebar()" title="Свернуть"><i class="fas fa-chevron-left"></i></button></div>
+            <div class="nav-item on" onclick="go('dashboard',this)" data-tip="Дашборд"><i class="fas fa-th-large"></i> <span data-i18n="nav_dashboard">Дашборд</span></div>
+            <div class="nav-item" onclick="go('users',this)" data-tip="Пользователи"><i class="fas fa-users"></i> <span data-i18n="nav_users">Пользователи</span></div>
+            <div class="nav-item" onclick="go('traffic',this)" data-tip="Трафик"><i class="fas fa-chart-area"></i> <span data-i18n="nav_plans">Трафик</span></div>
+            <div class="nav-item" onclick="go('plans',this)" data-tip="Планы"><i class="fas fa-tags"></i> <span data-i18n="nav_plans">Планы</span></div>
+            <div class="nav-item" onclick="go('nodes',this)" data-tip="Ноды"><i class="fas fa-server"></i> <span data-i18n="nav_nodes">Ноды</span></div>
             <div class="nav-sep"></div>
-            <div class="nav-item" onclick="go('services',this)"><i class="fas fa-cubes"></i> <span data-i18n="nav_services">Сервисы</span></div>
-            <div class="nav-item" onclick="go('config',this)"><i class="fas fa-file-code"></i> <span data-i18n="nav_config">Конфиг</span></div>
-            <div class="nav-item" onclick="go('logs',this)"><i class="fas fa-scroll"></i> <span data-i18n="nav_logs">Логи</span></div>
-            <div class="nav-item" onclick="go('audit',this)"><i class="fas fa-shield-alt"></i> <span data-i18n="nav_audit">Аудит</span></div>
-            <div class="nav-item" onclick="go('settings',this)"><i class="fas fa-cog"></i> <span data-i18n="nav_settings">Настройки</span></div>
+            <div class="nav-item" onclick="go('services',this)" data-tip="Сервисы"><i class="fas fa-cubes"></i> <span data-i18n="nav_services">Сервисы</span></div>
+            <div class="nav-item" onclick="go('config',this)" data-tip="Конфиг"><i class="fas fa-file-code"></i> <span data-i18n="nav_config">Конфиг</span></div>
+            <div class="nav-item" onclick="go('logs',this)" data-tip="Логи"><i class="fas fa-scroll"></i> <span data-i18n="nav_logs">Логи</span></div>
+            <div class="nav-item" onclick="go('audit',this)" data-tip="Аудит"><i class="fas fa-shield-alt"></i> <span data-i18n="nav_audit">Аудит</span></div>
+            <div class="nav-item" onclick="go('settings',this)" data-tip="Настройки"><i class="fas fa-cog"></i> <span data-i18n="nav_settings">Настройки</span></div>
             <div class="nav-bottom">
                 <div class="user-pill"><div class="avatar" id="avatar">A</div><span id="username">admin</span></div>
                 <button class="logout" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> <span data-i18n="nav_logout">Выйти</span></button>
@@ -867,6 +898,24 @@ function toggleTheme(){
 function updateThemeIcon(theme){
     const icon=$('themeIcon');
     icon.className=theme==='dark'?'fas fa-moon':'fas fa-sun';
+}
+
+/* ===== SIDEBAR ===== */
+function initSidebar(){
+    const collapsed=localStorage.getItem('vpn_sidebar_collapsed')==='1';
+    if(collapsed){applySidebarCollapse(true)}
+}
+function toggleSidebar(){
+    const sidebar=document.getElementById('sidebar');
+    const collapsed=sidebar.classList.toggle('collapsed');
+    localStorage.setItem('vpn_sidebar_collapsed',collapsed?'1':'0');
+    applySidebarCollapse(collapsed);
+}
+function applySidebarCollapse(collapsed){
+    const sidebar=document.getElementById('sidebar');
+    const layout=document.querySelector('.layout');
+    if(collapsed){sidebar.classList.add('collapsed');layout.classList.add('sidebar-collapsed')}
+    else{sidebar.classList.remove('collapsed');layout.classList.remove('sidebar-collapsed')}
 }
 
 /* ===== TOAST ===== */
@@ -1461,6 +1510,7 @@ function connectWebSocket(){
 
 /* ===== INIT ===== */
 initTheme();
+initSidebar();
 applyLang();
 loadMe();
 loadAll().then(()=>{setTimeout(()=>{renderPieChart();renderBarChart()},500)});
