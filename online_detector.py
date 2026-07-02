@@ -11,7 +11,7 @@ import db
 db.init_db()
 
 HYSTERIA_API = 'http://127.0.0.1:9999/traffic'
-CHECK_INTERVAL = 10
+CHECK_INTERVAL = 5
 ONLINE_WINDOW = 6  # Consider online if seen in last 6 polls (60 seconds)
 
 def get_traffic():

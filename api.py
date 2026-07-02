@@ -2120,7 +2120,7 @@ async def websocket_live(websocket: WebSocket):
                     })
             online_count = sum(1 for u in online_status.values() if u.get("online"))
             await websocket.send_json({"traffic": traffic, "online": online_count, "time": time.strftime("%H:%M:%S")})
-            await asyncio.sleep(5)
+            await asyncio.sleep(3)
     except WebSocketDisconnect:
         ws_clients.discard(websocket)
     except:
