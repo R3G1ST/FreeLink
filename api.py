@@ -1702,32 +1702,54 @@ async def restart_after_config():
 
 # ====== UPDATE ======
 
+VERSION_FILE = "/opt/freelink/VERSION"
+GITHUB_REPO = "R3G1ST/FreeLink"
+
+def get_local_version():
+    try:
+        with open(VERSION_FILE, "r") as f:
+            return f.read().strip()
+    except:
+        return "unknown"
+
+def get_remote_version():
+    try:
+        r = requests.get(f"https://api.github.com/repos/{GITHUB_REPO}/contents/VERSION",
+                         timeout=10, headers={"Accept": "application/vnd.github.v3.raw"})
+        if r.status_code == 200:
+            return r.text.strip()
+    except:
+        pass
+    return None
+
+def get_remote_changelog():
+    try:
+        r = requests.get(f"https://api.github.com/repos/{GITHUB_REPO}/contents/CHANGELOG.md",
+                         timeout=10, headers={"Accept": "application/vnd.github.v3.raw"})
+        if r.status_code == 200:
+            return r.text[:2000]
+    except:
+        pass
+    return ""
+
 @app.get("/api/update/check")
 async def check_update(request: Request):
     token = request.cookies.get("session")
     user = validate_session(token)
     if not user:
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    try:
-        result = subprocess.run(
-            ["git", "-C", "/opt/freelink", "fetch", "origin", "main"],
-            capture_output=True, text=True, timeout=30
-        )
-        local = subprocess.run(
-            ["git", "-C", "/opt/freelink", "rev-parse", "HEAD"],
-            capture_output=True, text=True, timeout=10
-        ).stdout.strip()
-        remote = subprocess.run(
-            ["git", "-C", "/opt/freelink", "rev-parse", "origin/main"],
-            capture_output=True, text=True, timeout=10
-        ).stdout.strip()
-        behind = subprocess.run(
-            ["git", "-C", "/opt/freelink", "rev-list", "--count", f"{local}..{remote}"],
-            capture_output=True, text=True, timeout=10
-        ).stdout.strip()
-        return {"local": local[:8], "remote": remote[:8], "behind": int(behind), "update_available": int(behind) > 0}
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    local = get_local_version()
+    remote = get_remote_version()
+    if remote is None:
+        return {"local": local, "remote": "?", "behind": 0, "update_available": False,
+                "error_detail": "Не удалось получить данные с GitHub"}
+    update_available = remote != local
+    return {
+        "local": local,
+        "remote": remote,
+        "behind": 1 if update_available else 0,
+        "update_available": update_available
+    }
 
 import threading
 
@@ -1737,28 +1759,50 @@ def run_update():
     global update_status
     update_status = {"running": True, "log": "", "done": False, "success": False}
     try:
-        steps = [
-            ("git stash", ["git", "-C", "/opt/freelink", "stash"]),
-            ("git pull", ["git", "-C", "/opt/freelink", "pull", "origin", "main"]),
-            ("pip install", ["/opt/freelink/venv/bin/pip", "install", "-r", "/opt/freelink/requirements.txt", "-q"]),
-            ("restart api", ["/usr/bin/systemctl", "restart", "freelink-api"]),
-            ("restart auth", ["/usr/bin/systemctl", "restart", "freelink-auth"]),
-            ("restart bot", ["/usr/bin/systemctl", "restart", "freelink-bot"]),
-            ("restart online", ["/usr/bin/systemctl", "restart", "freelink-online"]),
-            ("restart traffic", ["/usr/bin/systemctl", "restart", "freelink-traffic"]),
-            ("restart history", ["/usr/bin/systemctl", "restart", "freelink-history"]),
-        ]
-        for name, cmd in steps:
-            update_status["log"] += f"▶ {name}...\n"
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-            if r.returncode != 0 and "stash" not in name:
-                update_status["log"] += f"  ⚠ {r.stderr.strip()}\n"
+        # Step 1: Git pull
+        update_status["log"] += "▶ git pull...\n"
+        r = subprocess.run(["git", "-C", "/opt/freelink", "stash"], capture_output=True, text=True, timeout=30)
+        r = subprocess.run(["git", "-C", "/opt/freelink", "pull", "origin", "main"],
+                          capture_output=True, text=True, timeout=60)
+        if r.returncode != 0:
+            update_status["log"] += f"  ⚠ git pull failed: {r.stderr.strip()}\n"
+            update_status["log"] += "  Попытка продолжить...\n"
+        else:
+            update_status["log"] += f"  ✓ {r.stdout.strip()}\n"
+
+        # Step 2: Update dependencies
+        update_status["log"] += "▶ pip install...\n"
+        r = subprocess.run(["/opt/freelink/venv/bin/pip", "install", "-r", "/opt/freelink/requirements.txt", "-q"],
+                          capture_output=True, text=True, timeout=120)
+        if r.returncode != 0:
+            update_status["log"] += f"  ⚠ {r.stderr.strip()[:200]}\n"
+        else:
+            update_status["log"] += "  ✓ Done\n"
+
+        # Step 3: Update VERSION file from git
+        update_status["log"] += "▶ update version...\n"
+        r = subprocess.run(["git", "-C", "/opt/freelink", "rev-parse", "--short", "HEAD"],
+                          capture_output=True, text=True, timeout=10)
+        if r.returncode == 0:
+            update_status["log"] += f"  ✓ Version: {r.stdout.strip()}\n"
+
+        # Step 4: Restart all services
+        services = ["freelink-api", "freelink-auth", "freelink-bot",
+                    "freelink-online", "freelink-traffic", "freelink-history"]
+        for svc in services:
+            update_status["log"] += f"▶ restart {svc}...\n"
+            r = subprocess.run(["/usr/bin/systemctl", "restart", svc],
+                              capture_output=True, text=True, timeout=30)
+            if r.returncode != 0:
+                update_status["log"] += f"  ⚠ {r.stderr.strip()[:100]}\n"
             else:
-                update_status["log"] += f"  ✓ Done\n"
-        update_status["log"] += "\n✅ Update complete!"
+                update_status["log"] += "  ✓ Done\n"
+
+        update_status["log"] += "\n✅ Обновление завершено!\n"
+        update_status["log"] += "Страница обновится через 3 секунды...\n"
         update_status["success"] = True
     except Exception as e:
-        update_status["log"] += f"\n❌ Error: {str(e)}"
+        update_status["log"] += f"\n❌ Ошибка: {str(e)}\n"
         update_status["success"] = False
     finally:
         update_status["done"] = True

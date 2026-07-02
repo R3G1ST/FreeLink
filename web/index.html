@@ -1510,9 +1510,12 @@ async function checkUpdate(){
     try{
         const r=await fetch('/api/update/check');
         const d=await r.json();
-        if(!r.ok||d.error){$('updateStatusText').innerHTML='<span style="color:var(--rd)">✗ '+t('update_error')+'</span>';return}
+        if(!r.ok||d.error){
+            $('updateStatusText').innerHTML='<span style="color:var(--rd)">✗ '+t('update_error')+(d.error_detail?' — '+d.error_detail:'')+'</span>';
+            return;
+        }
         if(d.update_available){
-            $('updateStatusText').innerHTML='<span style="color:var(--or)">⬆ '+t('update_available')+': '+d.behind+' '+t('update_commits')+'</span>';
+            $('updateStatusText').innerHTML='<span style="color:var(--or)">⬆ '+t('update_available')+': '+d.local+' → '+d.remote+'</span>';
             $('updateBtn').disabled=false;
         }else{
             $('updateStatusText').innerHTML='<span style="color:var(--gn)">✓ '+t('update_latest')+'</span>';
@@ -1529,10 +1532,17 @@ async function runUpdate(){
     $('updateLogBox').style.display='block';
     $('updateLogBox').textContent='▶ Starting update...\n';
     try{
-        await fetch('/api/update/run',{method:'POST'});
+        const r=await fetch('/api/update/run',{method:'POST'});
+        const d=await r.json();
+        if(!r.ok||d.error){
+            $('updateLogBox').textContent+='❌ '+(d.error||'Unknown error');
+            $('updateBtn').disabled=false;
+            return;
+        }
         pollUpdateStatus();
     }catch(e){
         $('updateLogBox').textContent+='❌ '+t('update_error')+': '+e.message;
+        $('updateBtn').disabled=false;
     }
 }
 function pollUpdateStatus(){
@@ -1540,13 +1550,18 @@ function pollUpdateStatus(){
     updatePollTimer=setInterval(async()=>{
         try{
             const r=await fetch('/api/update/status');const d=await r.json();
+            if(!r.ok)return;
             $('updateLogBox').textContent=d.log;
             $('updateLogBox').scrollTop=$('updateLogBox').scrollHeight;
             if(d.done){
                 clearInterval(updatePollTimer);updatePollTimer=null;
-                $('updateBtn').disabled=false;
-                if(d.success){$('updateStatusText').innerHTML='<span style="color:var(--gn)">✓ '+t('update_complete')+'</span>'}
-                else{$('updateStatusText').innerHTML='<span style="color:var(--rd)">✗ '+t('update_failed')+'</span>'}
+                if(d.success){
+                    $('updateStatusText').innerHTML='<span style="color:var(--gn)">✓ '+t('update_complete')+'</span>';
+                    setTimeout(()=>{location.reload()},3000);
+                }else{
+                    $('updateStatusText').innerHTML='<span style="color:var(--rd)">✗ '+t('update_failed')+'</span>';
+                    $('updateBtn').disabled=false;
+                }
             }
         }catch{}
     },2000);
