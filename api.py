@@ -199,18 +199,16 @@ def get_hysteria_stats():
     except:
         return None
 
+def find_online_user(online_status, username):
+    """Case-insensitive lookup in online_status dict."""
+    return online_status.get(username, {}) or online_status.get(username.lower(), {})
+
 def get_online_status():
+    """Get online status from DB snapshots (rolling window) + node heartbeats."""
     try:
-        status = {}
-        # Load main server online status
-        if os.path.exists(ONLINE_FILE):
-            with open(ONLINE_FILE, 'r') as f:
-                raw = json.load(f)
-                # Normalize keys to lowercase for case-insensitive matching
-                for k, v in raw.items():
-                    status[k.lower()] = v
-                    status[k] = v  # Keep original key too
-        # Merge online users from remote nodes
+        # Main server online from traffic snapshots (last 60 seconds)
+        status = db.get_online_users(window_seconds=60)
+        # Merge online users from remote nodes (heartbeat data)
         nodes = load_nodes()
         for nid, node in nodes.items():
             if node.get("is_main"):
@@ -232,9 +230,10 @@ def get_online_status():
                         "last_active": node.get("last_seen", ""),
                         "source": node.get("name", nid)
                     }
-                    status[username] = status[key]  # Also store with original case
+                    status[username] = status[key]
         return status
-    except:
+    except Exception as e:
+        print(f"[online] Error: {e}", flush=True)
         return {}
 
 def get_server_info():
@@ -353,7 +352,7 @@ async def miniapp_users():
     for uid, user in users.items():
         link = get_user_link(uid, user)
         username = user.get("name", uid)
-        user_online = online_status.get(username, {})
+        user_online = find_online_user(online_status, username)
         ts = user.get("traffic_saved", {})
         tx_bytes = ts.get("tx", 0)
         rx_bytes = ts.get("rx", 0)
@@ -441,7 +440,7 @@ async def miniapp_live_traffic():
     result = []
     for uid, user in users.items():
         username = user.get("name", uid)
-        user_online = online_status.get(username, {})
+        user_online = find_online_user(online_status, username)
         if user_online.get("online"):
             tx_speed = user_online.get("tx_speed", 0)
             rx_speed = user_online.get("rx_speed", 0)
@@ -638,7 +637,7 @@ async def miniapp_user_info(uid: str):
     ts = user.get("traffic_saved", {})
     online_status = get_online_status()
     username = user.get("name", uid)
-    user_online = online_status.get(username, {})
+    user_online = find_online_user(online_status, username)
     return {
         "id": uid, "name": username, "active": user.get("active", True),
         "expire_date": user.get("expire_date", ""), "created": user.get("created", ""),
@@ -966,7 +965,7 @@ async def get_users():
         username = user.get("name", uid)
         user_ip = user.get("ip", "")
 
-        user_online = online_status.get(username, {})
+        user_online = find_online_user(online_status, username)
         is_online = user_online.get("online", False)
 
         # Traffic from snapshots: latest per node, summed across nodes
@@ -1023,7 +1022,7 @@ async def get_user_endpoint(uid: str):
     traffic_limit = user.get("traffic_limit", 0)
 
     online_status = get_online_status()
-    user_online = online_status.get(username, {})
+    user_online = find_online_user(online_status, username)
 
     traffic = {
         "tx_mb": round(tx_bytes / 1024 / 1024, 2),
@@ -1420,7 +1419,7 @@ async def online():
 
     for uid, user in users.items():
         username = user.get("name", uid)
-        user_status = online_status.get(username, {})
+        user_status = find_online_user(online_status, username)
         is_online = user_status.get("online", False)
         users_online.append({
             "id": uid,
@@ -1459,7 +1458,7 @@ async def live_traffic():
     traffic_data = []
     for uid, user in users.items():
         username = user.get("name", uid)
-        user_status = online_status.get(username, {})
+        user_status = find_online_user(online_status, username)
         if user_status.get("online"):
             tx_speed = user_status.get("tx_speed", 0)
             rx_speed = user_status.get("rx_speed", 0)
@@ -1562,7 +1561,7 @@ async def self_service(token: str):
             link = get_user_link(uid, user)
             online_status = get_online_status()
             username = user.get("name", uid)
-            user_online = online_status.get(username, {})
+            user_online = find_online_user(online_status, username)
             ts = user.get("traffic_saved", {})
             return JSONResponse(content={
                 "name": username, "active": user.get("active", True),
@@ -2115,7 +2114,7 @@ async def websocket_live(websocket: WebSocket):
             traffic = []
             for uid, user in users.items():
                 username = user.get("name", uid)
-                user_status = online_status.get(username, {})
+                user_status = find_online_user(online_status, username)
                 if user_status.get("online"):
                     traffic.append({
                         "user": username,
@@ -2141,7 +2140,7 @@ async def broadcast_update():
     traffic = []
     for uid, user in users.items():
         username = user.get("name", uid)
-        user_status = online_status.get(username, {})
+        user_status = find_online_user(online_status, username)
         if user_status.get("online"):
             traffic.append({
                 "user": username,
@@ -2244,7 +2243,7 @@ async def generate_report(fmt: str = "json"):
             "active": user.get("active", True),
             "created": user.get("created", ""),
             "expire_date": user.get("expire_date", ""),
-            "online": online_status.get(username, {}).get("online", False),
+            "online": find_online_user(online_status, username).get("online", False),
             "traffic_mb": round((ts.get("tx",0)+ts.get("rx",0))/1024/1024, 2),
             "speed_limit": user.get("speed_limit_mbps", 0)
         })
@@ -3426,7 +3425,7 @@ async def client_subscription(token: str):
                 "name": username,
                 "active": user.get("active", True),
                 "expire_date": user.get("expire_date", ""),
-                "online": online_status.get(username, {}).get("online", False),
+                "online": find_online_user(online_status, username).get("online", False),
                 "subscription": sub,
                 "traffic": {
                     "tx_mb": round(user.get("traffic_saved", {}).get("tx", 0)/1024/1024, 2),

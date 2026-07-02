@@ -1,10 +1,18 @@
 #!/opt/freelink/venv/bin/python3
-import requests, yaml, time, json, os
+"""
+Online detector — stores traffic snapshots in PostgreSQL.
+A user is "online" if they appeared in any of the last N polls.
+Speed is calculated from the difference between two most recent snapshots.
+"""
+import sys, requests, time
 
-DATA_FILE = '/opt/freelink/data.yaml'
-SNAPSHOT_FILE = '/opt/freelink/online_snapshot.json'
+sys.path.insert(0, "/opt/freelink")
+import db
+db.init_db()
+
 HYSTERIA_API = 'http://127.0.0.1:9999/traffic'
 CHECK_INTERVAL = 10
+ONLINE_WINDOW = 6  # Consider online if seen in last 6 polls (60 seconds)
 
 def get_traffic():
     try:
@@ -13,52 +21,28 @@ def get_traffic():
     except:
         return {}
 
-def load_snapshot():
-    if os.path.exists(SNAPSHOT_FILE):
-        try:
-            with open(SNAPSHOT_FILE, 'r') as f:
-                return json.load(f)
-        except:
-            pass
-    return {}
-
-def save_snapshot(data):
-    with open(SNAPSHOT_FILE, 'w') as f:
-        json.dump(data, f)
-
 def detect_online():
     current = get_traffic()
-    prev = load_snapshot()
-    online_users = {}
+    snapshots = []
+    for username, data in current.items():
+        snapshots.append({
+            "username": username,
+            "node_id": "__main__",
+            "tx": data.get("tx", 0),
+            "rx": data.get("rx", 0)
+        })
+    if snapshots:
+        db.save_traffic_snapshots_batch(snapshots)
 
-    # Users in traffic API = connected (online)
-    for username, traffic in current.items():
-        tx = traffic.get("tx", 0)
-        rx = traffic.get("rx", 0)
-        prev_user = prev.get(username, {})
-        prev_tx = prev_user.get("tx", 0)
-        prev_rx = prev_user.get("rx", 0)
+    # Cleanup old snapshots every 10 minutes
+    if int(time.time()) % 600 < CHECK_INTERVAL:
+        db.cleanup_old_snapshots()
 
-        # User is online if they appear in traffic API (connected to Hysteria)
-        online_users[username] = {
-            "online": True,
-            "tx": tx,
-            "rx": rx,
-            "tx_speed": max(0, tx - prev_tx),
-            "rx_speed": max(0, rx - prev_rx),
-            "last_active": time.strftime("%Y-%m-%d %H:%M:%S")
-        }
-
-    save_snapshot(current)
-
-    with open('/opt/freelink/online_status.json', 'w') as f:
-        json.dump(online_users, f)
-
-    online_count = len(online_users)
-    print(f"[{time.strftime('%H:%M:%S')}] Online: {online_count}/{len(online_users)}", flush=True)
+    online = db.get_online_users()
+    print(f"[{time.strftime('%H:%M:%S')}] Online: {len(online)}/{len(current)} users", flush=True)
 
 if __name__ == '__main__':
-    print('Online detector started (every 10 seconds)', flush=True)
+    print(f'Online detector started (every {CHECK_INTERVAL}s, window={ONLINE_WINDOW} polls)', flush=True)
     while True:
         try:
             detect_online()

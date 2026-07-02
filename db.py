@@ -490,3 +490,57 @@ def cleanup_old_snapshots():
     with get_conn() as conn:
         cur = conn.cursor()
         cur.execute("DELETE FROM traffic_snapshots WHERE captured_at < NOW() - INTERVAL '1 hour'")
+
+def get_online_users(window_seconds=60):
+    """
+    Get online users based on recent snapshots.
+    A user is online if they had any snapshot in the last window_seconds.
+    Also returns speed (difference between latest and previous snapshot).
+    """
+    with get_conn() as conn:
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        # Get latest snapshot per user (any node)
+        cur.execute("""
+            SELECT username, node_id, tx, rx, captured_at
+            FROM traffic_snapshots t1
+            WHERE captured_at > NOW() - make_interval(secs => %s)
+            AND id = (
+                SELECT MAX(id) FROM traffic_snapshots t2
+                WHERE t2.username = t1.username
+                AND t2.captured_at > NOW() - make_interval(secs => %s)
+            )
+        """, (window_seconds, window_seconds))
+        latest = {r["username"]: r for r in cur.fetchall()}
+
+        # Get previous snapshot per user (for speed calculation)
+        cur.execute("""
+            SELECT username, node_id, tx, rx, captured_at
+            FROM traffic_snapshots t1
+            WHERE captured_at > NOW() - make_interval(secs => %s)
+            AND id = (
+                SELECT MAX(id) FROM traffic_snapshots t2
+                WHERE t2.username = t1.username
+                AND t2.captured_at < (
+                    SELECT MAX(captured_at) FROM traffic_snapshots t3
+                    WHERE t3.username = t2.username
+                    AND t3.captured_at > NOW() - make_interval(secs => %s)
+                )
+            )
+        """, (window_seconds * 3, window_seconds))
+        prev = {r["username"]: r for r in cur.fetchall()}
+
+        result = {}
+        for username, snap in latest.items():
+            p = prev.get(username, {})
+            tx_speed = max(0, snap["tx"] - p.get("tx", snap["tx"]))
+            rx_speed = max(0, snap["rx"] - p.get("rx", snap["rx"]))
+            result[username] = {
+                "online": True,
+                "tx": snap["tx"],
+                "rx": snap["rx"],
+                "tx_speed": tx_speed,
+                "rx_speed": rx_speed,
+                "last_active": snap["captured_at"].strftime("%Y-%m-%d %H:%M:%S") if hasattr(snap["captured_at"], "strftime") else str(snap["captured_at"]),
+                "node_id": snap["node_id"]
+            }
+        return result
