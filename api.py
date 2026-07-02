@@ -2019,6 +2019,7 @@ async def download_backup(name: str, request: Request):
     return FileResponse(backup_path, media_type="application/gzip",
                        headers={"Content-Disposition": f"attachment; filename={name}"})
 GITHUB_REPO = "R3G1ST/FreeLink"
+VERSION_FILE = "/opt/freelink/VERSION"
 
 def get_local_version():
     try:
