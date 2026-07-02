@@ -1904,7 +1904,120 @@ async def hysteria_update_status_ep(request: Request):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     return hysteria_update_status
 
-VERSION_FILE = "/opt/freelink/VERSION"
+# ====== BACKUP & RESTORE ======
+
+BACKUP_DIR = "/opt/freelink/backups"
+BACKUP_FILES = ["data.yaml", "admins.json", "config.yaml", "nodes.json",
+                "plans.json", "subscriptions.json"]
+
+def ensure_backup_dir():
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+
+@app.get("/api/backups")
+async def list_backups(request: Request):
+    token = request.cookies.get("session")
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    ensure_backup_dir()
+    backups = []
+    for f in sorted(os.listdir(BACKUP_DIR), reverse=True):
+        if f.endswith(".tar.gz"):
+            path = os.path.join(BACKUP_DIR, f)
+            stat = os.stat(path)
+            backups.append({
+                "name": f,
+                "size_mb": round(stat.st_size / 1024 / 1024, 2),
+                "created": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+            })
+    return {"backups": backups}
+
+@app.post("/api/backups/create")
+async def create_backup(request: Request):
+    token = request.cookies.get("session")
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    ensure_backup_dir()
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_name = f"backup_{ts}.tar.gz"
+    backup_path = os.path.join(BACKUP_DIR, backup_name)
+    try:
+        with tarfile.open(backup_path, "w:gz") as tar:
+            for fname in BACKUP_FILES:
+                fpath = os.path.join("/opt/freelink", fname)
+                if os.path.exists(fpath):
+                    tar.add(fpath, arcname=fname)
+            # Add Hysteria config
+            hy_config = "/etc/hysteria/config.yaml"
+            if os.path.exists(hy_config):
+                tar.add(hy_config, arcname="hysteria_config.yaml")
+        size = os.path.getsize(backup_path)
+        audit_log(user, "BACKUP_CREATED", f"{backup_name} ({size} bytes)")
+        return {"success": True, "name": backup_name, "size_mb": round(size / 1024 / 1024, 2)}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@app.post("/api/backups/restore")
+async def restore_backup(request: Request):
+    token = request.cookies.get("session")
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    data = await request.json()
+    name = data.get("name", "")
+    backup_path = os.path.join(BACKUP_DIR, name)
+    if not os.path.exists(backup_path):
+        return JSONResponse(status_code=404, content={"error": "Backup not found"})
+    try:
+        # Create a safety backup first
+        safety_name = f"pre_restore_{datetime.now().strftime('%Y%m%d_%H%M%S')}.tar.gz"
+        safety_path = os.path.join(BACKUP_DIR, safety_name)
+        with tarfile.open(safety_path, "w:gz") as tar:
+            for fname in BACKUP_FILES:
+                fpath = os.path.join("/opt/freelink", fname)
+                if os.path.exists(fpath):
+                    tar.add(fpath, arcname=fname)
+
+        # Restore from backup
+        with tarfile.open(backup_path, "r:gz") as tar:
+            for member in tar.getmembers():
+                basename = member.name
+                if basename in BACKUP_FILES:
+                    tar.extract(member, "/opt/freelink")
+                elif basename == "hysteria_config.yaml":
+                    member.name = "config.yaml"
+                    tar.extract(member, "/etc/hysteria")
+
+        audit_log(user, "BACKUP_RESTORED", f"from {name}")
+        return {"success": True, "safety_backup": safety_name}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@app.delete("/api/backups/{name}")
+async def delete_backup(name: str, request: Request):
+    token = request.cookies.get("session")
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    backup_path = os.path.join(BACKUP_DIR, name)
+    if not os.path.exists(backup_path):
+        return JSONResponse(status_code=404, content={"error": "Not found"})
+    os.remove(backup_path)
+    audit_log(user, "BACKUP_DELETED", name)
+    return {"success": True}
+
+@app.get("/api/backups/{name}/download")
+async def download_backup(name: str, request: Request):
+    token = request.cookies.get("session")
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    backup_path = os.path.join(BACKUP_DIR, name)
+    if not os.path.exists(backup_path):
+        return JSONResponse(status_code=404, content={"error": "Not found"})
+    return FileResponse(backup_path, media_type="application/gzip",
+                       headers={"Content-Disposition": f"attachment; filename={name}"})
 GITHUB_REPO = "R3G1ST/FreeLink"
 
 def get_local_version():

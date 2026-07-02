@@ -628,6 +628,14 @@ a{text-decoration:none;color:inherit}
                     <div id="hyLogBox" style="display:none;margin-top:10px;padding:12px;background:rgba(0,0,0,0.3);border:1px solid var(--b1);border-radius:8px;font-family:monospace;font-size:11px;color:var(--t3);max-height:250px;overflow-y:auto;white-space:pre-wrap;line-height:1.6"></div>
                 </div>
                 <div class="set-group">
+                    <h3><i class="fas fa-database"></i> Бэкапы</h3>
+                    <div class="set-item">
+                        <div><div class="si-label">Создать бэкап</div><div class="si-desc">Сохраняет users, конфиг, ноды, планы</div></div>
+                        <button class="btn btn-g btn-sm" onclick="createBackup()"><i class="fas fa-download"></i> Создать</button>
+                    </div>
+                    <div id="backupsList" style="margin-top:8px"></div>
+                </div>
+                <div class="set-group">
                     <h3><i class="fas fa-users-cog"></i> <span data-i18n="settings_admins">Администраторы</span></h3>
                     <div id="adminsList"></div>
                     <button class="btn btn-g" onclick="showCreateAdmin()" style="margin-top:8px"><i class="fas fa-plus"></i> <span data-i18n="btn_add">Добавить</span></button>
@@ -1082,7 +1090,7 @@ function go(page,el){
     if(page==='nodes')loadNodes();
     if(page==='logs')lLg();
     if(page==='audit')lAudit();
-    if(page==='settings'){loadAdmins();loadVersion();loadTelegramConfig()}
+    if(page==='settings'){loadAdmins();loadVersion();loadTelegramConfig();loadBackups()}
     if(page==='config')loadConfig();
     applyLang();
 }
@@ -1725,6 +1733,49 @@ function pollHysteriaStatus(){
             }
         }catch{}
     },1500);
+}
+
+/* ===== BACKUP & RESTORE ===== */
+async function loadBackups(){
+    try{
+        const r=await fetch('/api/backups');
+        const d=await r.json();
+        const el=$('backupsList');
+        if(!d.backups||!d.backups.length){el.innerHTML='<div style="padding:8px;color:var(--t4);font-size:12px">Нет бэкапов</div>';return}
+        el.innerHTML=d.backups.map(b=>'<div class="set-item" style="margin-bottom:4px"><div><div class="si-label" style="font-family:monospace;font-size:11px">'+b.name+'</div><div class="si-desc">'+b.size_mb+' MB · '+b.created+'</div></div><div style="display:flex;gap:4px"><button class="btn btn-n btn-sm" onclick="downloadBackup(\''+b.name+'\')"><i class="fas fa-download"></i></button><button class="btn btn-a btn-sm" onclick="restoreBackup(\''+b.name+'\')"><i class="fas fa-undo"></i></button><button class="btn btn-r btn-sm" onclick="deleteBackup(\''+b.name+'\')"><i class="fas fa-trash"></i></button></div></div>').join('');
+    }catch{}
+}
+async function createBackup(){
+    const el=$('backupsList');
+    el.innerHTML='<div style="padding:8px;color:var(--ac2);font-size:12px">⏳ Создание бэкапа...</div>';
+    try{
+        const r=await fetch('/api/backups/create',{method:'POST'});
+        const d=await r.json();
+        if(d.success){toast('Бэкап создан: '+d.name);loadBackups()}
+        else{toast(d.error||'Ошибка','error');loadBackups()}
+    }catch(e){toast(e.message,'error');loadBackups()}
+}
+async function restoreBackup(name){
+    if(!confirm('Восстановить из бэкапа '+name+'?\n\nТекущие данные будут сохранены в safety backup.'))return;
+    const el=$('backupsList');
+    el.innerHTML='<div style="padding:8px;color:var(--or);font-size:12px">⏳ Восстановление из '+name+'...</div>';
+    try{
+        const r=await fetch('/api/backups/restore',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+        const d=await r.json();
+        if(d.success){toast('Восстановлено! Safety backup: '+d.safety_backup);loadBackups()}
+        else{toast(d.error||'Ошибка','error');loadBackups()}
+    }catch(e){toast(e.message,'error');loadBackups()}
+}
+async function deleteBackup(name){
+    if(!confirm('Удалить бэкап '+name+'?'))return;
+    try{
+        const r=await fetch('/api/backups/'+encodeURIComponent(name),{method:'DELETE'});
+        const d=await r.json();
+        if(d.success){loadBackups()}else{toast(d.error||'Ошибка','error')}
+    }catch(e){toast(e.message,'error')}
+}
+function downloadBackup(name){
+    window.open('/api/backups/'+encodeURIComponent(name)+'/download','_blank');
 }
 
 async function loadAdmins(){
