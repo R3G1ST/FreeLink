@@ -1509,8 +1509,8 @@ async function checkUpdate(){
     $('updateBtn').disabled=true;
     try{
         const r=await fetch('/api/update/check');
-        if(!r.ok||d.error){$('updateStatusText').innerHTML='<span style="color:var(--rd)">✗ '+t('update_error')+'</span>';return}
         const d=await r.json();
+        if(!r.ok||d.error){$('updateStatusText').innerHTML='<span style="color:var(--rd)">✗ '+t('update_error')+'</span>';return}
         if(d.update_available){
             $('updateStatusText').innerHTML='<span style="color:var(--or)">⬆ '+t('update_available')+': '+d.behind+' '+t('update_commits')+'</span>';
             $('updateBtn').disabled=false;
