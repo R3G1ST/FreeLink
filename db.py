@@ -493,12 +493,15 @@ def cleanup_old_snapshots():
 
 def get_online_users(window_seconds=30):
     """
-    Online detection: user is online if in latest snapshot AND traffic changed.
+    Online detection with grace period to prevent flicker.
+    1. Primary: latest snapshot within 15s with traffic change → online
+    2. Grace: snapshot within 30s but no traffic change → still online (brief pause)
+    3. No snapshot in 30s → offline (disconnected)
     """
     with get_conn() as conn:
         cur = conn.cursor(cursor_factory=RealDictCursor)
 
-        # Latest snapshot per user per node (15 sec)
+        # Primary: latest snapshot per user per node (15 sec)
         cur.execute("""
             SELECT username, node_id, tx, rx, captured_at
             FROM traffic_snapshots t1
@@ -515,6 +518,24 @@ def get_online_users(window_seconds=30):
             if key not in latest:
                 latest[key] = []
             latest[key].append(r)
+
+        # Grace fallback: snapshot within 30s (covers restart gaps)
+        cur.execute("""
+            SELECT username, node_id, tx, rx, captured_at
+            FROM traffic_snapshots t1
+            WHERE captured_at > NOW() - INTERVAL '30 seconds'
+            AND id = (
+                SELECT MAX(id) FROM traffic_snapshots t2
+                WHERE t2.username = t1.username AND t2.node_id = t1.node_id
+                AND t2.captured_at > NOW() - INTERVAL '30 seconds'
+            )
+        """)
+        grace = {}
+        for r in cur.fetchall():
+            key = r["username"]
+            if key not in grace:
+                grace[key] = []
+            grace[key].append(r)
 
         # Previous snapshot per user per node
         cur.execute("""
@@ -538,6 +559,8 @@ def get_online_users(window_seconds=30):
             prev[key][r["node_id"]] = r
 
         result = {}
+
+        # Process primary (15s window) — full activity check
         for username, snaps in latest.items():
             total_tx_speed = 0
             total_rx_speed = 0
@@ -560,4 +583,18 @@ def get_online_users(window_seconds=30):
                 "rx_speed": total_rx_speed,
                 "last_active": max(str(s["captured_at"]) for s in snaps),
             }
+
+        # Grace: users in 30s window but not in 15s window → keep online
+        for username, snaps in grace.items():
+            if username in result:
+                continue  # Already processed
+            result[username] = {
+                "online": True,  # Grace period — keep online
+                "tx": sum(s["tx"] for s in snaps),
+                "rx": sum(s["rx"] for s in snaps),
+                "tx_speed": 0,
+                "rx_speed": 0,
+                "last_active": max(str(s["captured_at"]) for s in snaps),
+            }
+
         return result
