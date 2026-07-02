@@ -3424,36 +3424,31 @@ async def subscription_urls(token: str, request: Request):
     if not proxies:
         return Response(content="# No online servers available\n", media_type="text/plain; charset=utf-8")
 
-    # Detect format: Clash YAML for Happ, Clash, v2rayN; plain for others
     ua = request.headers.get("user-agent", "").lower()
-    accept = request.headers.get("accept", "")
     format_param = request.query_params.get("format", "")
+    print(f"[SUB] token={token[:8]}... ua={ua[:60]} format={format_param}", flush=True)
 
-    use_clash = format_param == "clash" or "happ" in ua or "clash" in ua or "v2ray" in ua or "stash" in ua
+    import base64
+    plain_content = "\n".join(plain_lines) + "\n"
+    b64_content = base64.b64encode(plain_content.encode()).decode()
 
-    if use_clash:
-        import base64
-        # Happ/sing-box clients: base64-encoded plain hysteria2:// links
-        if "happ" in ua:
-            b64 = base64.b64encode(("\n".join(plain_lines) + "\n").encode()).decode()
-            return Response(content=b64, media_type="text/plain; charset=utf-8")
-        # Clash/Mihomo: YAML format
+    # Default: base64 (works with all clients including Happ)
+    if format_param == "plain":
+        return Response(content=plain_content, media_type="text/plain; charset=utf-8")
+
+    if format_param == "clash":
         import yaml as _yaml
         clash_config = {
-            "mixed-port": 7890,
-            "allow-lan": False,
-            "mode": "rule",
-            "log-level": "info",
+            "mixed-port": 7890, "allow-lan": False, "mode": "rule", "log-level": "info",
             "proxies": proxies,
             "proxy-groups": [{"name": "PROXY", "type": "select", "proxies": [p["name"] for p in proxies]}],
             "rules": ["MATCH,PROXY"]
         }
         content = _yaml.dump(clash_config, default_flow_style=False, allow_unicode=True)
         return Response(content=content, media_type="text/yaml; charset=utf-8")
-    else:
-        # Plain text URIs
-        content = "\n".join(plain_lines) + "\n"
-        return Response(content=content, media_type="text/plain; charset=utf-8")
+
+    # Base64 for all clients by default
+    return Response(content=b64_content, media_type="text/plain; charset=utf-8")
 
 # Client self-service: view subscription by token
 @app.get("/api/client/sub/{token}")
