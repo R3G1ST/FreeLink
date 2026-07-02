@@ -1900,7 +1900,6 @@ applyLang();
 loadMe();
 loadAll().then(()=>{const saved=localStorage.getItem('vpn_page');if(saved&&saved!=='dashboard'&&document.getElementById('p-'+saved)){const navMap={users:1,traffic:2,plans:3,nodes:4,services:5,config:6,logs:7,audit:8,settings:9};go(saved,document.querySelectorAll('.nav-item')[navMap[saved]])}else{setTimeout(()=>{renderPieChart();renderBarChart()},500)}});
 connectWebSocket();
-setInterval(()=>{fetch('/api/online').then(r=>r.json()).then(d=>{OD=d;rU()}).catch(()=>{})},10000);
 setInterval(()=>{fetch('/api/server-info').then(r=>r.json()).then(d=>rSy(d)).catch(()=>{})},15000);
 setInterval(pollNotifications,30000);
 setTimeout(pollNotifications,2000);
