@@ -627,7 +627,7 @@ a{text-decoration:none;color:inherit}
                 </div>
                 <div class="set-group">
                     <h3><i class="fas fa-info-circle"></i> <span data-i18n="settings_system">О системе</span></h3>
-                    <div class="set-item"><div class="si-label"><span data-i18n="settings_version">Версия</span></div><span style="font-size:12px;color:var(--t3)">v3.8</span></div>
+                    <div class="set-item"><div class="si-label"><span data-i18n="settings_version">Версия</span></div><span style="font-size:12px;color:var(--t3)" id="settingsVersion">v3.8</span></div>
                     <div class="set-item"><div class="si-label"><span data-i18n="settings_server">Сервер</span></div><span style="font-size:12px;color:var(--t3)">Польша — link.qmbox.ru</span></div>
                 </div>
                 <div class="set-group">
@@ -1049,7 +1049,7 @@ function go(page,el){
     if(page==='nodes')loadNodes();
     if(page==='logs')lLg();
     if(page==='audit')lAudit();
-    if(page==='settings')loadAdmins();
+    if(page==='settings'){loadAdmins();loadVersion()}
     if(page==='config')loadConfig();
     applyLang();
 }
@@ -1568,6 +1568,13 @@ function pollUpdateStatus(){
 }
 
 /* ===== ADMIN MANAGEMENT ===== */
+async function loadVersion(){
+    try{
+        const r=await fetch('/api/version');
+        const d=await r.json();
+        if(d.version)$('settingsVersion').textContent='v'+d.version;
+    }catch{}
+}
 async function loadAdmins(){
     const r=await fetch('/api/admins');
     const d=await r.json();

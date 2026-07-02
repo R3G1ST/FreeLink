@@ -127,7 +127,7 @@ async def check_auth(request: Request, call_next):
                 "/api/services", "/api/hysteria/stats", "/api/live-traffic", "/api/miniapp/",
                 "/api/notifications", "/api/check-expiry", "/api/qr/", "/api/geo/",
                 "/api/node/", "/api/nodes", "/api/client/", "/api/subscriptions", "/api/plans",
-                "/api/nodes/main-info", "/sub/", "/api/user/gen-service-token/"]
+                "/api/nodes/main-info", "/sub/", "/api/user/gen-service-token/", "/api/version"]
     if any(path.startswith(p) for p in open_api):
         return await call_next(request)
 
@@ -949,6 +949,10 @@ async def get_language():
         return {"language": cfg.get("language", "ru")}
     except:
         return {"language": "ru"}
+
+@app.get("/api/version")
+async def get_version():
+    return {"version": get_local_version()}
 
 @app.get("/favicon.ico")
 async def favicon():
