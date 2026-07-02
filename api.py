@@ -3432,7 +3432,12 @@ async def subscription_urls(token: str, request: Request):
     use_clash = format_param == "clash" or "happ" in ua or "clash" in ua or "v2ray" in ua or "stash" in ua
 
     if use_clash:
-        # Clash/Happ YAML format (Clash Meta / Mihomo compatible)
+        import base64
+        # Happ/sing-box clients: base64-encoded plain hysteria2:// links
+        if "happ" in ua:
+            b64 = base64.b64encode(("\n".join(plain_lines) + "\n").encode()).decode()
+            return Response(content=b64, media_type="text/plain; charset=utf-8")
+        # Clash/Mihomo: YAML format
         import yaml as _yaml
         clash_config = {
             "mixed-port": 7890,
