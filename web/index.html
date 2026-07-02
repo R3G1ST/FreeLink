@@ -148,7 +148,7 @@ a{text-decoration:none;color:inherit}
 .sidebar.collapsed .nav-item:hover::after{opacity:1}
 .sidebar.collapsed .nav-sep{margin:4px 12px}
 
-.main{min-width:0}
+.main{min-width:0;display:flex;flex-direction:column;min-height:calc(100vh - 50px)}
 .pg{display:none}
 .pg.on{display:block;animation:fadeUp .25s ease-out}
 .pg-title{font-size:20px;font-weight:800;letter-spacing:-0.4px;margin-bottom:16px;display:flex;align-items:center;gap:10px}
@@ -310,7 +310,7 @@ a{text-decoration:none;color:inherit}
 .set-item:hover{border-color:var(--b2)}
 .set-item .si-label{font-size:13px;font-weight:500}
 .set-item .si-desc{font-size:10px;color:var(--t4);margin-top:2px}
-.ftr{text-align:center;padding:20px 0 8px;font-size:10px;color:var(--t4);border-top:1px solid var(--b1);margin-top:20px}
+.ftr{text-align:center;padding:12px 0 8px;font-size:10px;color:var(--t4);border-top:1px solid var(--b1);margin-top:auto;position:sticky;bottom:0;background:var(--bg)}
 
 /* ===== CONFIG EDITOR ===== */
 .config-editor{position:relative}
