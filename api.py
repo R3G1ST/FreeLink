@@ -1700,6 +1700,93 @@ async def restart_after_config():
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
+# ====== UPDATE ======
+
+@app.get("/api/update/check")
+async def check_update(request: Request):
+    token = request.cookies.get("session")
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    try:
+        result = subprocess.run(
+            ["git", "-C", "/opt/freelink", "fetch", "origin", "main"],
+            capture_output=True, text=True, timeout=30
+        )
+        local = subprocess.run(
+            ["git", "-C", "/opt/freelink", "rev-parse", "HEAD"],
+            capture_output=True, text=True, timeout=10
+        ).stdout.strip()
+        remote = subprocess.run(
+            ["git", "-C", "/opt/freelink", "rev-parse", "origin/main"],
+            capture_output=True, text=True, timeout=10
+        ).stdout.strip()
+        behind = subprocess.run(
+            ["git", "-C", "/opt/freelink", "rev-list", "--count", f"{local}..{remote}"],
+            capture_output=True, text=True, timeout=10
+        ).stdout.strip()
+        return {"local": local[:8], "remote": remote[:8], "behind": int(behind), "update_available": int(behind) > 0}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+import threading
+
+update_status = {"running": False, "log": "", "done": False, "success": False}
+
+def run_update():
+    global update_status
+    update_status = {"running": True, "log": "", "done": False, "success": False}
+    try:
+        steps = [
+            ("git stash", ["git", "-C", "/opt/freelink", "stash"]),
+            ("git pull", ["git", "-C", "/opt/freelink", "pull", "origin", "main"]),
+            ("pip install", ["/opt/freelink/venv/bin/pip", "install", "-r", "/opt/freelink/requirements.txt", "-q"]),
+            ("restart api", ["/usr/bin/systemctl", "restart", "freelink-api"]),
+            ("restart auth", ["/usr/bin/systemctl", "restart", "freelink-auth"]),
+            ("restart bot", ["/usr/bin/systemctl", "restart", "freelink-bot"]),
+            ("restart online", ["/usr/bin/systemctl", "restart", "freelink-online"]),
+            ("restart traffic", ["/usr/bin/systemctl", "restart", "freelink-traffic"]),
+            ("restart history", ["/usr/bin/systemctl", "restart", "freelink-history"]),
+        ]
+        for name, cmd in steps:
+            update_status["log"] += f"▶ {name}...\n"
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            if r.returncode != 0 and "stash" not in name:
+                update_status["log"] += f"  ⚠ {r.stderr.strip()}\n"
+            else:
+                update_status["log"] += f"  ✓ Done\n"
+        update_status["log"] += "\n✅ Update complete!"
+        update_status["success"] = True
+    except Exception as e:
+        update_status["log"] += f"\n❌ Error: {str(e)}"
+        update_status["success"] = False
+    finally:
+        update_status["done"] = True
+        update_status["running"] = False
+
+@app.post("/api/update/run")
+async def run_update_endpoint(request: Request):
+    token = request.cookies.get("session")
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    admins = load_admins()
+    if admins.get(user, {}).get("role") != "admin":
+        return JSONResponse(status_code=403, content={"error": "Only admin can update"})
+    if update_status["running"]:
+        return JSONResponse(status_code=409, content={"error": "Update already in progress"})
+    thread = threading.Thread(target=run_update, daemon=True)
+    thread.start()
+    return {"success": True, "message": "Update started"}
+
+@app.get("/api/update/status")
+async def update_status_endpoint(request: Request):
+    token = request.cookies.get("session")
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    return update_status
+
 # ====== WEBSOCKET LIVE ======
 
 ws_clients = set()

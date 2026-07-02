@@ -630,6 +630,17 @@ a{text-decoration:none;color:inherit}
                     <div class="set-item"><div class="si-label"><span data-i18n="settings_version">Версия</span></div><span style="font-size:12px;color:var(--t3)">v3.8</span></div>
                     <div class="set-item"><div class="si-label"><span data-i18n="settings_server">Сервер</span></div><span style="font-size:12px;color:var(--t3)">Польша — link.qmbox.ru</span></div>
                 </div>
+                <div class="set-group">
+                    <h3><i class="fas fa-download"></i> <span data-i18n="settings_update">Обновление</span></h3>
+                    <div class="set-item">
+                        <div><div class="si-label" id="updateStatusText"><span data-i18n="update_checking">Проверка обновлений...</span></div><div class="si-desc" id="updateDetail"></div></div>
+                        <div style="display:flex;gap:6px">
+                            <button class="btn btn-n btn-sm" onclick="checkUpdate()"><i class="fas fa-sync"></i> <span data-i18n="update_check">Проверить</span></button>
+                            <button class="btn btn-g btn-sm" onclick="runUpdate()" id="updateBtn"><i class="fas fa-download"></i> <span data-i18n="update_run">Обновить</span></button>
+                        </div>
+                    </div>
+                    <div id="updateLogBox" style="display:none;margin-top:10px;padding:12px;background:rgba(0,0,0,0.3);border:1px solid var(--b1);border-radius:8px;font-family:monospace;font-size:11px;color:var(--t3);max-height:250px;overflow-y:auto;white-space:pre-wrap;line-height:1.6"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -908,6 +919,17 @@ settings_account:{ru:'Мой аккаунт',en:'My Account'},
 settings_theme:{ru:'Тема',en:'Theme'},
 theme_dark:{ru:'Тёмная',en:'Dark'},
 theme_light:{ru:'Светлая',en:'Light'},
+settings_update:{ru:'Обновление',en:'Update'},
+update_checking:{ru:'Проверка обновлений...',en:'Checking for updates...'},
+update_check:{ru:'Проверить',en:'Check'},
+update_run:{ru:'Обновить',en:'Update'},
+update_available:{ru:'Доступно обновление',en:'Update available'},
+update_commits:{ru:'коммитов',en:'commits'},
+update_latest:{ru:'Уже последняя версия',en:'Already up to date'},
+update_error:{ru:'Ошибка',en:'Error'},
+update_confirm:{ru:'Запустить обновление? Панель будет перезапущена.',en:'Start update? Panel will be restarted.'},
+update_complete:{ru:'Обновление завершено!',en:'Update complete!'},
+update_failed:{ru:'Обновление не удалось',en:'Update failed'},
 units_mb:{ru:'МБ',en:'MB'},
 units_gb:{ru:'ГБ',en:'GB'},
 units_mbps:{ru:'Мбит/с',en:'Mbps'},
@@ -1478,6 +1500,55 @@ function restartService(n){confirmModal('Перезапустить '+n+'?',()=>
 /* ===== LOGS / AUDIT ===== */
 async function lLg(){const r=await fetch('/api/logs');const d=await r.json();$('lB').textContent=d.logs||'Пусто'}
 async function lAudit(){const r=await fetch('/api/audit');const d=await r.json();$('aB').textContent=d.logs||'Пусто'}
+
+/* ===== UPDATE ===== */
+let updatePollTimer=null;
+async function checkUpdate(){
+    $('updateStatusText').innerHTML='<span data-i18n="update_checking">'+t('update_checking')+'</span>';
+    $('updateDetail').textContent='';
+    $('updateBtn').disabled=true;
+    try{
+        const r=await fetch('/api/update/check');const d=await r.json();
+        if(d.update_available){
+            $('updateStatusText').innerHTML='<span style="color:var(--or)">⬆ '+t('update_available')+': '+d.behind+' '+t('update_commits')+'</span>';
+            $('updateBtn').disabled=false;
+        }else{
+            $('updateStatusText').innerHTML='<span style="color:var(--gn)">✓ '+t('update_latest')+'</span>';
+            $('updateBtn').disabled=true;
+        }
+        $('updateDetail').textContent='Local: '+d.local+' | Remote: '+d.remote;
+    }catch(e){
+        $('updateStatusText').innerHTML='<span style="color:var(--rd)">✗ '+t('update_error')+'</span>';
+    }
+}
+async function runUpdate(){
+    if(!confirm(t('update_confirm')))return;
+    $('updateBtn').disabled=true;
+    $('updateLogBox').style.display='block';
+    $('updateLogBox').textContent='▶ Starting update...\n';
+    try{
+        await fetch('/api/update/run',{method:'POST'});
+        pollUpdateStatus();
+    }catch(e){
+        $('updateLogBox').textContent+='❌ '+t('update_error')+': '+e.message;
+    }
+}
+function pollUpdateStatus(){
+    if(updatePollTimer)clearInterval(updatePollTimer);
+    updatePollTimer=setInterval(async()=>{
+        try{
+            const r=await fetch('/api/update/status');const d=await r.json();
+            $('updateLogBox').textContent=d.log;
+            $('updateLogBox').scrollTop=$('updateLogBox').scrollHeight;
+            if(d.done){
+                clearInterval(updatePollTimer);updatePollTimer=null;
+                $('updateBtn').disabled=false;
+                if(d.success){$('updateStatusText').innerHTML='<span style="color:var(--gn)">✓ '+t('update_complete')+'</span>'}
+                else{$('updateStatusText').innerHTML='<span style="color:var(--rd)">✗ '+t('update_failed')+'</span>'}
+            }
+        }catch{}
+    },2000);
+}
 
 /* ===== ADMIN MANAGEMENT ===== */
 async function loadAdmins(){
