@@ -352,7 +352,7 @@ function applyLang(){
 
 // ====== INIT ======
 applyLang();
-if(tg){tg.ready();tg.expand();tg.MainButton.hide();document.body.style.backgroundColor=tg.themeParams?.bg_color||'#0a0e1a';console.log('TG init:',tg.initData?'OK':'EMPTY');if(tg.initData){setTimeout(doAuth,500)}}
+if(tg){tg.ready();tg.expand();tg.MainButton.hide();document.body.style.backgroundColor=tg.themeParams?.bg_color||'#0a0e1a';console.log('TG init:',tg.initData?'OK':'EMPTY')}
 else{console.log('No Telegram WebApp SDK')}
 
 // PWA
