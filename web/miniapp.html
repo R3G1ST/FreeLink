@@ -352,7 +352,7 @@ function applyLang(){
 
 // ====== INIT ======
 applyLang();
-if(tg){tg.ready();tg.expand();tg.MainButton.hide();document.body.style.backgroundColor=tg.themeParams?.bg_color||'#0a0e1a';console.log('TG init:',tg.initData?'OK':'EMPTY')}
+if(tg){tg.ready();tg.expand();tg.MainButton.hide();document.body.style.backgroundColor=tg.themeParams?.bg_color||'#0a0e1a';console.log('TG init:',tg.initData?'OK':'EMPTY');if(tg.initData){setTimeout(doAuth,500)}}
 else{console.log('No Telegram WebApp SDK')}
 
 // PWA
@@ -391,13 +391,13 @@ async function doAuth(){
         }catch{}
         showToast('Нет данных авторизации');return
     }
-    $('authBtn').disabled=true;$('authBtn').textContent='Вход...';
+    const btn=$('authBtn');if(btn){btn.disabled=true;btn.textContent='Вход...'}
     try{
         const r=await fetch('/api/miniapp/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData:tg.initData})});
         const d=await r.json();
         if(d.success){$('authPage').style.display='none';$('appPage').style.display='block';loadData()}
-        else{showToast(d.error||'Ошибка');$('authBtn').disabled=false;$('authBtn').innerHTML='<i class="fab fa-telegram-plane"></i> Войти через Telegram'}
-    }catch{showToast('Ошибка сети');$('authBtn').disabled=false;$('authBtn').innerHTML='<i class="fab fa-telegram-plane"></i> Войти через Telegram'}
+        else{showToast(d.error||'Ошибка');if(btn){btn.disabled=false;btn.innerHTML='<i class="fab fa-telegram-plane"></i> Войти через Telegram'}}
+    }catch{showToast('Ошибка сети');if(btn){btn.disabled=false;btn.innerHTML='<i class="fab fa-telegram-plane"></i> Войти через Telegram'}}
 }
 
 // ====== DATA ======
