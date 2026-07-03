@@ -208,6 +208,17 @@ async def handle_reply_buttons(update: Update, context: ContextTypes.DEFAULT_TYP
         )
         await update.message.reply_text(msg, parse_mode="HTML", reply_markup=kb)
 
+    elif text == "🌐 Панель":
+        kb = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🚀 Открыть панель", web_app=WebAppInfo(url="https://link.qmbox.ru/app"))]
+        ])
+        await update.message.reply_text(
+            "🌐 <b>Веб-панель:</b>\nhttps://link.qmbox.ru",
+            parse_mode="HTML",
+            reply_markup=kb
+        )
+        return
+
     elif text == "⚙️ Сервисы":
         services = ["hysteria-server", "freelink-api", "freelink-auth", "freelink-traffic", "freelink-bot", "freelink-online", "freelink-history", "freelink-monitor"]
         lines = []
