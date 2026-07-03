@@ -191,6 +191,10 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
         <h1><em>Free</em>Link</h1>
         <p>Управление VPN-сервером</p>
         <button class="auth-btn" onclick="doAuth()" id="authBtn"><i class="fab fa-telegram-plane"></i> Войти через Telegram</button>
+        <div style="margin:16px 0;text-align:center;font-size:11px;color:var(--t3)">или</div>
+        <div class="field"><input type="text" id="loginUser" placeholder="Логин" style="width:100%;padding:10px 12px;background:var(--c2);border:1px solid rgba(255,255,255,.06);border-radius:var(--R2);color:var(--t1);font-size:13px;outline:none;font-family:inherit"></div>
+        <div class="field"><input type="password" id="loginPass" placeholder="Пароль" style="width:100%;padding:10px 12px;background:var(--c2);border:1px solid rgba(255,255,255,.06);border-radius:var(--R2);color:var(--t1);font-size:13px;outline:none;font-family:inherit"></div>
+        <button class="auth-btn" onclick="doLoginPass()" style="background:linear-gradient(135deg,#10b981,#059669);margin-top:8px"><i class="fas fa-sign-in-alt"></i> Войти</button>
     </div>
 </div>
 
@@ -416,6 +420,19 @@ async function doAuth(){
         showToast('Ошибка сети: '+e.message);
         if(btn){btn.disabled=false;btn.innerHTML='<i class="fab fa-telegram-plane"></i> Войти через Telegram';}
     }
+}
+
+// ====== PASSWORD LOGIN ======
+async function doLoginPass(){
+    const u=($('loginUser')||{}).value||'';
+    const p=($('loginPass')||{}).value||'';
+    if(!u||!p){showToast('Заполните все поля');return}
+    try{
+        const r=await fetch('/api/miniapp/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+        const d=await r.json();
+        if(d.success){$('authPage').style.display='none';$('appPage').style.display='block';loadData()}
+        else{showToast(d.error||'Ошибка')}
+    }catch(e){showToast('Ошибка сети')}
 }
 
 // ====== DATA ======
