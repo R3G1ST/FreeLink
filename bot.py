@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os, sys, yaml, logging, subprocess, random, string, json, secrets, requests
 from datetime import datetime, timedelta
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ConversationHandler, ContextTypes
 
 sys.path.insert(0, "/opt/freelink")
@@ -97,6 +97,21 @@ def check_hysteria():
     except:
         return False
 
+# ====== MAIN KEYBOARD ======
+
+def get_main_keyboard():
+    """Reply keyboard that stays at the bottom of the screen."""
+    return ReplyKeyboardMarkup(
+        [
+            [KeyboardButton("📋 Список"), KeyboardButton("➕ Создать")],
+            [KeyboardButton("📊 Статистика"), KeyboardButton("🖥 Сервер")],
+            [KeyboardButton("🌐 Панель"), KeyboardButton("⚙️ Сервисы")],
+            [KeyboardButton("🧹 Очистить"), KeyboardButton("📋 Логи")],
+        ],
+        resize_keyboard=True,
+        is_persistent=True,
+    )
+
 # ====== COMMANDS ======
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -108,23 +123,218 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await update.message.reply_text("⛔ Доступ запрещён.")
         return
-    keyboard = [
-        [InlineKeyboardButton("🚀 Открыть панель", web_app=WebAppInfo(url="https://link.qmbox.ru/app"))],
-        [InlineKeyboardButton("📋 Список", callback_data="list")],
-        [InlineKeyboardButton("➕ Создать", callback_data="create"),
-         InlineKeyboardButton("📊 Статистика", callback_data="stats")],
-        [InlineKeyboardButton("🖥 Сервер", callback_data="server"),
-         InlineKeyboardButton("🧹 Очистить", callback_data="clean")],
-        [InlineKeyboardButton("📋 Логи", callback_data="logs")],
-    ]
-    text = "⚡ <b>Hysteria 2 Manager</b>\n\nВыберите действие:"
+    text = (
+        "⚡ <b>FreeLink Manager</b>\n\n"
+        "Выберите действие на клавиатуре ниже:\n\n"
+        "📋 <b>Список</b> — все пользователи\n"
+        "➕ <b>Создать</b> — нового клиента\n"
+        "📊 <b>Статистика</b> — трафик и онлайн\n"
+        "🖥 <b>Сервер</b> — CPU/RAM/Диск\n"
+        "🌐 <b>Панель</b> — открыть веб-панель\n"
+        "⚙️ <b>Сервисы</b> — статус и перезапуск\n"
+        "🧹 <b>Очистить</b> — удалить просроченных\n"
+        "📋 <b>Логи</b> — последние записи"
+    )
+    kb = get_main_keyboard()
     if query:
         try:
-            await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="HTML")
+            await query.edit_message_text(text, parse_mode="HTML")
         except Exception:
             await query.answer()
     else:
-        await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="HTML")
+        await update.message.reply_text(text, reply_markup=kb, parse_mode="HTML")
+
+async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle reply keyboard button presses."""
+    user_id = update.effective_user.id
+    if not is_admin(user_id):
+        await update.message.reply_text("⛔ Доступ запрещён.")
+        return
+
+    text = update.message.text
+
+    if text == "📋 Список":
+        await show_list(update, context)
+    elif text == "➕ Создать":
+        await create_start_msg(update, context)
+    elif text == "📊 Статистика":
+        await show_stats(update, context)
+    elif text == "🖥 Сервер":
+        await show_server(update, context)
+    elif text == "🌐 Панель":
+        await update.message.reply_text(
+            "🌐 <b>Веб-панель:</b>\nhttps://link.qmbox.ru",
+            parse_mode="HTML",
+            reply_markup=ReplyKeyboardMarkup(
+                [[KeyboardButton("🚀 Открыть панель", web_app=WebAppInfo(url="https://link.qmbox.ru/app"))]],
+                resize_keyboard=True
+            )
+        )
+    elif text == "⚙️ Сервисы":
+        await show_services(update, context)
+    elif text == "🧹 Очистить":
+        await clean_expired_msg(update, context)
+    elif text == "📋 Логи":
+        await show_logs(update, context)
+    elif text == "🔙 Назад":
+        await cmd_start(update, context)
+
+async def show_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    data = load_data()
+    users = data.get("users", {})
+    online = get_online_status()
+
+    if not users:
+        await update.message.reply_text("📭 Нет пользователей.", reply_markup=get_main_keyboard())
+        return
+
+    lines = []
+    for uid, user in users.items():
+        status = "🟢" if user.get("active", True) else "🔴"
+        name = user.get("name", uid)
+        expire = user.get("expire_date", "?")
+        is_online = online.get(name, {}).get("online", False)
+        online_mark = " ●" if is_online else ""
+        lines.append(f"{status} <b>{name}</b>{online_mark} | до {expire}")
+
+    text = "👥 <b>Пользователи:</b>\n\n" + "\n".join(lines)
+    await update.message.reply_text(text, parse_mode="HTML", reply_markup=get_main_keyboard())
+
+async def show_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    data = load_data()
+    users = data.get("users", {})
+    online = get_online_status()
+
+    if not users:
+        await update.message.reply_text("📭 Нет данных.", reply_markup=get_main_keyboard())
+        return
+
+    total_tx = 0
+    total_rx = 0
+    lines = []
+    for uid, user in users.items():
+        ts = user.get("traffic_saved", {})
+        tx = ts.get("tx", 0)
+        rx = ts.get("rx", 0)
+        total_tx += tx
+        total_rx += rx
+        name = user.get("name", uid)
+        is_online = online.get(name, {}).get("online", False)
+        mark = "🟢" if is_online else "⚪"
+        lines.append(f"{mark} <b>{name}</b>: ⬆{format_traffic(tx)} ⬇{format_traffic(rx)}")
+
+    text = (
+        f"📈 <b>Статистика трафика</b>\n\n"
+        + "\n".join(lines) +
+        f"\n\n📊 <b>Итого:</b>\n⬆ TX: {format_traffic(total_tx)}\n⬇ RX: {format_traffic(total_rx)}\n"
+        f"📦 Всего: {format_traffic(total_tx + total_rx)}"
+    )
+    await update.message.reply_text(text, parse_mode="HTML", reply_markup=get_main_keyboard())
+
+async def show_server(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    info = get_server_info()
+    if not info:
+        await update.message.reply_text("❌ Не удалось получить информацию", reply_markup=get_main_keyboard())
+        return
+
+    def bar(pct):
+        filled = int(pct / 10)
+        return "█" * filled + "░" * (10 - filled)
+
+    text = (
+        f"🖥 <b>Сервер</b>\n\n"
+        f"💻 CPU: {info.get('cpu', 0)}%\n"
+        f"<code>{bar(info.get('cpu', 0))}</code>\n\n"
+        f"🧠 RAM: {info.get('ram_pct', 0)}% ({info.get('ram_used', 0)}/{info.get('ram_total', 0)} GB)\n"
+        f"<code>{bar(info.get('ram_pct', 0))}</code>\n\n"
+        f"💾 Диск: {info.get('disk_pct', 0)}% ({info.get('disk_used', 0)}/{info.get('disk_total', 0)} GB)\n"
+        f"<code>{bar(info.get('disk_pct', 0))}</code>"
+    )
+    await update.message.reply_text(text, parse_mode="HTML", reply_markup=get_main_keyboard())
+
+async def show_services(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    services = ["hysteria-server", "freelink-api", "freelink-auth", "freelink-traffic", "freelink-bot", "freelink-online", "freelink-history", "freelink-monitor"]
+    lines = []
+    for svc in services:
+        try:
+            r = subprocess.run(["/usr/bin/systemctl", "is-active", svc], capture_output=True, text=True, timeout=3)
+            active = r.stdout.strip() == "active"
+            icon = "🟢" if active else "🔴"
+            lines.append(f"{icon} <code>{svc}</code>")
+        except:
+            lines.append(f"⚪ <code>{svc}</code>")
+
+    text = "⚙️ <b>Сервисы:</b>\n\n" + "\n".join(lines)
+    kb = ReplyKeyboardMarkup(
+        [
+            [KeyboardButton("🔄 Обновить")],
+            [KeyboardButton("🔙 Назад")],
+        ],
+        resize_keyboard=True,
+    )
+    await update.message.reply_text(text, parse_mode="HTML", reply_markup=kb)
+
+async def clean_expired_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    data = load_data()
+    users = data.get("users", {})
+    deleted = 0
+    now = datetime.now()
+    for uid, user in list(users.items()):
+        expire = user.get("expire_date", "")
+        if expire:
+            try:
+                if datetime.strptime(expire, "%Y-%m-%d %H:%M") < now:
+                    del data["users"][uid]
+                    deleted += 1
+            except:
+                pass
+    save_data(data)
+    await update.message.reply_text(f"🧹 Удалено просроченных: <b>{deleted}</b>", parse_mode="HTML", reply_markup=get_main_keyboard())
+
+async def show_logs(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        result = subprocess.run(
+            ["/usr/bin/journalctl", "-u", "hysteria-server", "-n", "20", "--no-pager"],
+            capture_output=True, text=True, timeout=10
+        )
+        logs = result.stdout.strip()
+        if not logs:
+            logs = "Нет логов"
+        if len(logs) > 3000:
+            logs = logs[-3000:]
+        text = f"📋 <b>Последние логи:</b>\n\n<pre>{logs}</pre>"
+    except Exception as e:
+        text = f"❌ Ошибка: {e}"
+
+    await update.message.reply_text(text, parse_mode="HTML", reply_markup=get_main_keyboard())
+
+async def create_start_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Start create user flow from reply keyboard."""
+    user_id = update.effective_user.id
+    if not is_admin(user_id):
+        await update.message.reply_text("⛔ Доступ запрещён.")
+        return ConversationHandler.END
+    await update.message.reply_text(
+        "✏️ Введите <b>имя</b> пользователя (латиница):",
+        parse_mode="HTML"
+    )
+    return NAME
+
+async def handle_panel_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle panel button press."""
+    user_id = update.effective_user.id
+    if not is_admin(user_id):
+        await update.message.reply_text("⛔ Доступ запрещён.")
+        return
+    kb = ReplyKeyboardMarkup(
+        [[KeyboardButton("🚀 Открыть панель", web_app=WebAppInfo(url="https://link.qmbox.ru/app"))]],
+        resize_keyboard=True
+    )
+    await update.message.reply_text(
+        "🌐 <b>Веб-панель:</b>\nhttps://link.qmbox.ru\n\nНажмите кнопку ниже для открытия:",
+        parse_mode="HTML",
+        reply_markup=kb
+    )
 
 async def cmd_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -539,7 +749,8 @@ def main():
 
     create_conv = ConversationHandler(
         entry_points=[
-            CallbackQueryHandler(create_start, pattern="^create$")
+            CallbackQueryHandler(create_start, pattern="^create$"),
+            MessageHandler(filters.Regex("^➕ Создать$"), create_start_msg),
         ],
         states={
             NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, create_name)],
@@ -554,6 +765,15 @@ def main():
     app_builder.add_handler(CommandHandler("server", cmd_server))
     app_builder.add_handler(CommandHandler("logs", cmd_logs))
     app_builder.add_handler(CallbackQueryHandler(button_callback))
+    app_builder.add_handler(MessageHandler(filters.Regex("^📋 Список$"), show_list))
+    app_builder.add_handler(MessageHandler(filters.Regex("^📊 Статистика$"), show_stats))
+    app_builder.add_handler(MessageHandler(filters.Regex("^🖥 Сервер$"), show_server))
+    app_builder.add_handler(MessageHandler(filters.Regex("^⚙️ Сервисы$"), show_services))
+    app_builder.add_handler(MessageHandler(filters.Regex("^🧹 Очистить$"), clean_expired_msg))
+    app_builder.add_handler(MessageHandler(filters.Regex("^📋 Логи$"), show_logs))
+    app_builder.add_handler(MessageHandler(filters.Regex("^🌐 Панель$"), handle_panel_button))
+    app_builder.add_handler(MessageHandler(filters.Regex("^🔙 Назад$"), cmd_start))
+    app_builder.add_handler(MessageHandler(filters.Regex("^🔄 Обновить$"), show_services))
 
     # Notify about expiring users every 6 hours
     async def notify_expiring(context: ContextTypes.DEFAULT_TYPE):
