@@ -217,7 +217,7 @@ async def check_auth(request: Request, call_next):
         return await call_next(request)
 
     # API auth endpoints - always allowed
-    if path in ["/api/login", "/api/logout", "/api/auth", "/api/miniapp/auth", "/api/miniapp/login"]:
+    if path in ["/api/login", "/api/logout", "/api/auth", "/api/miniapp/auth", "/api/miniapp/login", "/api/miniapp/quick-login"]:
         return await call_next(request)
 
     # Open API endpoints (no auth needed)
@@ -436,6 +436,21 @@ async def miniapp_login(request: Request):
     token = create_session(username)
     audit_log(username, "MINIAPP_LOGIN", "method=password")
     resp = JSONResponse(content={"success": True, "username": username})
+    resp.set_cookie("session", token, max_age=86400, httponly=True, samesite="lax")
+    return resp
+
+@app.get("/api/miniapp/quick-login")
+async def miniapp_quick_login(username: str = "", password: str = ""):
+    """Login via GET URL — sets cookie and redirects to app. Works without JS."""
+    if not username or not password:
+        return RedirectResponse(url="/app")
+    admins = load_admins()
+    admin = admins.get(username)
+    if not admin or admin["password_hash"] != hash_pw(password):
+        return RedirectResponse(url="/app?error=1")
+    token = create_session(username)
+    audit_log(username, "MINIAPP_LOGIN", "method=quick-login")
+    resp = RedirectResponse(url="/app")
     resp.set_cookie("session", token, max_age=86400, httponly=True, samesite="lax")
     return resp
 
