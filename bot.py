@@ -105,8 +105,9 @@ def get_main_keyboard():
         [
             [KeyboardButton("📋 Список"), KeyboardButton("➕ Создать")],
             [KeyboardButton("📊 Статистика"), KeyboardButton("🖥 Сервер")],
-            [KeyboardButton("🌐 Панель", web_app=WebAppInfo(url="https://link.qmbox.ru/app")), KeyboardButton("⚙️ Сервисы")],
-            [KeyboardButton("🧹 Очистить"), KeyboardButton("📋 Логи")],
+            [KeyboardButton("🚀 Панель", web_app=WebAppInfo(url="https://link.qmbox.ru/app"))],
+            [KeyboardButton("⚙️ Сервисы"), KeyboardButton("🧹 Очистить")],
+            [KeyboardButton("📋 Логи")],
         ],
         resize_keyboard=True,
         is_persistent=True,
@@ -207,17 +208,6 @@ async def handle_reply_buttons(update: Update, context: ContextTypes.DEFAULT_TYP
             f"💾 Диск: {info.get('disk_pct', 0)}% ({info.get('disk_used', 0)}/{info.get('disk_total', 0)} GB)\n<code>{bar(info.get('disk_pct', 0))}</code>"
         )
         await update.message.reply_text(msg, parse_mode="HTML", reply_markup=kb)
-
-    elif text == "🌐 Панель":
-        kb = InlineKeyboardMarkup([
-            [InlineKeyboardButton("🚀 Открыть панель", web_app=WebAppInfo(url="https://link.qmbox.ru/app"))]
-        ])
-        await update.message.reply_text(
-            "🌐 <b>Веб-панель:</b>\nhttps://link.qmbox.ru",
-            parse_mode="HTML",
-            reply_markup=kb
-        )
-        return
 
     elif text == "⚙️ Сервисы":
         services = ["hysteria-server", "freelink-api", "freelink-auth", "freelink-traffic", "freelink-bot", "freelink-online", "freelink-history", "freelink-monitor"]
@@ -733,7 +723,7 @@ def main():
     app_builder.add_handler(CommandHandler("server", cmd_server))
     app_builder.add_handler(CommandHandler("logs", cmd_logs))
     app_builder.add_handler(CallbackQueryHandler(button_callback))
-    app_builder.add_handler(MessageHandler(filters.Regex("^(📋 Список|➕ Создать|📊 Статистика|🖥 Сервер|🌐 Панель|⚙️ Сервисы|🧹 Очистить|📋 Логи|🔙 Назад|🔄 Обновить)$"), handle_reply_buttons))
+    app_builder.add_handler(MessageHandler(filters.Regex("^(📋 Список|➕ Создать|📊 Статистика|🖥 Сервер|⚙️ Сервисы|🧹 Очистить|📋 Логи|🔙 Назад|🔄 Обновить)$"), handle_reply_buttons))
 
     # Notify about expiring users every 6 hours
     async def notify_expiring(context: ContextTypes.DEFAULT_TYPE):
