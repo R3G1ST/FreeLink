@@ -4,7 +4,7 @@ from datetime import datetime
 
 HYSTERIA_API = 'http://127.0.0.1:9999/traffic'
 HISTORY_FILE = '/opt/freelink/traffic_history.json'
-MAX_ENTRIES = 2880
+MAX_ENTRIES = 8640  # 30 days at 5-min intervals
 
 def record():
     try:

@@ -2,12 +2,117 @@
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse, Response, HTMLResponse, RedirectResponse
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any
 import yaml, os, subprocess, re, json, requests, time, hashlib, secrets, base64, io, sys, tarfile
 from datetime import datetime, timedelta
 import random, string
 import psutil
 import uvicorn
 import db
+
+
+# ====== PYDANTIC MODELS (for Swagger docs) ======
+
+class LoginRequest(BaseModel):
+    username: str = Field(..., min_length=1, description="Admin username")
+    password: str = Field(..., min_length=1, description="Admin password")
+
+class UserCreate(BaseModel):
+    name: str = Field(..., min_length=2, description="Username (latin)")
+    days: int = Field(30, ge=1, description="Subscription days")
+
+class UserCreateWithPlan(BaseModel):
+    name: str = Field(..., min_length=2)
+    plan_id: str = Field(..., description="Plan ID")
+
+class PlanCreate(BaseModel):
+    name: str = Field(..., min_length=1)
+    days: int = Field(30, ge=1)
+    traffic_limit_mb: int = Field(0, ge=0, description="0 = unlimited")
+    price: str = Field("")
+
+class SpeedLimitRequest(BaseModel):
+    speed_mbps: int = Field(0, ge=0, description="0 = no limit")
+
+class TrafficLimitRequest(BaseModel):
+    limit_mb: int = Field(0, ge=0)
+
+class NodeRegister(BaseModel):
+    name: str = Field(..., min_length=1)
+    ip: str = Field(..., min_length=1)
+    region: str = Field("")
+    country: str = Field("")
+    max_users: int = Field(100)
+
+class NodeDeploy(BaseModel):
+    host: str = Field(..., description="SSH host")
+    port: int = Field(22)
+    username: str = Field(..., description="SSH username")
+    password: str = Field("")
+    key: str = Field("", description="SSH private key content")
+    name: str = Field("")
+    region: str = Field("")
+    panel_url: str = Field("https://link.qmbox.ru")
+
+class AdminCreate(BaseModel):
+    username: str = Field(..., min_length=3, pattern=r'^[a-zA-Z0-9_]+$')
+    password: str = Field(..., min_length=6)
+    role: str = Field("viewer", pattern=r'^(admin|editor|viewer)$')
+
+class AdminUpdate(BaseModel):
+    password: Optional[str] = Field(None, min_length=6)
+    role: Optional[str] = Field(None, pattern=r'^(admin|editor|viewer)$')
+
+class PasswordChange(BaseModel):
+    old_password: str
+    new_password: str = Field(..., min_length=6)
+
+class UsernameChange(BaseModel):
+    new_username: str = Field(..., min_length=3, pattern=r'^[a-zA-Z0-9_]+$')
+    password: str
+
+class SubscriptionCreate(BaseModel):
+    uid: str
+    plan_id: str
+    trial: bool = False
+
+class SubscriptionRenew(BaseModel):
+    days: int = Field(30, ge=1)
+
+class PaymentAdd(BaseModel):
+    uid: str = ""
+    amount: float = Field(0, ge=0)
+    currency: str = "RUB"
+    method: str = "manual"
+    status: str = "confirmed"
+    sub_id: str = ""
+    comment: str = ""
+
+class BulkDelete(BaseModel):
+    ids: List[str]
+
+class BulkToggle(BaseModel):
+    ids: List[str]
+
+class BulkExtend(BaseModel):
+    ids: List[str]
+    days: int = Field(30, ge=1)
+
+class ConfigSave(BaseModel):
+    config: str = Field(..., description="YAML content")
+
+class TelegramToken(BaseModel):
+    token: str = Field(..., min_length=1)
+
+class TelegramAdminAdd(BaseModel):
+    admin_id: int
+
+class TelegramAdminRemove(BaseModel):
+    admin_id: int
+
+class ServiceTokenGen(BaseModel):
+    pass
 try:
     import qrcode
     HAS_QR = True
@@ -20,7 +125,14 @@ try:
 except ImportError:
     HAS_GEOIP = False
 
-app = FastAPI(title="Hysteria 2 Manager API")
+app = FastAPI(
+    title="FreeLink — Hysteria 2 Management API",
+    description="Multi-server VPN panel with subscription system, online detection, and Telegram bot integration.",
+    version="3.10.10",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json",
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -100,8 +212,8 @@ API_TOKEN = load_env().get("API_TOKEN", "")
 async def check_auth(request: Request, call_next):
     path = request.url.path
 
-    # Static files and login page - always allowed
-    if path in ["/favicon.ico", "/login", "/app", "/deploy-test"] or path.startswith("/static/"):
+    # Static files, login page, and docs - always allowed
+    if path in ["/favicon.ico", "/login", "/app", "/deploy-test", "/docs", "/redoc"] or path.startswith("/static/") or path.startswith("/api/docs") or path.startswith("/api/redoc") or path.startswith("/api/openapi"):
         return await call_next(request)
 
     # API auth endpoints - always allowed
@@ -600,7 +712,7 @@ echo "=== DONE ==="
 
 @app.get("/api/miniapp/services")
 async def miniapp_services():
-    services = ["hysteria-server", "freelink-api", "freelink-auth", "freelink-traffic", "freelink-bot", "freelink-online", "freelink-history"]
+    services = ["hysteria-server", "freelink-api", "freelink-auth", "freelink-traffic", "freelink-bot", "freelink-online", "freelink-history", "freelink-monitor"]
     result = []
     for svc in services:
         try:
@@ -612,7 +724,7 @@ async def miniapp_services():
 
 @app.post("/api/miniapp/services/{name}/restart")
 async def miniapp_restart_service(name: str):
-    allowed = ["hysteria-server", "freelink-api", "freelink-auth", "freelink-traffic", "freelink-bot", "freelink-online", "freelink-history"]
+    allowed = ["hysteria-server", "freelink-api", "freelink-auth", "freelink-traffic", "freelink-bot", "freelink-online", "freelink-history", "freelink-monitor"]
     if name not in allowed:
         return JSONResponse(status_code=400, content={"error": "Not allowed"})
     try:
@@ -919,7 +1031,7 @@ async def client_portal(token: str = ""):
 
 # ====== STATUS ======
 
-@app.get("/api/status")
+@app.get("/api/status", summary="Dashboard summary", description="Returns server status, user counts, and online count.")
 async def get_status():
     try:
         result = subprocess.run(["/usr/bin/systemctl", "is-active", "hysteria-server"], capture_output=True, text=True)
@@ -938,13 +1050,13 @@ async def get_status():
     except Exception as e:
         return {"error": str(e)}
 
-@app.get("/api/server-info")
+@app.get("/api/server-info", summary="System metrics", description="Returns CPU, RAM, disk usage, network stats, and uptime.")
 async def server_info():
     return get_server_info()
 
 # ====== USERS ======
 
-@app.get("/api/users")
+@app.get("/api/users", summary="List all users", description="Returns all VPN users with online status, traffic stats, and subscription info.")
 async def get_users():
     users = get_all_users()
     online_status = get_online_status()
@@ -991,7 +1103,7 @@ async def get_users():
         })
     return {"users": result}
 
-@app.get("/api/user/{uid}")
+@app.get("/api/user/{uid}", summary="Get user details", description="Returns full details for a single VPN user including traffic and online status.")
 async def get_user_endpoint(uid: str):
     user = get_user(uid)
     if not user:
@@ -1045,7 +1157,7 @@ async def get_user_endpoint(uid: str):
         "total_sessions": user.get("total_sessions", 0)
     }
 
-@app.post("/api/user/create")
+@app.post("/api/user/create", summary="Create VPN user", description="Create a new VPN user with subscription. Returns user ID, expiry date, and Hysteria2 connection link.")
 async def create_user(name: str, days: int = 30):
     uid = gen_id()
     expire_date = (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d %H:%M")
@@ -1163,6 +1275,31 @@ async def bulk_extend(request: Request):
             extended += 1
     return {"extended": extended}
 
+@app.post("/api/users/bulk-speed-limit")
+async def bulk_speed_limit(request: Request):
+    """Set speed limit for multiple users at once."""
+    data = await request.json()
+    ids = data.get("ids", [])
+    speed_mbps = data.get("speed_mbps", 0)
+    updated = 0
+    for uid in ids:
+        user = get_user(uid)
+        if user:
+            user["speed_limit_mbps"] = speed_mbps
+            save_user(uid, user)
+            updated += 1
+    # Apply all speed limits to Hysteria
+    if updated > 0:
+        try:
+            subprocess.Popen(
+                ["/opt/freelink/venv/bin/python3", "/opt/freelink/speed_limiter.py"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
+        except:
+            pass
+    audit_log("admin", "BULK_SPEED_LIMIT", f"users={updated} speed={speed_mbps}Mbps")
+    return {"updated": updated}
+
 # ====== PLANS ======
 
 PLANS_FILE = "/opt/freelink/plans.json"
@@ -1181,7 +1318,7 @@ def load_plans():
 def save_plans(plans):
     db.save_plans(plans)
 
-@app.get("/api/plans")
+@app.get("/api/plans", summary="List subscription plans", description="Returns all available subscription plans with traffic limits and durations.")
 async def get_plans():
     return {"plans": load_plans()}
 
@@ -1289,9 +1426,9 @@ async def export_users(fmt: str = "json"):
 
 # ====== SERVICES STATUS ======
 
-@app.get("/api/services")
+@app.get("/api/services", summary="Service status", description="Returns active/inactive status for all system services.")
 async def get_services():
-    services = ["hysteria-server", "freelink-api", "freelink-auth", "freelink-traffic", "freelink-bot", "freelink-online"]
+    services = ["hysteria-server", "freelink-api", "freelink-auth", "freelink-traffic", "freelink-bot", "freelink-online", "freelink-history", "freelink-monitor"]
     result = []
     for svc in services:
         try:
@@ -1304,7 +1441,7 @@ async def get_services():
 
 @app.post("/api/services/{name}/restart")
 async def restart_service(name: str):
-    allowed = ["hysteria-server", "freelink-api", "freelink-auth", "freelink-traffic", "freelink-bot", "freelink-online"]
+    allowed = ["hysteria-server", "freelink-api", "freelink-auth", "freelink-traffic", "freelink-bot", "freelink-online", "freelink-history", "freelink-monitor"]
     if name not in allowed:
         raise HTTPException(status_code=400, detail="Service not allowed")
     try:
@@ -1405,7 +1542,7 @@ async def get_all_logs():
 
 # ====== ONLINE ======
 
-@app.get("/api/online")
+@app.get("/api/online", summary="Online status", description="Returns online status for all users with speed and last active time.")
 async def online():
     online_status = get_online_status()
     users = get_all_users()
@@ -1447,7 +1584,7 @@ async def hysteria_stats():
         return stats
     return {"error": "Traffic Stats API не доступен"}
 
-@app.get("/api/live-traffic")
+@app.get("/api/live-traffic", summary="Live traffic", description="Returns currently active users with real-time speed data (bytes/sec).")
 async def live_traffic():
     online_status = get_online_status()
     users = get_all_users()
@@ -1542,6 +1679,15 @@ async def set_speed_limit(uid: str, request: Request):
     speed_mbps = data.get("speed_mbps", 0)
     user["speed_limit_mbps"] = speed_mbps
     save_user(uid, user)
+    # Apply speed limit to Hysteria config
+    try:
+        subprocess.Popen(
+            ["/opt/freelink/venv/bin/python3", "/opt/freelink/speed_limiter.py"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+    except:
+        pass
+    audit_log("admin", "SPEED_LIMIT_CHANGED", f"uid={uid} speed={speed_mbps}Mbps")
     return {"success": True, "speed_mbps": speed_mbps}
 
 @app.post("/api/miniapp/user/speed-limit/{uid}")
@@ -2820,7 +2966,7 @@ async def node_heartbeat(request: Request):
     return {"success": True, "users": users_to_push}
 
 # Admin: list all nodes
-@app.get("/api/nodes")
+@app.get("/api/nodes", summary="List all nodes", description="Returns all server nodes with status, metrics, and assigned users.")
 async def list_nodes():
     nodes = load_nodes()
     now = datetime.now()
@@ -3176,7 +3322,7 @@ def save_payments(payments):
     with open(PAYMENTS_FILE, "w") as f:
         json.dump(payments[-500:], f, ensure_ascii=False, indent=2)
 
-@app.get("/api/subscriptions")
+@app.get("/api/subscriptions", summary="List subscriptions", description="Returns all user subscriptions with status, plan info, and traffic usage.")
 async def list_subscriptions():
     subs = load_subscriptions()
     users = load_data().get("users", {})
@@ -3462,6 +3608,42 @@ async def check_subscriptions_expiry():
     if expired:
         save_subscriptions(subs)
     return {"expired": len(expired)}
+
+# ===================================================================
+# ===== RESOURCE MONITORING =====
+# ===================================================================
+
+MONITOR_STATE_FILE = "/opt/freelink/monitor_state.json"
+
+@app.get("/api/monitor/status", summary="Resource monitor status")
+async def monitor_status():
+    """Returns current resource usage and alert thresholds."""
+    info = {}
+    try:
+        info["cpu_percent"] = psutil.cpu_percent(interval=0.3)
+        mem = psutil.virtual_memory()
+        info["ram_percent"] = mem.percent
+        info["ram_used_gb"] = round(mem.used / (1024**3), 1)
+        info["ram_total_gb"] = round(mem.total / (1024**3), 1)
+        disk = psutil.disk_usage("/")
+        info["disk_percent"] = disk.percent
+        info["disk_used_gb"] = round(disk.used / (1024**3), 1)
+        info["disk_total_gb"] = round(disk.total / (1024**3), 1)
+    except:
+        pass
+    # Load thresholds
+    try:
+        with open(MONITOR_STATE_FILE, 'r') as f:
+            state = json.load(f)
+    except:
+        state = {}
+    info["thresholds"] = {"cpu_percent": 90, "ram_percent": 85, "disk_percent": 90}
+    info["last_alerts"] = {k: v for k, v in state.items() if k.endswith("_alert_time")}
+    return info
+
+@app.get("/api/monitor/thresholds")
+async def monitor_get_thresholds():
+    return {"thresholds": {"cpu_percent": 90, "ram_percent": 85, "disk_percent": 90}}
 
 @app.on_event("startup")
 async def startup_event():

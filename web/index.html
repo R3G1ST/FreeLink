@@ -511,7 +511,7 @@ a{text-decoration:none;color:inherit}
             <!-- TRAFFIC -->
             <div class="pg" id="p-traffic">
                 <div class="pg-title"><i class="fas fa-chart-area"></i> <span data-i18n="page_analytics_title">Аналитика</span></div>
-                <div class="card chrt"><div class="ch"><div class="ct"><i class="fas fa-chart-line" style="color:var(--ac2)"></i> <span data-i18n="chart_traffic_title">Трафик</span></div><div class="cpd"><button class="on" onclick="lCh(1,this)"><span data-i18n="period_1h">1ч</span></button><button onclick="lCh(6,this)"><span data-i18n="period_6h">6ч</span></button><button onclick="lCh(24,this)"><span data-i18n="period_24h">24ч</span></button><button onclick="lCh(72,this)"><span data-i18n="period_3d">3д</span></button></div></div><div class="cw"><canvas id="cC2"></canvas></div></div>
+                <div class="card chrt"><div class="ch"><div class="ct"><i class="fas fa-chart-line" style="color:var(--ac2)"></i> <span data-i18n="chart_traffic_title">Трафик</span></div><div class="cpd"><button class="on" onclick="lCh(1,this)"><span data-i18n="period_1h">1ч</span></button><button onclick="lCh(6,this)"><span data-i18n="period_6h">6ч</span></button><button onclick="lCh(24,this)"><span data-i18n="period_24h">24ч</span></button><button onclick="lCh(72,this)"><span data-i18n="period_3d">3д</span></button><button onclick="lCh(168,this)"><span data-i18n="period_7d">7д</span></button><button onclick="lCh(720,this)"><span data-i18n="period_30d">30д</span></button></div></div><div class="cw"><canvas id="cC2"></canvas></div></div>
                 <div class="tbar"><button class="btn btn-n" onclick="loadLive()"><i class="fas fa-sync"></i> <span data-i18n="btn_refresh">Обновить</span></button><span style="font-size:11px;color:var(--t4);margin-left:8px" id="wsStatus"><i class="fas fa-circle" style="color:#64748b;font-size:8px"></i> WebSocket: <span data-i18n="ws_disconnected">отключён</span></span></div>
                 <div class="card" id="liveTable" style="padding:20px;color:var(--t4)"><span data-i18n="loading_data">Загрузка...</span></div>
             </div>
@@ -881,6 +881,8 @@ period_1h:{ru:'1ч',en:'1h'},
 period_6h:{ru:'6ч',en:'6h'},
 period_24h:{ru:'24ч',en:'24h'},
 period_3d:{ru:'3д',en:'3d'},
+period_7d:{ru:'7д',en:'7d'},
+period_30d:{ru:'30д',en:'30d'},
 plan_days:{ru:'дн',en:'days'},
 plan_unlimited:{ru:'∞ Безлимит',en:'∞ Unlimited'},
 plan_limit:{ru:'Лимит (МБ)',en:'Limit (MB)'},
