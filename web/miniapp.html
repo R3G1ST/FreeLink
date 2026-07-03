@@ -360,6 +360,15 @@ applyLang();
 if(tg){tg.ready();tg.expand();tg.MainButton.hide();document.body.style.backgroundColor=tg.themeParams?.bg_color||'#0a0e1a';console.log('TG init:',tg.initData?'OK':'EMPTY')}
 else{console.log('No Telegram WebApp SDK')}
 
+// Check if already logged in via session cookie
+fetch('/api/me').then(r=>{if(r.ok)return r.json();throw 0}).then(d=>{
+    if(d&&d.username){
+        document.getElementById('authPage').style.display='none';
+        document.getElementById('appPage').style.display='block';
+        loadData();
+    }
+}).catch(()=>{});
+
 // PWA
 if('serviceWorker' in navigator){navigator.serviceWorker.register('/web/sw.js').catch(e=>{})}
 
