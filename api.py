@@ -217,7 +217,7 @@ async def check_auth(request: Request, call_next):
         return await call_next(request)
 
     # API auth endpoints - always allowed
-    if path in ["/api/login", "/api/logout", "/api/auth", "/api/miniapp/auth", "/api/miniapp/login", "/api/miniapp/quick-login"]:
+    if path in ["/api/login", "/api/logout", "/api/auth", "/api/miniapp/auth", "/api/miniapp/login", "/api/miniapp/quick-login", "/form-login"]:
         return await call_next(request)
 
     # Open API endpoints (no auth needed)
@@ -410,6 +410,25 @@ async def miniapp_page_token(token: str):
         "Cache-Control": "no-cache, no-store, must-revalidate",
         "Access-Control-Allow-Origin": "*"
     })
+    resp.set_cookie("session", token, max_age=86400, httponly=True, samesite="none")
+    return resp
+
+@app.post("/form-login")
+async def form_login(request: Request):
+    """Traditional form POST login — no JS required."""
+    from starlette.formparsers import MultiPartParser
+    form = await request.form()
+    username = form.get("username", "")
+    password = form.get("password", "")
+    if not username or not password:
+        return RedirectResponse(url="/app?error=empty", status_code=302)
+    admins = load_admins()
+    admin = admins.get(username)
+    if not admin or admin["password_hash"] != hash_pw(password):
+        return RedirectResponse(url="/app?error=bad", status_code=302)
+    token = create_session(username)
+    audit_log(username, "MINIAPP_LOGIN", "method=form")
+    resp = RedirectResponse(url=f"/app/{token}", status_code=302)
     resp.set_cookie("session", token, max_age=86400, httponly=True, samesite="none")
     return resp
 
