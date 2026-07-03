@@ -211,6 +211,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
         <button class="nav-btn" onclick="go('users',this)"><i class="fas fa-users"></i> <span data-i18n="nav_users">Клиенты</span></button>
         <button class="nav-btn" onclick="go('nodes',this)"><i class="fas fa-server"></i> <span data-i18n="nav_nodes">Ноды</span></button>
         <button class="nav-btn" onclick="go('traffic',this)"><i class="fas fa-chart-line"></i> <span data-i18n="nav_traffic">Трафик</span></button>
+        <button class="nav-btn" onclick="go('services',this)"><i class="fas fa-cogs"></i> <span data-i18n="nav_services">Сервисы</span></button>
+        <button class="nav-btn" onclick="go('backups',this)"><i class="fas fa-database"></i> <span data-i18n="nav_backups">Бэкапы</span></button>
     </div>
 
     <!-- DASHBOARD -->
@@ -242,6 +244,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
                 <button class="filter" onclick="loadChart(6,this)">6ч</button>
                 <button class="filter" onclick="loadChart(24,this)">24ч</button>
                 <button class="filter" onclick="loadChart(72,this)">3д</button>
+                <button class="filter" onclick="loadChart(168,this)">7д</button>
+                <button class="filter" onclick="loadChart(720,this)">30д</button>
             </div>
             <div class="chart-wrap"><canvas id="cChart"></canvas></div>
         </div>
@@ -255,7 +259,16 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 
     <!-- SERVICES -->
     <div class="page" id="p-services">
-        <div id="serviceList"></div>
+        <div class="card"><div class="card-title"><i class="fas fa-cogs"></i> Сервисы</div><div id="serviceList"></div></div>
+        <div class="card"><div class="card-title"><i class="fas fa-heartbeat"></i> Ресурсы</div><div id="resourceMonitor"></div></div>
+    </div>
+
+    <!-- BACKUPS -->
+    <div class="page" id="p-backups">
+        <div class="card"><div class="card-title"><i class="fas fa-database"></i> Бэкапы</div>
+            <button class="btn btn-g full-btn" onclick="createBackup()" style="margin-bottom:12px"><i class="fas fa-plus"></i> Создать бэкап</button>
+            <div id="backupList"></div>
+        </div>
     </div>
 </div>
 
@@ -316,6 +329,20 @@ sys_speed:{ru:'Скорость',en:'Speed'},
 sys_uptime:{ru:'Аптайм',en:'Uptime'},
 sys_procs:{ru:'Процессы',en:'Processes'},
 sys_load:{ru:'Нагрузка',en:'Load'},
+nav_services:{ru:'Сервисы',en:'Services'},
+nav_backups:{ru:'Бэкапы',en:'Backups'},
+svc_authorization:{ru:'Авторизация',en:'Authorization'},
+svc_traffic:{ru:'Трафик',en:'Traffic'},
+svc_telegram_bot:{ru:'Telegram Бот',en:'Telegram Bot'},
+svc_online:{ru:'Онлайн',en:'Online'},
+svc_history:{ru:'История',en:'History'},
+svc_monitor:{ru:'Мониторинг',en:'Monitor'},
+msg_backup_created:{ru:'Бэкап создан!',en:'Backup created!'},
+msg_backup_restored:{ru:'Бэкап восстановлен!',en:'Backup restored!'},
+msg_backup_deleted:{ru:'Бэкап удалён',en:'Backup deleted'},
+msg_confirm_restore:{ru:'Восстановить бэкап? Текущие данные будут заменены.',en:'Restore backup? Current data will be replaced.'},
+msg_confirm_delete:{ru:'Удалить бэкап?',en:'Delete backup?'},
+msg_speed_set:{ru:'Лимит скорости установлен',en:'Speed limit set'},
 };
 function t(key){return I18N[key]?.[currentLang]||I18N[key]?.['ru']||key}
 function setLang(lang){localStorage.setItem(LANG_KEY,lang);location.reload()}
@@ -515,6 +542,7 @@ const html=`<h3>${u.name}</h3>
 </div>
 <div class="modal-btns" style="margin-top:6px">
 <button class="btn btn-n" onclick="toggleUser('${u.id}')"><i class="fas fa-exchange-alt"></i> Вкл/Выкл</button>
+<button class="btn btn-n" onclick="showSpeedModal('${u.id}')"><i class="fas fa-tachometer-alt"></i> Скорость</button>
 <button class="btn btn-n" style="color:var(--rd)" onclick="deleteUser('${u.id}')"><i class="fas fa-trash"></i> Удалить</button>
 </div>`;
     openModal(html);
@@ -634,6 +662,90 @@ function showToast(m){const e=document.querySelector('.toast');if(e)e.remove();c
 
 // Auto-refresh via REST (fallback)
 setInterval(()=>{if($('appPage').style.display!=='none')loadData()},30000);
-</script>
+
+// ====== SERVICES ======
+const SVC_NAMES={'hysteria-server':'FreeLink VPN','freelink-api':'API','freelink-auth':t('svc_authorization'),'freelink-traffic':t('svc_traffic'),'freelink-bot':t('svc_telegram_bot'),'freelink-online':t('svc_online'),'freelink-history':t('svc_history'),'freelink-monitor':t('svc_monitor')};
+async function loadServices(){
+    const r=await fetch('/api/miniapp/services');const d=await r.json();
+    $('serviceList').innerHTML=d.services.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+        <div style="display:flex;align-items:center;gap:10px"><span style="width:8px;height:8px;border-radius:50%;background:${s.active?'var(--gn)':'var(--rd)'}"></span><span style="font-size:13px;font-weight:500">${SVC_NAMES[s.name]||s.name}</span></div>
+        <button class="btn btn-n" style="padding:6px 12px;font-size:11px" onclick="restartSvc('${s.name}')"><i class="fas fa-sync"></i></button>
+    </div>`).join('');
+    loadResourceMonitor();
+}
+function restartSvc(n){if(!confirm('Перезапустить '+n+'?'))return;fetch('/api/miniapp/services/'+n+'/restart',{method:'POST'}).then(()=>{showToast(n+' OK');setTimeout(loadServices,2000)})}
+
+// ====== RESOURCE MONITOR ======
+async function loadResourceMonitor(){
+    try{
+        const r=await fetch('/api/miniapp/server-info?t='+Date.now());const s=await r.json();
+        const gc=v=>v>80?'var(--rd)':v>50?'var(--or)':'var(--gn)';
+        const bar=(pct,label)=>{
+            const color=gc(pct);
+            return`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;font-weight:600">${label}</span><span style="font-size:11px;color:${color};font-weight:700">${pct}%</span></div><div style="height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${color};border-radius:3px;transition:width .5s"></div></div></div>`;
+        };
+        $('resourceMonitor').innerHTML=
+            bar(s.cpu_percent||0,'CPU')+
+            bar(s.ram_percent||0,`ОЗУ (${s.ram_used_gb||0}/${s.ram_total_gb||0} ГБ)`)+
+            bar(s.disk_percent||0,`Диск (${s.disk_used_gb||0}/${s.disk_total_gb||0} ГБ)`)+
+            `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;font-size:11px;color:var(--t3)">
+                <div><i class="fas fa-arrow-up" style="color:var(--bl)"></i> ${s.net_sent_gb||0} ГБ</div>
+                <div><i class="fas fa-arrow-down" style="color:var(--ac2)"></i> ${s.net_recv_gb||0} ГБ</div>
+                <div><i class="fas fa-clock"></i> ${s.uptime||'?'}</div>
+                <div><i class="fas fa-list"></i> ${s.process_count||'?'} проц.</div>
+            </div>`;
+    }catch(e){console.error(e)}
+}
+
+// ====== BACKUPS ======
+async function loadBackups(){
+    try{
+        const r=await fetch('/api/backups');const d=await r.json();
+        const bl=$('backupList');if(!bl)return;
+        const backups=d.backups||[];
+        if(!backups.length){bl.innerHTML='<div style="text-align:center;padding:20px;color:var(--t3);font-size:12px"><i class="fas fa-database" style="font-size:20px;display:block;margin-bottom:6px;opacity:.3"></i>Нет бэкапов</div>';return}
+        bl.innerHTML=backups.map(b=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+            <div><div style="font-size:12px;font-weight:600">${b.name}</div><div style="font-size:10px;color:var(--t3)">${b.size_mb} МБ · ${b.created}</div></div>
+            <div style="display:flex;gap:6px">
+                <button class="btn btn-n" style="padding:6px 10px;font-size:10px" onclick="restoreBackup('${b.name}')"><i class="fas fa-undo"></i></button>
+                <button class="btn btn-n" style="padding:6px 10px;font-size:10px;color:var(--rd)" onclick="deleteBackup('${b.name}')"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>`).join('');
+    }catch(e){console.error(e)}
+}
+async function createBackup(){
+    showToast('Создание бэкапа...');
+    try{
+        const r=await fetch('/api/backups/create',{method:'POST'});const d=await r.json();
+        if(d.success){showToast('Бэкап создан!');loadBackups()}else showToast(d.error||'Ошибка')
+    }catch{showToast('Ошибка сети')}
+}
+function restoreBackup(name){if(!confirm(t('msg_confirm_restore')))return;fetch('/api/backups/restore',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})}).then(r=>r.json()).then(d=>{if(d.success){showToast(t('msg_backup_restored'));loadBackups()}else showToast(d.error||'Ошибка')})}
+function deleteBackup(name){if(!confirm(t('msg_confirm_delete')))return;fetch('/api/backups/'+encodeURIComponent(name),{method:'DELETE'}).then(()=>{showToast(t('msg_backup_deleted'));loadBackups()})}
+
+// ====== USER SPEED LIMIT ======
+function showSpeedModal(id){
+    const u=CU.find(x=>x.id===id);if(!u)return;
+    const current=u.speed_limit||0;
+    const html=`<h3>Лимит скорости</h3>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:12px">Текущий: ${current>0?current+' МБ/с':'Без лимита'}</div>
+    <div class="field"><label>Мбит/с (0 = без лимита)</label><input type="number" id="speedInput" value="${current}" min="0"></div>
+    <div class="modal-btns"><button class="btn btn-n" onclick="closeModal()">Отмена</button><button class="btn btn-g" onclick="setSpeed('${id}')">Применить</button></div>`;
+    openModal(html);
+}
+async function setSpeed(id){
+    const speed=parseInt($('speedInput')?.value)||0;
+    await fetch('/api/miniapp/user/speed-limit/'+id,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({speed_mbps:speed})});
+    showToast(t('msg_speed_set'));closeModal();loadData();
+}
+
+// ====== NAV ======
+function go(page,el){document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('on'));$('p-'+page).classList.add('on');el.classList.add('on');
+    if(page==='traffic')loadChart(1,document.querySelector('#p-traffic .filter.on'));
+    if(page==='services')loadServices();
+    if(page==='users')renderUsers();
+    if(page==='nodes')loadNodes();
+    if(page==='backups')loadBackups();
+}
 </body>
 </html>
