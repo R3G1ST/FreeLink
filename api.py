@@ -213,7 +213,7 @@ async def check_auth(request: Request, call_next):
     path = request.url.path
 
     # Static files, login page, and docs - always allowed
-    if path in ["/favicon.ico", "/login", "/app", "/deploy-test", "/docs", "/redoc"] or path.startswith("/static/") or path.startswith("/api/docs") or path.startswith("/api/redoc") or path.startswith("/api/openapi"):
+    if path in ["/favicon.ico", "/login", "/app", "/deploy-test", "/docs", "/redoc"] or path.startswith("/static/") or path.startswith("/api/docs") or path.startswith("/api/redoc") or path.startswith("/api/openapi") or path.startswith("/app/"):
         return await call_next(request)
 
     # API auth endpoints - always allowed
@@ -243,6 +243,8 @@ async def check_auth(request: Request, call_next):
 
     # Check session for all other API and page requests
     token = request.cookies.get("session")
+    if not token:
+        token = request.query_params.get("_t", "")
     user = validate_session(token)
     if not user:
         if path.startswith("/api/"):
@@ -393,7 +395,23 @@ async def auth_user(request: Request):
 @app.get("/app")
 async def miniapp_page():
     with open("/opt/freelink/web/miniapp.html", "r") as f:
-        return HTMLResponse(content=f.read(), headers={"Cache-Control": "no-cache"})
+        content = f.read()
+    return HTMLResponse(content=content, headers={
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Access-Control-Allow-Origin": "*"
+    })
+
+@app.get("/app/{token}")
+async def miniapp_page_token(token: str):
+    """Mini app with token in URL — sets cookie and serves page."""
+    with open("/opt/freelink/web/miniapp.html", "r") as f:
+        content = f.read()
+    resp = HTMLResponse(content=content, headers={
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Access-Control-Allow-Origin": "*"
+    })
+    resp.set_cookie("session", token, max_age=86400, httponly=True, samesite="none")
+    return resp
 
 @app.post("/api/miniapp/auth")
 async def miniapp_auth(request: Request):
@@ -435,13 +453,13 @@ async def miniapp_login(request: Request):
         return JSONResponse(status_code=401, content={"error": "Неверный логин или пароль"})
     token = create_session(username)
     audit_log(username, "MINIAPP_LOGIN", "method=password")
-    resp = JSONResponse(content={"success": True, "username": username})
-    resp.set_cookie("session", token, max_age=86400, httponly=True, samesite="lax")
+    resp = JSONResponse(content={"success": True, "username": username, "token": token})
+    resp.set_cookie("session", token, max_age=86400, httponly=True, samesite="none")
     return resp
 
 @app.get("/api/miniapp/quick-login")
 async def miniapp_quick_login(username: str = "", password: str = ""):
-    """Login via GET URL — sets cookie and redirects to app. Works without JS."""
+    """Login via GET URL — redirects to /app/{token} with cookie."""
     if not username or not password:
         return RedirectResponse(url="/app")
     admins = load_admins()
@@ -450,8 +468,8 @@ async def miniapp_quick_login(username: str = "", password: str = ""):
         return RedirectResponse(url="/app?error=1")
     token = create_session(username)
     audit_log(username, "MINIAPP_LOGIN", "method=quick-login")
-    resp = RedirectResponse(url="/app")
-    resp.set_cookie("session", token, max_age=86400, httponly=True, samesite="lax")
+    resp = RedirectResponse(url=f"/app/{token}")
+    resp.set_cookie("session", token, max_age=86400, httponly=True, samesite="none")
     return resp
 
 @app.get("/api/miniapp/status")

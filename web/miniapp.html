@@ -360,24 +360,21 @@ applyLang();
 if(tg){tg.ready();tg.expand();tg.MainButton.hide();document.body.style.backgroundColor=tg.themeParams?.bg_color||'#0a0e1a';console.log('TG init:',tg.initData?'OK':'EMPTY')}
 else{console.log('No Telegram WebApp SDK')}
 
-// Check if already logged in via session cookie
+// Extract token from URL path /app/{token}
+var URL_TOKEN='';
 (function(){
-    var x=new XMLHttpRequest();
-    x.open('GET','/api/me',true);
-    x.withCredentials=true;
-    x.onreadystatechange=function(){
-        if(x.readyState===4){
-            if(x.status===200){
-                try{var d=JSON.parse(x.responseText);if(d&&d.username){
-                    document.getElementById('authPage').style.display='none';
-                    document.getElementById('appPage').style.display='block';
-                    loadData();
-                }}catch(e){}
-            }
-        }
-    };
-    x.send();
+    var path=location.pathname;
+    var m=path.match(/\/app\/([A-Za-z0-9_-]+)/);
+    if(m){URL_TOKEN=m[1];document.getElementById('authPage').style.display='none';document.getElementById('appPage').style.display='block';loadData();return;}
+    // Try session cookie
+    var x=new XMLHttpRequest();x.open('GET','/api/me',true);x.withCredentials=true;
+    x.onreadystatechange=function(){if(x.readyState===4&&x.status===200){try{var d=JSON.parse(x.responseText);if(d&&d.username){document.getElementById('authPage').style.display='none';document.getElementById('appPage').style.display='block';loadData();}}catch(e){}}};x.send();
 })();
+
+function api(path){
+    var sep=path.includes('?')?'&':'?';
+    return URL_TOKEN?path+sep+'_t='+encodeURIComponent(URL_TOKEN):path;
+}
 
 // PWA
 if('serviceWorker' in navigator){navigator.serviceWorker.register('/web/sw.js').catch(e=>{})}
@@ -403,7 +400,7 @@ setInterval(checkNotifDot,30000);setTimeout(checkNotifDot,2000);
 
 // ====== AUTH ======
 async function doAuth(){
-    const btn=$('authBtn');
+    const btn=document.getElementById('authBtn');
     if(btn){btn.disabled=true;btn.textContent='Вход...';}
 
     let initData='';
@@ -415,29 +412,30 @@ async function doAuth(){
     }
 
     if(!initData){
-        showToast('Нет данных Telegram');if(btn){btn.disabled=false;}
+        if(btn){btn.disabled=false;}
         return;
     }
 
     try{
-        const r=await fetch('/api/miniapp/auth',{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({initData:initData})
-        });
-        const d=await r.json();
-        console.log('Auth response:',d);
-        if(d.success){
-            $('authPage').style.display='none';
-            $('appPage').style.display='block';
-            loadData();
-        }else{
-            showToast(d.error||'Ошибка авторизации');
-            if(btn){btn.disabled=false;btn.innerHTML='<i class="fab fa-telegram-plane"></i> Войти через Telegram';}
-        }
+        var x=new XMLHttpRequest();
+        x.open('POST','/api/miniapp/auth',true);
+        x.withCredentials=true;
+        x.setRequestHeader('Content-Type','application/json');
+        x.onreadystatechange=function(){
+            if(x.readyState===4){
+                if(x.status===200){
+                    try{var d=JSON.parse(x.responseText);if(d.success){
+                        document.getElementById('authPage').style.display='none';
+                        document.getElementById('appPage').style.display='block';
+                        loadData();
+                    }}catch(e){}
+                }else{
+                    if(btn){btn.disabled=false;btn.innerHTML='<i class="fab fa-telegram-plane"></i> Войти через Telegram';}
+                }
+            }
+        };
+        x.send(JSON.stringify({initData:initData}));
     }catch(e){
-        console.error('Auth error:',e);
-        showToast('Ошибка сети: '+e.message);
         if(btn){btn.disabled=false;btn.innerHTML='<i class="fab fa-telegram-plane"></i> Войти через Telegram';}
     }
 }
@@ -460,10 +458,9 @@ function doLoginPass(){
     x.onreadystatechange=function(){
         if(x.readyState===4){
             if(x.status===200){
-                try{var d=JSON.parse(x.responseText);if(d.success){
-                    document.getElementById('authPage').style.display='none';
-                    document.getElementById('appPage').style.display='block';
-                    loadData();
+                try{var d=JSON.parse(x.responseText);if(d.success&&d.token){
+                    // Redirect to /app/{token} — cookie set by URL path
+                    window.location.href='/app/'+d.token;
                 }}catch(e){}
             }else{
                 try{var d=JSON.parse(x.responseText);if(errEl){errEl.textContent=d.error||'Ошибка';errEl.style.display='block'}}catch(e){if(errEl){errEl.textContent='Ошибка';errEl.style.display='block'}}
