@@ -192,9 +192,10 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
         <p>Управление VPN-сервером</p>
         <button class="auth-btn" onclick="doAuth()" id="authBtn"><i class="fab fa-telegram-plane"></i> Войти через Telegram</button>
         <div style="margin:16px 0;text-align:center;font-size:11px;color:var(--t3)">или</div>
-        <div class="field"><input type="text" id="loginUser" placeholder="Логин" style="width:100%;padding:10px 12px;background:var(--c2);border:1px solid rgba(255,255,255,.06);border-radius:var(--R2);color:var(--t1);font-size:13px;outline:none;font-family:inherit"></div>
-        <div class="field"><input type="password" id="loginPass" placeholder="Пароль" style="width:100%;padding:10px 12px;background:var(--c2);border:1px solid rgba(255,255,255,.06);border-radius:var(--R2);color:var(--t1);font-size:13px;outline:none;font-family:inherit"></div>
-        <button class="auth-btn" onclick="doLoginPass()" style="background:linear-gradient(135deg,#10b981,#059669);margin-top:8px"><i class="fas fa-sign-in-alt"></i> Войти</button>
+        <input type="text" id="loginUser" placeholder="Логин" style="width:100%;padding:10px 12px;background:var(--c2);border:1px solid rgba(255,255,255,.06);border-radius:var(--R2);color:var(--t1);font-size:13px;outline:none;font-family:inherit;margin-bottom:8px">
+        <input type="password" id="loginPass" placeholder="Пароль" style="width:100%;padding:10px 12px;background:var(--c2);border:1px solid rgba(255,255,255,.06);border-radius:var(--R2);color:var(--t1);font-size:13px;outline:none;font-family:inherit;margin-bottom:12px">
+        <button class="auth-btn" onclick="doLoginPass()" style="background:linear-gradient(135deg,#10b981,#059669)"><i class="fas fa-sign-in-alt"></i> Войти по паролю</button>
+        <div id="authError" style="color:var(--rd);font-size:12px;margin-top:10px;display:none"></div>
     </div>
 </div>
 
@@ -424,15 +425,35 @@ async function doAuth(){
 
 // ====== PASSWORD LOGIN ======
 async function doLoginPass(){
-    const u=($('loginUser')||{}).value||'';
-    const p=($('loginPass')||{}).value||'';
-    if(!u||!p){showToast('Заполните все поля');return}
+    const u=document.getElementById('loginUser').value.trim();
+    const p=document.getElementById('loginPass').value;
+    const errEl=document.getElementById('authError');
+    const btn=document.querySelector('.auth-btn[onclick="doLoginPass()"]');
+
+    if(!u||!p){if(errEl){errEl.textContent='Заполните все поля';errEl.style.display='block'}return}
+
+    if(btn){btn.disabled=true;btn.textContent='Вход...';}
+    if(errEl)errEl.style.display='none';
+
     try{
-        const r=await fetch('/api/miniapp/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+        const r=await fetch('/api/miniapp/login',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({username:u,password:p})
+        });
         const d=await r.json();
-        if(d.success){$('authPage').style.display='none';$('appPage').style.display='block';loadData()}
-        else{showToast(d.error||'Ошибка')}
-    }catch(e){showToast('Ошибка сети')}
+        if(d.success){
+            document.getElementById('authPage').style.display='none';
+            document.getElementById('appPage').style.display='block';
+            loadData();
+        }else{
+            if(errEl){errEl.textContent=d.error||'Неверный логин или пароль';errEl.style.display='block'}
+            if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-sign-in-alt"></i> Войти по паролю';}
+        }
+    }catch(e){
+        if(errEl){errEl.textContent='Ошибка сети: '+e.message;errEl.style.display='block'}
+        if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-sign-in-alt"></i> Войти по паролю';}
+    }
 }
 
 // ====== DATA ======
