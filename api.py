@@ -401,25 +401,23 @@ async def miniapp_auth(request: Request):
     init_data = data.get("initData", "")
     if not init_data:
         return JSONResponse(status_code=400, content={"error": "Нет данных"})
-    # URL-decode the init data
     from urllib.parse import unquote
     decoded = unquote(init_data)
-    # Parse initData
     params = dict(item.split("=", 1) for item in decoded.split("&") if "=" in item)
     user_json = params.get("user", "{}")
     try:
         user_data = json.loads(user_json)
         username = user_data.get("username", "")
         user_id = user_data.get("id", 0)
+        first_name = user_data.get("first_name", "")
     except:
         username = ""
         user_id = 0
-    if not username:
-        return JSONResponse(status_code=400, content={"error": "Нет username"})
-    # Create session
-    token = create_session(f"tg:{username}")
-    audit_log(f"tg:{username}", "MINIAPP_LOGIN", f"tg_id={user_id}")
-    resp = JSONResponse(content={"success": True, "username": username})
+        first_name = ""
+    display_name = username or first_name or f"tg_{user_id}"
+    token = create_session(f"tg:{display_name}")
+    audit_log(f"tg:{display_name}", "MINIAPP_LOGIN", f"tg_id={user_id}")
+    resp = JSONResponse(content={"success": True, "username": display_name})
     resp.set_cookie("session", token, max_age=86400, httponly=True, samesite="lax")
     return resp
 

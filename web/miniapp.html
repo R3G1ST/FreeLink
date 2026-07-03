@@ -379,25 +379,43 @@ setInterval(checkNotifDot,30000);setTimeout(checkNotifDot,2000);
 
 // ====== AUTH ======
 async function doAuth(){
-    if(!tg||!tg.initData){
-        const debugInfo = tg ? JSON.stringify({initData:tg.initData||'empty',user:tg.initDataUnsafe?.user}) : 'No TG SDK';
-        console.log('Debug:',debugInfo);
-        const testData = tg?.initDataUnsafe?.user ? JSON.stringify(tg.initDataUnsafe.user) : '{"id":0,"username":"debug"}';
-        const initData = tg?.initData || 'user='+encodeURIComponent(testData);
-        try{
-            const r=await fetch('/api/miniapp/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData:initData})});
-            const d=await r.json();
-            if(d.success){$('authPage').style.display='none';$('appPage').style.display='block';loadData();return}
-        }catch{}
-        showToast('Нет данных авторизации');return
+    const btn=$('authBtn');
+    if(btn){btn.disabled=true;btn.textContent='Вход...';}
+
+    let initData='';
+    if(tg&&tg.initData){
+        initData=tg.initData;
+    }else if(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user){
+        const u=tg.initDataUnsafe.user;
+        initData='user='+encodeURIComponent(JSON.stringify({id:u.id,username:u.username||'',first_name:u.first_name||''}));
     }
-    const btn=$('authBtn');if(btn){btn.disabled=true;btn.textContent='Вход...'}
+
+    if(!initData){
+        showToast('Нет данных Telegram');if(btn){btn.disabled=false;}
+        return;
+    }
+
     try{
-        const r=await fetch('/api/miniapp/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData:tg.initData})});
+        const r=await fetch('/api/miniapp/auth',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({initData:initData})
+        });
         const d=await r.json();
-        if(d.success){$('authPage').style.display='none';$('appPage').style.display='block';loadData()}
-        else{showToast(d.error||'Ошибка');if(btn){btn.disabled=false;btn.innerHTML='<i class="fab fa-telegram-plane"></i> Войти через Telegram'}}
-    }catch{showToast('Ошибка сети');if(btn){btn.disabled=false;btn.innerHTML='<i class="fab fa-telegram-plane"></i> Войти через Telegram'}}
+        console.log('Auth response:',d);
+        if(d.success){
+            $('authPage').style.display='none';
+            $('appPage').style.display='block';
+            loadData();
+        }else{
+            showToast(d.error||'Ошибка авторизации');
+            if(btn){btn.disabled=false;btn.innerHTML='<i class="fab fa-telegram-plane"></i> Войти через Telegram';}
+        }
+    }catch(e){
+        console.error('Auth error:',e);
+        showToast('Ошибка сети: '+e.message);
+        if(btn){btn.disabled=false;btn.innerHTML='<i class="fab fa-telegram-plane"></i> Войти через Telegram';}
+    }
 }
 
 // ====== DATA ======
