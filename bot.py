@@ -105,7 +105,7 @@ def get_main_keyboard():
         [
             [KeyboardButton("📋 Список"), KeyboardButton("➕ Создать")],
             [KeyboardButton("📊 Статистика"), KeyboardButton("🖥 Сервер")],
-            [KeyboardButton("🌐 Панель"), KeyboardButton("⚙️ Сервисы")],
+            [KeyboardButton("🌐 Панель", web_app=WebAppInfo(url="https://link.qmbox.ru/app")), KeyboardButton("⚙️ Сервисы")],
             [KeyboardButton("🧹 Очистить"), KeyboardButton("📋 Логи")],
         ],
         resize_keyboard=True,
@@ -207,16 +207,6 @@ async def handle_reply_buttons(update: Update, context: ContextTypes.DEFAULT_TYP
             f"💾 Диск: {info.get('disk_pct', 0)}% ({info.get('disk_used', 0)}/{info.get('disk_total', 0)} GB)\n<code>{bar(info.get('disk_pct', 0))}</code>"
         )
         await update.message.reply_text(msg, parse_mode="HTML", reply_markup=kb)
-
-    elif text == "🌐 Панель":
-        await update.message.reply_text(
-            "🌐 <b>Веб-панель:</b>\nhttps://link.qmbox.ru\n\nНажмите кнопку ниже:",
-            parse_mode="HTML",
-            reply_markup=ReplyKeyboardMarkup(
-                [[KeyboardButton("🚀 Открыть панель", web_app=WebAppInfo(url="https://link.qmbox.ru/app"))]],
-                resize_keyboard=True
-            )
-        )
 
     elif text == "⚙️ Сервисы":
         services = ["hysteria-server", "freelink-api", "freelink-auth", "freelink-traffic", "freelink-bot", "freelink-online", "freelink-history", "freelink-monitor"]
