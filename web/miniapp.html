@@ -361,13 +361,23 @@ if(tg){tg.ready();tg.expand();tg.MainButton.hide();document.body.style.backgroun
 else{console.log('No Telegram WebApp SDK')}
 
 // Check if already logged in via session cookie
-fetch('/api/me').then(r=>{if(r.ok)return r.json();throw 0}).then(d=>{
-    if(d&&d.username){
-        document.getElementById('authPage').style.display='none';
-        document.getElementById('appPage').style.display='block';
-        loadData();
-    }
-}).catch(()=>{});
+(function(){
+    var x=new XMLHttpRequest();
+    x.open('GET','/api/me',true);
+    x.withCredentials=true;
+    x.onreadystatechange=function(){
+        if(x.readyState===4){
+            if(x.status===200){
+                try{var d=JSON.parse(x.responseText);if(d&&d.username){
+                    document.getElementById('authPage').style.display='none';
+                    document.getElementById('appPage').style.display='block';
+                    loadData();
+                }}catch(e){}
+            }
+        }
+    };
+    x.send();
+})();
 
 // PWA
 if('serviceWorker' in navigator){navigator.serviceWorker.register('/web/sw.js').catch(e=>{})}
@@ -433,36 +443,35 @@ async function doAuth(){
 }
 
 // ====== PASSWORD LOGIN ======
-async function doLoginPass(){
-    const u=document.getElementById('loginUser').value.trim();
-    const p=document.getElementById('loginPass').value;
-    const errEl=document.getElementById('authError');
-    const btn=document.querySelector('.auth-btn[onclick="doLoginPass()"]');
+function doLoginPass(){
+    var u=document.getElementById('loginUser').value.trim();
+    var p=document.getElementById('loginPass').value;
+    var errEl=document.getElementById('authError');
+    var btn=document.querySelector('[onclick="doLoginPass()"]');
 
     if(!u||!p){if(errEl){errEl.textContent='Заполните все поля';errEl.style.display='block'}return}
-
     if(btn){btn.disabled=true;btn.textContent='Вход...';}
     if(errEl)errEl.style.display='none';
 
-    try{
-        const r=await fetch('/api/miniapp/login',{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({username:u,password:p})
-        });
-        const d=await r.json();
-        if(d.success){
-            document.getElementById('authPage').style.display='none';
-            document.getElementById('appPage').style.display='block';
-            loadData();
-        }else{
-            if(errEl){errEl.textContent=d.error||'Неверный логин или пароль';errEl.style.display='block'}
-            if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-sign-in-alt"></i> Войти по паролю';}
+    var x=new XMLHttpRequest();
+    x.open('POST','/api/miniapp/login',true);
+    x.withCredentials=true;
+    x.setRequestHeader('Content-Type','application/json');
+    x.onreadystatechange=function(){
+        if(x.readyState===4){
+            if(x.status===200){
+                try{var d=JSON.parse(x.responseText);if(d.success){
+                    document.getElementById('authPage').style.display='none';
+                    document.getElementById('appPage').style.display='block';
+                    loadData();
+                }}catch(e){}
+            }else{
+                try{var d=JSON.parse(x.responseText);if(errEl){errEl.textContent=d.error||'Ошибка';errEl.style.display='block'}}catch(e){if(errEl){errEl.textContent='Ошибка';errEl.style.display='block'}}
+                if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-sign-in-alt"></i> Войти по паролю';}
+            }
         }
-    }catch(e){
-        if(errEl){errEl.textContent='Ошибка сети: '+e.message;errEl.style.display='block'}
-        if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-sign-in-alt"></i> Войти по паролю';}
-    }
+    };
+    x.send(JSON.stringify({username:u,password:p}));
 }
 
 // ====== DATA ======
