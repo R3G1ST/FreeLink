@@ -335,6 +335,7 @@ a{text-decoration:none;color:inherit}
 .log-entry.node{border-left:3px solid var(--ac2)}
 .log-entry.system{border-left:3px solid var(--or)}
 .log-entry.error{border-left:3px solid var(--rd)}
+.log-entry.dns{border-left:3px solid var(--bl);background:rgba(59,130,246,.03)}
 
 /* ===== LOGS ===== */
 .logs{background:rgba(0,0,0,0.3);border:1px solid var(--b1);border-radius:8px;padding:16px;font-family:monospace;font-size:11px;color:rgba(248,250,252,0.45);max-height:420px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;line-height:1.7}
@@ -690,12 +691,6 @@ a{text-decoration:none;color:inherit}
                     <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t2);margin-left:auto;cursor:pointer">
                         <input type="checkbox" id="autoScroll" checked onchange="toggleAutoScroll()"> Автопрокрутка
                     </label>
-                </div>
-                <div id="logsFilter" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
-                    <button class="filter on" onclick="filterLogs('all',this)">Все</button>
-                    <button class="filter" onclick="filterLogs('connect',this)">Подключения</button>
-                    <button class="filter" onclick="filterLogs('disconnect',this)">Отключения</button>
-                    <button class="filter" onclick="filterLogs('auth',this)">Авторизация</button>
                 </div>
                 <div class="card logs-container" id="lB" style="padding:0;max-height:500px;overflow-y:auto">
                     <div style="padding:20px;text-align:center;color:var(--t4)"><i class="fas fa-scroll" style="font-size:24px;opacity:.3"></i><p>Загрузка...</p></div>
@@ -2099,25 +2094,39 @@ async function lLg(){
     try{
         const r=await fetch('/api/traffic-logs');
         const d=await r.json();
-        logsData=(d.logs||[]).map(l=>({
-            time:l.connected_at||'',
-            user:l.username||'',
-            ip:l.client_ip||'',
-            node:l.node_name||l.node_id||'',
-            disconnected:l.disconnected_at,
-            duration:l.duration_seconds||0,
-            type:l.disconnected_at?'disconnect':'connect'
-        }));
+        logsData=(d.logs||[]).map(l=>{
+            if(l.type==='dns'){
+                return{
+                    time:l.connected_at||'',
+                    user:l.user||'',
+                    ip:l.ip||'',
+                    node:'DNS',
+                    domain:l.domain||'',
+                    type:'dns'
+                };
+            }
+            return{
+                time:l.connected_at||'',
+                user:l.username||'',
+                ip:l.client_ip||'',
+                node:l.node_name||l.node_id||'',
+                disconnected:l.disconnected_at,
+                duration:l.duration_seconds||0,
+                type:l.disconnected_at?'disconnect':'connect'
+            };
+        });
         renderLogs();
     }catch(e){console.error('lLg error:',e)}
 }
 
 function renderLogs(){
     const el=$('lB');
-    const filtered=logsFilter==='all'?logsData:logsData.filter(l=>l.type===logsFilter);
-    if(!filtered.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--t4)"><i class="fas fa-scroll" style="font-size:24px;opacity:.3"></i><p>Нет логов</p></div>';return}
-    el.innerHTML=filtered.slice(0,100).map(l=>{
+    if(!logsData.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--t4)"><i class="fas fa-scroll" style="font-size:24px;opacity:.3"></i><p>Нет логов</p></div>';return}
+    el.innerHTML=logsData.slice(0,100).map(l=>{
         const time=l.time?l.time.split(' ')[1]||l.time:'';
+        if(l.type==='dns'){
+            return`<div class="log-entry dns"><span class="log-time">${time}</span><span style="color:var(--bl);min-width:16px"><i class="fas fa-globe" style="font-size:10px"></i></span><span class="log-user">${l.user}</span><span class="log-action">${l.domain}</span><span class="log-details">${l.ip}</span></div>`;
+        }
         const dur=l.duration?Math.floor(l.duration/60)+'м '+l.duration%60+'с':'активно';
         const icon=l.type==='disconnect'?'fa-sign-out-alt':'fa-sign-in-alt';
         const color=l.type==='disconnect'?'var(--rd)':'var(--gn)';
