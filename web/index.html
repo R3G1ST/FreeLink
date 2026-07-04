@@ -1265,9 +1265,9 @@ async function loadMe(){try{const r=await fetch('/api/me');if(!r.ok){window.loca
         // Ensure we have a session token for WebSocket
         if(!localStorage.getItem('session_token')){
             try{
-                const tr=await fetch('/api/session-token');
+                const tr=await fetch('/api/session-token',{credentials:'same-origin'});
                 if(tr.ok){const td=await tr.json();if(td.token)localStorage.setItem('session_token',td.token)}
-            }catch{}
+            }catch(e){console.error('Token fetch error:',e)}
         }
         const[sr,ur,or,sr2]=await Promise.all([fetch('/api/status'),fetch('/api/users'),fetch('/api/online'),fetch('/api/server-info')]);
         const s=await sr.json(),u=await ur.json(),o=await or.json(),sv=await sr2.json();
@@ -2345,6 +2345,7 @@ function connectWebSocket(){
     try{
         const proto=location.protocol==='https:'?'wss:':'ws:';
         const token=localStorage.getItem('session_token')||'';
+        if(!token){console.error('No session token for WebSocket');return}
         const wsUrl=proto+'//'+location.host+'/ws/live?token='+token;
         wsConn=new WebSocket(wsUrl);
         wsConn.onopen=function(){
