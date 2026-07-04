@@ -148,6 +148,19 @@ def init_db():
             )
         """)
         cur.execute("CREATE INDEX IF NOT EXISTS idx_traffic_user_node ON traffic_snapshots (username, node_id, captured_at DESC)")
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS connection_log (
+                id SERIAL PRIMARY KEY,
+                username TEXT NOT NULL,
+                client_ip TEXT NOT NULL,
+                node_id TEXT DEFAULT '__main__',
+                connected_at TIMESTAMP DEFAULT NOW(),
+                disconnected_at TIMESTAMP,
+                duration_seconds INTEGER DEFAULT 0
+            )
+        """)
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_connlog_user ON connection_log (username, connected_at DESC)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_connlog_ip ON connection_log (client_ip)")
         print("[DB] Tables initialized")
 
 # ===== USERS =====
@@ -597,3 +610,90 @@ def get_online_users(window_seconds=60):
                 "inactive_since": inactive_since,
             }
         return result
+
+
+# ===== CONNECTION TRACKING =====
+
+def log_connection(username, client_ip, node_id="__main__"):
+    """Log a new connection from a client."""
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO connection_log (username, client_ip, node_id, connected_at)
+            VALUES (%s, %s, %s, NOW())
+        """, (username, client_ip, node_id))
+        # Update user's current IP
+        cur.execute("UPDATE users SET ip=%s WHERE name=%s", (client_ip, username))
+
+
+def log_disconnect(username, client_ip):
+    """Mark the most recent open connection as disconnected."""
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE connection_log
+            SET disconnected_at = NOW(),
+                duration_seconds = EXTRACT(EPOCH FROM (NOW() - connected_at))::INTEGER
+            WHERE username = %s AND client_ip = %s AND disconnected_at IS NULL
+            ORDER BY connected_at DESC LIMIT 1
+        """, (username, client_ip))
+
+
+def get_user_connections(username, limit=50):
+    """Get recent connections for a user."""
+    with get_conn() as conn:
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("""
+            SELECT id, client_ip, node_id,
+                   connected_at::TEXT as connected_at,
+                   disconnected_at::TEXT as disconnected_at,
+                   duration_seconds
+            FROM connection_log
+            WHERE username = %s
+            ORDER BY connected_at DESC
+            LIMIT %s
+        """, (username, limit))
+        return cur.fetchall()
+
+
+def get_user_unique_ips(username, days=30):
+    """Count unique IPs for a user in the last N days."""
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT COUNT(DISTINCT client_ip)
+            FROM connection_log
+            WHERE username = %s
+              AND connected_at > NOW() - make_interval(days => %s)
+        """, (username, days))
+        row = cur.fetchone()
+        return row[0] if row else 0
+
+
+def get_user_device_count(username):
+    """Count active (currently connected) devices by unique IP."""
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT COUNT(DISTINCT client_ip)
+            FROM connection_log
+            WHERE username = %s
+              AND disconnected_at IS NULL
+        """, (username,))
+        row = cur.fetchone()
+        return row[0] if row else 0
+
+
+def update_user_ip(username, ip):
+    """Update user's current IP address."""
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("UPDATE users SET ip=%s WHERE name=%s", (ip, username))
+
+
+def cleanup_old_connections(days=90):
+    """Delete connection logs older than N days."""
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM connection_log WHERE connected_at < NOW() - make_interval(days => %s)", (days,))
+        return cur.rowcount

@@ -7,6 +7,12 @@ sys.path.insert(0, "/opt/freelink")
 import db
 db.init_db()
 
+def extract_ip(addr):
+    """Extract IP from 'ip:port' format."""
+    if ':' in addr:
+        return addr.rsplit(':', 1)[0]
+    return addr
+
 class AuthHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         content_length = int(self.headers.get('Content-Length', 0))
@@ -16,36 +22,39 @@ class AuthHandler(BaseHTTPRequestHandler):
             data = json.loads(body)
             addr = data.get('addr', '')
             auth = data.get('auth', '')
+            client_ip = extract_ip(addr)
             
             # Новый формат "username:password"
             if ':' in auth:
                 username, password = auth.split(':', 1)
                 user, uid = db.get_user_by_credentials(username, password)
                 if user:
+                    db.log_connection(username, client_ip)
                     self.send_response(200)
                     self.send_header('Content-Type', 'application/json')
                     self.end_headers()
                     self.wfile.write(json.dumps({"ok": True, "id": username}).encode())
-                    print(f"Auth success (new): {username} from {addr}", file=sys.stderr)
+                    print(f"Auth success (new): {username} from {client_ip}", file=sys.stderr)
                     return
             
             # Старый формат — только пароль
-            # Ищем пользователя с таким паролем
             all_users = db.get_all_users()
             for uid, user in all_users.items():
                 if user.get("password") == auth:
+                    uname = user.get("name", uid)
+                    db.log_connection(uname, client_ip)
                     self.send_response(200)
                     self.send_header('Content-Type', 'application/json')
                     self.end_headers()
-                    self.wfile.write(json.dumps({"ok": True, "id": user.get("name", uid)}).encode())
-                    print(f"Auth success (old): {user.get('name')} from {addr}", file=sys.stderr)
+                    self.wfile.write(json.dumps({"ok": True, "id": uname}).encode())
+                    print(f"Auth success (old): {uname} from {client_ip}", file=sys.stderr)
                     return
             
             self.send_response(403)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({"ok": False, "msg": "invalid credentials"}).encode())
-            print(f"Auth failed from {addr}", file=sys.stderr)
+            print(f"Auth failed from {client_ip}", file=sys.stderr)
             
         except Exception as e:
             self.send_response(500)

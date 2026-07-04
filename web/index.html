@@ -767,6 +767,7 @@ a{text-decoration:none;color:inherit}
         <button class="um-tab on" onclick="umTab('info',this)"><i class="fas fa-info-circle"></i> Инфо</button>
         <button class="um-tab" onclick="umTab('speed',this)"><i class="fas fa-tachometer-alt"></i> Скорость</button>
         <button class="um-tab" onclick="umTab('traffic',this)"><i class="fas fa-chart-bar"></i> Трафик</button>
+        <button class="um-tab" onclick="umTab('devices',this)"><i class="fas fa-mobile-alt"></i> Устройства</button>
         <button class="um-tab" onclick="umTab('actions',this)"><i class="fas fa-cog"></i> Действия</button>
     </div>
     <div class="modal-body um-body-wrap" id="umBody"></div>
@@ -1363,6 +1364,38 @@ function renderUserModal(u){
             </div>
             <button class="btn btn-r btn-sm" onclick="resetTraffic()" style="width:100%;margin-top:6px;justify-content:center"><i class="fas fa-undo"></i> Сбросить трафик</button>
         </div>`;
+    } else if(umTabCur==='devices'){
+        const devCount=u.active_devices||0;
+        const uniqIps=u.unique_ips_30d||0;
+        html=`
+        <div class="um-status-grid">
+            <div class="um-badge online"><span class="dot"></span>IP: ${u.ip||'—'}</div>
+            <div class="um-badge active"><span class="dot"></span>Устройств: ${devCount}</div>
+        </div>
+        <div class="um-info-grid" style="margin-top:8px">
+            <div class="um-info-item"><div class="um-label">Уникальных IP (30 дн)</div><div class="um-value">${uniqIps}</div></div>
+            <div class="um-info-item"><div class="um-label">Последнее подключение</div><div class="um-value" style="font-size:11px">${u.last_seen||'—'}</div></div>
+        </div>
+        <div class="um-section">
+            <div class="um-section-title"><i class="fas fa-history"></i> История подключений</div>
+            <div id="connHistory" style="font-size:12px;color:var(--t3)">Загрузка...</div>
+        </div>`;
+        // Load connection history
+        setTimeout(()=>{
+            fetch('/api/user/'+CUid+'/connections?limit=20').then(r=>r.json()).then(d=>{
+                const conns=d.connections||[];
+                if(!conns.length){$('connHistory').innerHTML='<div style="text-align:center;padding:12px;color:var(--t4)">Нет данных</div>';return}
+                let h='<table style="width:100%;border-collapse:collapse;font-size:11px">';
+                h+='<tr style="color:var(--t4);font-size:9px;text-transform:uppercase"><th style="text-align:left;padding:4px">IP</th><th style="text-align:left;padding:4px">Нода</th><th style="text-align:left;padding:4px">Время</th><th style="text-align:left;padding:4px">Длит.</th></tr>';
+                conns.forEach(c=>{
+                    const dur=c.duration_seconds?Math.floor(c.duration_seconds/60)+'м':'-active';
+                    const color=c.disconnected_at?'var(--t4)':'var(--gn)';
+                    h+=`<tr style="border-top:1px solid rgba(255,255,255,.04);color:${color}"><td style="padding:4px;font-family:monospace">${c.client_ip}</td><td style="padding:4px">${c.node_id}</td><td style="padding:4px">${(c.connected_at||'').substring(0,16)}</td><td style="padding:4px">${dur}</td></tr>`;
+                });
+                h+='</table>';
+                $('connHistory').innerHTML=h;
+            }).catch(()=>{$('connHistory').innerHTML='<div style="color:var(--rd)">Ошибка загрузки</div>'});
+        },100);
     } else if(umTabCur==='actions'){
         html=`
         <div class="um-section">

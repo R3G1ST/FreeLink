@@ -253,6 +253,10 @@ async def check_auth(request: Request, call_next):
     if path.startswith("/s/"):
         return await call_next(request)
 
+    # Subscription endpoints (token-gated, no session auth)
+    if path.startswith("/sub/"):
+        return await call_next(request)
+
     # Client portal
     if path in ["/client", "/c"] or path.startswith("/client/"):
         return await call_next(request)
@@ -1248,12 +1252,26 @@ async def get_user_endpoint(uid: str):
         "online": user_online.get("online", False),
         "last_seen": user_online.get("last_active", ""),
         "ip": user.get("ip", ""),
+        "active_devices": db.get_user_device_count(username),
+        "unique_ips_30d": db.get_user_unique_ips(username, 30),
         "traffic": traffic,
         "traffic_limit": traffic_limit,
         "traffic_used": total_mb,
         "devices": user.get("devices", []),
         "total_sessions": user.get("total_sessions", 0)
     }
+
+@app.get("/api/user/{uid}/connections", summary="User connection history")
+async def user_connections(uid: str, request: Request, limit: int = 50):
+    token = request.cookies.get("session")
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    target = get_user(uid)
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    connections = db.get_user_connections(target.get("name", uid), limit)
+    return {"connections": connections}
 
 @app.post("/api/user/create", summary="Create VPN user", description="Create a new VPN user with subscription. Returns user ID, expiry date, and Hysteria2 connection link.")
 async def create_user(name: str, days: int = 30):
@@ -3831,6 +3849,10 @@ async def startup_event():
             {"id": "unlimited", "name": "Безлимит", "days": 30, "traffic_limit_mb": 0, "price": ""}
         ])
         print("[PLANS] Default plans created")
+    # Cleanup old connection logs
+    cleaned = db.cleanup_old_connections(90)
+    if cleaned:
+        print(f"[CLEANUP] Removed {cleaned} old connection logs")
 
 if __name__ == "__main__":
     db.init_db()
