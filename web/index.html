@@ -2345,8 +2345,8 @@ function connectWebSocket(){
         wsConn.onmessage=function(evt){
             try{
                 const data=JSON.parse(evt.data);
-                // Update dashboard in real-time
-                if(data.server){
+                // Update dashboard in real-time (only if viewing main server)
+                if(data.server&&currentServer==='main'){
                     dashData.server=data.server;
                     if(currentPage==='dashboard')renderDashboard();
                 }
