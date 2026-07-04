@@ -1186,6 +1186,7 @@ async def traffic_logs(request: Request, limit: int = 100):
     nodes = load_nodes()
     node_names = {nid: node.get("name", nid) for nid, node in nodes.items()}
     with db.get_conn() as conn:
+        from psycopg2.extras import RealDictCursor
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute("SELECT * FROM connection_log ORDER BY connected_at DESC LIMIT %s", (limit,))
         rows = cur.fetchall()
