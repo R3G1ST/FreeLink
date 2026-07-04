@@ -1,25 +1,14 @@
-# Hysteria 2 VPN Panel Configuration
-# Copy this file to config.yaml and edit
-
-# Domain for the panel (must have DNS pointing to this server)
-domain: "vpn.example.com"
-
-# Server public IP
-server_ip: "1.2.3.4"
+# FreeLink Configuration
+# All secrets are in .env file — see .env.example
 
 # Language: "en" or "ru"
 language: "ru"
-
-# Obfuscation password (generate with: openssl rand -hex 16)
-obfs_password: "CHANGE_ME"
-
-# Telegram Bot Configuration
-telegram:
-  token: "YOUR_BOT_TOKEN"  # Get from @BotFather
-  admins:
-    - 123456789  # Your Telegram user ID
 
 # Hysteria Server Configuration
 hysteria:
   port: 443
   config_path: "/etc/hysteria/config.yaml"
+
+# Server name (displayed in panel)
+server:
+  name: "My Server"
