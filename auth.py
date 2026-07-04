@@ -29,6 +29,37 @@ class AuthHandler(BaseHTTPRequestHandler):
                 username, password = auth.split(':', 1)
                 user, uid = db.get_user_by_credentials(username, password)
                 if user:
+                    # Check if user is active
+                    if not user.get("active", True):
+                        self.send_response(403)
+                        self.send_header('Content-Type', 'application/json')
+                        self.end_headers()
+                        self.wfile.write(json.dumps({"ok": False, "msg": "account_disabled"}).encode())
+                        print(f"Auth blocked (disabled): {username} from {client_ip}", file=sys.stderr)
+                        return
+                    # Check if subscription expired
+                    from datetime import datetime
+                    expire = user.get("expire_date", "")
+                    if expire:
+                        try:
+                            # Try multiple formats
+                            for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
+                                try:
+                                    expire_dt = datetime.strptime(expire, fmt)
+                                    break
+                                except ValueError:
+                                    continue
+                            else:
+                                expire_dt = None
+                            if expire_dt and expire_dt < datetime.now():
+                                self.send_response(403)
+                                self.send_header('Content-Type', 'application/json')
+                                self.end_headers()
+                                self.wfile.write(json.dumps({"ok": False, "msg": "subscription_expired"}).encode())
+                                print(f"Auth blocked (expired): {username} from {client_ip}", file=sys.stderr)
+                                return
+                        except Exception:
+                            pass
                     # Check device limit
                     if not db.check_device_limit(username, client_ip):
                         self.send_response(403)
@@ -50,6 +81,36 @@ class AuthHandler(BaseHTTPRequestHandler):
             for uid, user in all_users.items():
                 if user.get("password") == auth:
                     uname = user.get("name", uid)
+                    # Check if user is active
+                    if not user.get("active", True):
+                        self.send_response(403)
+                        self.send_header('Content-Type', 'application/json')
+                        self.end_headers()
+                        self.wfile.write(json.dumps({"ok": False, "msg": "account_disabled"}).encode())
+                        print(f"Auth blocked (disabled): {uname} from {client_ip}", file=sys.stderr)
+                        return
+                    # Check if subscription expired
+                    from datetime import datetime
+                    expire = user.get("expire_date", "")
+                    if expire:
+                        try:
+                            for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
+                                try:
+                                    expire_dt = datetime.strptime(expire, fmt)
+                                    break
+                                except ValueError:
+                                    continue
+                            else:
+                                expire_dt = None
+                            if expire_dt and expire_dt < datetime.now():
+                                self.send_response(403)
+                                self.send_header('Content-Type', 'application/json')
+                                self.end_headers()
+                                self.wfile.write(json.dumps({"ok": False, "msg": "subscription_expired"}).encode())
+                                print(f"Auth blocked (expired): {uname} from {client_ip}", file=sys.stderr)
+                                return
+                        except Exception:
+                            pass
                     # Check device limit
                     if not db.check_device_limit(uname, client_ip):
                         self.send_response(403)
