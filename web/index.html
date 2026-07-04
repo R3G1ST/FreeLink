@@ -203,7 +203,7 @@ a{text-decoration:none;color:inherit}
 .dw{background:var(--c1);border:1px solid rgba(255,255,255,.06);border-radius:var(--R);padding:14px;transition:all .2s;cursor:grab;position:relative}
 .dw:hover{border-color:var(--b2);transform:translateY(-1px)}
 .dw:active{cursor:grabbing}
-.dw.dragging{opacity:.5;border-color:var(--ac)}
+.dw.dragging{opacity:.4;border:2px dashed var(--ac);transform:scale(.95)}
 .dw .dw-icon{font-size:18px;margin-bottom:6px}
 .dw .dw-label{font-size:10px;color:var(--t4);text-transform:uppercase;letter-spacing:.4px;font-weight:600}
 .dw .dw-value{font-size:22px;font-weight:800;line-height:1.2;margin:4px 0}
@@ -1371,8 +1371,8 @@ function loadServerData(serverId){
     }
 }
 
-/* ===== WIDGET DRAG & DROP (mouse-based) ===== */
-let dragState={el:null,startX:0,startY:0,offsetX:0,offsetY:0,clone:null,placeholder:null};
+/* ===== WIDGET DRAG & DROP (swap-based) ===== */
+let dragSrc=null;
 function initDragDrop(){
     const grid=$('dashWidgets');
     if(!grid||grid._dragInit)return;
@@ -1381,54 +1381,30 @@ function initDragDrop(){
         const dw=e.target.closest('.dw');
         if(!dw||e.target.closest('button'))return;
         e.preventDefault();
-        const rect=dw.getBoundingClientRect();
-        dragState.el=dw;
-        dragState.offsetX=e.clientX-rect.left;
-        dragState.offsetY=e.clientY-rect.top;
+        dragSrc=dw;
         dw.classList.add('dragging');
     });
-    document.addEventListener('mousemove',e=>{
-        if(!dragState.el)return;
-        if(!dragState.clone){
-            const rect=dragState.el.getBoundingClientRect();
-            dragState.clone=dragState.el.cloneNode(true);
-            dragState.clone.style.cssText=`position:fixed;width:${rect.width}px;pointer-events:none;z-index:9999;opacity:.8;transform:rotate(2deg)`;
-            document.body.appendChild(dragState.clone);
-            dragState.placeholder=document.createElement('div');
-            dragState.placeholder.style.cssText=`height:${rect.height}px;border:2px dashed var(--ac);border-radius:var(--R);background:var(--acg)`;
-            dragState.el.style.display='none';
-            dragState.el.parentNode.insertBefore(dragState.placeholder,dragState.el);
-        }
-        dragState.clone.style.left=(e.clientX-dragState.offsetX)+'px';
-        dragState.clone.style.top=(e.clientY-dragState.offsetY)+'px';
-        // Find insertion point
-        const grid=$('dashWidgets');
-        const children=[...grid.children].filter(c=>c!==dragState.placeholder&&c!==dragState.el);
-        let insertBefore=null;
-        for(const child of children){
-            const rect=child.getBoundingClientRect();
-            if(e.clientY<rect.top+rect.height/2){insertBefore=child;break}
-        }
-        if(insertBefore)grid.insertBefore(dragState.placeholder,insertBefore);
-        else grid.appendChild(dragState.placeholder);
+    grid.addEventListener('mouseover',e=>{
+        const dw=e.target.closest('.dw');
+        if(!dw||dw===dragSrc||!dragSrc)return;
+        // Swap positions
+        const parent=dragSrc.parentNode;
+        const srcIdx=[...parent.children].indexOf(dragSrc);
+        const dstIdx=[...parent.children].indexOf(dw);
+        if(srcIdx<dstIdx)parent.insertBefore(dragSrc,dw.nextSibling);
+        else parent.insertBefore(dragSrc,dw);
     });
-    document.addEventListener('mouseup',e=>{
-        if(!dragState.el)return;
-        if(dragState.clone){dragState.clone.remove();dragState.clone=null}
-        if(dragState.placeholder){
-            dragState.placeholder.parentNode.insertBefore(dragState.el,dragState.placeholder);
-            dragState.placeholder.remove();
-            dragState.placeholder=null;
+    document.addEventListener('mouseup',()=>{
+        if(dragSrc){
+            dragSrc.classList.remove('dragging');
+            // Save order
+            const grid=$('dashWidgets');
+            const newOrder=[];
+            [...grid.children].forEach(w=>{if(w.dataset.widget)newOrder.push(w.dataset.widget)});
+            widgetOrder=newOrder;
+            localStorage.setItem('dash_widget_order',JSON.stringify(widgetOrder));
+            dragSrc=null;
         }
-        dragState.el.style.display='';
-        dragState.el.classList.remove('dragging');
-        // Save order
-        const grid=$('dashWidgets');
-        const newOrder=[];
-        [...grid.children].forEach(w=>{if(w.dataset.widget)newOrder.push(w.dataset.widget)});
-        widgetOrder=newOrder;
-        localStorage.setItem('dash_widget_order',JSON.stringify(widgetOrder));
-        dragState.el=null;
     });
 }
 
@@ -1453,7 +1429,9 @@ function toggleWidget(id,show){
 function renderDashboard(){
     const grid=$('dashWidgets');
     grid.innerHTML='';
-    const nodeLabel=currentServer!=='main'?(nodesCache.find(n=>n.id===currentServer)||{}).name||'':'' ;
+    const isRemote=currentServer!=='main';
+    const nodeLabel=isRemote?(nodesCache.find(n=>n.id===currentServer)||{}).name||'':'';
+    const mainLabel='🇵🇱 Основная';
     widgetOrder.forEach(id=>{
         const w=WIDGET_DEFS.find(x=>x.id===id);
         if(!w||widgetPrefs[w.id]===false)return;
@@ -1461,13 +1439,12 @@ function renderDashboard(){
         if(!r)return;
         const pctHtml=r.pct!=null?`<div class="dw-bar"><div class="fill" style="width:${r.pct}%;background:var(--${r.color})"></div></div>`:'';
         const listHtml=r.list?`<div style="margin-top:6px">${r.list.map(x=>`<div style="display:flex;justify-content:space-between;font-size:10px;padding:2px 0;color:var(--t3)"><span>${x.name}</span><span style="font-weight:600">${fmtTraffic(x.mb)}</span></div>`).join('')}</div>`:'';
-        // Add node label for system widgets on remote nodes
-        const isSystem=['cpu','ram','disk','network','uptime','hysteria','node_users','node_traffic','node_region'].includes(id);
-        const nodeTag=(isSystem&&nodeLabel)?`<div style="font-size:9px;color:var(--ac2);margin-top:4px;font-weight:600"><i class="fas fa-server" style="font-size:8px"></i> ${nodeLabel}</div>`:'';
+        // Show source label on ALL widgets
+        const sourceLabel=isRemote?`<div style="font-size:9px;color:var(--ac2);margin-top:4px;font-weight:600"><i class="fas fa-server" style="font-size:8px"></i> ${nodeLabel}</div>`:`<div style="font-size:9px;color:var(--t4);margin-top:4px"><i class="fas fa-flag" style="font-size:8px"></i> ${mainLabel}</div>`;
         const el=document.createElement('div');
         el.className=`dw ${r.color||''}`;
         el.dataset.widget=w.id;
-        el.innerHTML=`<div class="dw-icon"><i class="fas ${w.icon}"></i></div><div class="dw-label">${w.label()}</div><div class="dw-value">${r.value}</div><div class="dw-sub">${r.sub||''}</div>${nodeTag}${pctHtml}${listHtml}`;
+        el.innerHTML=`<div class="dw-icon"><i class="fas ${w.icon}"></i></div><div class="dw-label">${w.label()}</div><div class="dw-value">${r.value}</div><div class="dw-sub">${r.sub||''}</div>${sourceLabel}${pctHtml}${listHtml}`;
         grid.appendChild(el);
     });
     initDragDrop();
