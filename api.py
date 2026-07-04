@@ -1882,6 +1882,25 @@ async def self_service(token: str):
     users = get_all_users()
     for uid, user in users.items():
         if user.get("service_token") == token:
+            # Check if user is active
+            if not user.get("active", True):
+                return JSONResponse(status_code=403, content={"error": "Account disabled"})
+            # Check if subscription expired
+            expire = user.get("expire_date", "")
+            if expire:
+                try:
+                    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
+                        try:
+                            expire_dt = datetime.strptime(expire, fmt)
+                            break
+                        except ValueError:
+                            continue
+                    else:
+                        expire_dt = None
+                    if expire_dt and expire_dt < datetime.now():
+                        return JSONResponse(status_code=403, content={"error": "Subscription expired"})
+                except Exception:
+                    pass
             link = get_user_link(uid, user)
             online_status = get_online_status()
             username = user.get("name", uid)
@@ -3695,6 +3714,22 @@ async def subscription_urls(token: str, request: Request):
         return JSONResponse(status_code=404, content={"error": "Invalid token"})
     if not user.get("active"):
         return JSONResponse(status_code=403, content={"error": "User inactive"})
+    # Check if subscription expired
+    expire = user.get("expire_date", "")
+    if expire:
+        try:
+            for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
+                try:
+                    expire_dt = datetime.strptime(expire, fmt)
+                    break
+                except ValueError:
+                    continue
+            else:
+                expire_dt = None
+            if expire_dt and expire_dt < datetime.now():
+                return JSONResponse(status_code=403, content={"error": "Subscription expired"})
+        except Exception:
+            pass
 
     config = load_panel_config()
     obfs = os.environ.get("HYSTERIA_OBFS_PASSWORD", "")
@@ -3786,6 +3821,25 @@ async def client_subscription(token: str):
     users = load_data().get("users", {})
     for uid, user in users.items():
         if user.get("service_token") == token:
+            # Check if user is active
+            if not user.get("active", True):
+                return JSONResponse(status_code=403, content={"error": "Account disabled"})
+            # Check if subscription expired
+            expire = user.get("expire_date", "")
+            if expire:
+                try:
+                    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
+                        try:
+                            expire_dt = datetime.strptime(expire, fmt)
+                            break
+                        except ValueError:
+                            continue
+                    else:
+                        expire_dt = None
+                    if expire_dt and expire_dt < datetime.now():
+                        return JSONResponse(status_code=403, content={"error": "Subscription expired"})
+                except Exception:
+                    pass
             subs = load_subscriptions()
             sub = None
             for sid, s in subs.items():
@@ -3836,6 +3890,37 @@ async def check_subscriptions_expiry():
     if expired:
         save_subscriptions(subs)
     return {"expired": len(expired)}
+
+# Auto-deactivate users with expired subscriptions (runs on startup + periodically)
+def deactivate_expired_users():
+    """Mark users as inactive if their expire_date has passed."""
+    users = load_data().get("users", {})
+    now = datetime.now()
+    deactivated = 0
+    for uid, user in users.items():
+        if not user.get("active", True):
+            continue
+        expire = user.get("expire_date", "")
+        if not expire:
+            continue
+        try:
+            for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
+                try:
+                    expire_dt = datetime.strptime(expire, fmt)
+                    break
+                except ValueError:
+                    continue
+            else:
+                continue
+            if expire_dt < now:
+                users[uid]["active"] = False
+                deactivated += 1
+        except Exception:
+            pass
+    if deactivated:
+        save_data({"servers": {}, "users": users})
+        print(f"[EXPIRY] Deactivated {deactivated} expired users")
+    return deactivated
 
 # ===================================================================
 # ===== RESOURCE MONITORING =====
@@ -3888,6 +3973,20 @@ async def startup_event():
     cleaned = db.cleanup_old_connections(90)
     if cleaned:
         print(f"[CLEANUP] Removed {cleaned} old connection logs")
+    # Deactivate expired users on startup
+    deactivated = deactivate_expired_users()
+    if deactivated:
+        print(f"[EXPIRY] Deactivated {deactivated} expired users on startup")
+    # Start background task to check expired users every 5 minutes
+    import asyncio
+    async def periodic_expiry_check():
+        while True:
+            await asyncio.sleep(300)  # 5 minutes
+            try:
+                deactivate_expired_users()
+            except Exception as e:
+                print(f"[EXPIRY] Error: {e}")
+    asyncio.create_task(periodic_expiry_check())
 
 if __name__ == "__main__":
     db.init_db()
