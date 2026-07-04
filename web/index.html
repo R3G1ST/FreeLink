@@ -2223,11 +2223,20 @@ function connectWebSocket(){
         wsConn.onmessage=function(evt){
             try{
                 const data=JSON.parse(evt.data);
-                if(data.type==='traffic'||data.traffic){
-                    const traffic=data.traffic||data.users||data;
-                    if(Array.isArray(traffic)){
+                // Update dashboard in real-time
+                if(data.server){
+                    dashData.server=data.server;
+                    if(currentPage==='dashboard')renderDashboard();
+                }
+                if(data.stats){
+                    dashData.stats=data.stats;
+                }
+                if(data.traffic&&Array.isArray(data.traffic)){
+                    const traffic=data.traffic;
+                    // Update traffic page
+                    if(currentPage==='traffic'){
                         const el=$('liveTable');
-                        if(currentPage==='traffic'){
+                        if(el){
                             if(!traffic.length){
                                 el.innerHTML='<div class="emp"><i class="fas fa-wifi"></i><p>Нет активного трафика</p></div>';
                             }else{
@@ -2236,26 +2245,17 @@ function connectWebSocket(){
                             }
                         }
                     }
-                    if(data.online!==undefined){
-                        OD.online=data.online;
-                        // Update online metric card in real-time
-                        const onCards=document.querySelectorAll('.mc.cc .v');
-                        if(onCards.length)onCards[0].textContent=data.online;
-                    }
-                    if(data.traffic&&Array.isArray(data.traffic)){
-                        // Update online status in CU from WebSocket traffic data
-                        const onlineNames=new Set(data.traffic.map(t=>(t.user||t.name||'').toLowerCase()));
-                        CU.forEach(u=>{
-                            const wasOnline=u.online;
-                            u.online=onlineNames.has(u.name.toLowerCase());
-                        });
-                        if(currentPage==='users')rU();
-                    }
-                    if(data.online_users){OD.online_users=data.online_users}
+                    // Update online status in CU
+                    const onlineNames=new Set(traffic.map(t=>(t.user||t.name||'').toLowerCase()));
+                    CU.forEach(u=>{
+                        u.online=onlineNames.has(u.name.toLowerCase());
+                    });
+                    if(currentPage==='users')rU();
                 }
-                if(data.type==='status'||data.server_status){
-                    const s=data.server_status||data;
-                    if(s.cpu_percent!=null)rSy(s);
+                if(data.online!==undefined){
+                    OD.online=data.online;
+                    // Update online widget in real-time
+                    if(currentPage==='dashboard')renderDashboard();
                 }
             }catch{}
         };

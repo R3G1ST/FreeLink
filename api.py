@@ -2494,8 +2494,8 @@ async def websocket_live(websocket: WebSocket):
             online_status = get_online_status()
             users = get_all_users()
             traffic = []
-            for uid, user in users.items():
-                username = user.get("name", uid)
+            for uid, user_data in users.items():
+                username = user_data.get("name", uid)
                 user_status = find_online_user(online_status, username)
                 if user_status.get("online"):
                     traffic.append({
@@ -2506,7 +2506,44 @@ async def websocket_live(websocket: WebSocket):
                         "inactive_since": user_status.get("inactive_since"),
                     })
             online_count = sum(1 for u in online_status.values() if u.get("online"))
-            await websocket.send_json({"traffic": traffic, "online": online_count, "time": time.strftime("%H:%M:%S")})
+            # Server info for dashboard
+            server_info = get_server_info()
+            # User stats for dashboard
+            total_users = len(users)
+            active_users = sum(1 for u in users.values() if u.get("active", True))
+            now = datetime.now()
+            expired = 0
+            expiring = 0
+            for u in users.values():
+                if not u.get("active", True):
+                    continue
+                try:
+                    exp = u.get("expire_date", "")
+                    if exp:
+                        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
+                            try:
+                                exp_dt = datetime.strptime(exp, fmt)
+                                break
+                            except ValueError:
+                                continue
+                        if exp_dt < now:
+                            expired += 1
+                        elif (exp_dt - now).total_seconds() < 259200:  # 3 days
+                            expiring += 1
+                except Exception:
+                    pass
+            await websocket.send_json({
+                "traffic": traffic,
+                "online": online_count,
+                "time": time.strftime("%H:%M:%S"),
+                "server": server_info,
+                "stats": {
+                    "total": total_users,
+                    "active": active_users,
+                    "expired": expired,
+                    "expiring": expiring
+                }
+            })
             await asyncio.sleep(2)
     except WebSocketDisconnect:
         ws_clients.discard(websocket)
