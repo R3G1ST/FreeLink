@@ -322,6 +322,19 @@ a{text-decoration:none;color:inherit}
 .svc .sd{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:background .2s}
 .svc .sb{background:var(--g2);border:1px solid var(--b1);color:var(--t3);padding:5px 12px;border-radius:8px;cursor:pointer;font-size:11px;transition:all .2s;font-family:inherit}
 .svc .sb:hover{border-color:var(--ac);color:var(--ac2);transform:translateY(-1px)}
+/* Logs */
+.logs-container{font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.6}
+.log-entry{padding:6px 12px;border-bottom:1px solid rgba(255,255,255,.03);display:flex;gap:10px;align-items:flex-start;transition:background .1s}
+.log-entry:hover{background:rgba(255,255,255,.02)}
+.log-entry .log-time{color:var(--t4);white-space:nowrap;flex-shrink:0;min-width:65px}
+.log-entry .log-user{font-weight:600;min-width:100px;flex-shrink:0}
+.log-entry .log-action{flex:1;color:var(--t2)}
+.log-entry .log-details{color:var(--t4);font-size:10px}
+.log-entry.auth{border-left:3px solid var(--gn)}
+.log-entry.user{border-left:3px solid var(--bl)}
+.log-entry.node{border-left:3px solid var(--ac2)}
+.log-entry.system{border-left:3px solid var(--or)}
+.log-entry.error{border-left:3px solid var(--rd)}
 
 /* ===== LOGS ===== */
 .logs{background:rgba(0,0,0,0.3);border:1px solid var(--b1);border-radius:8px;padding:16px;font-family:monospace;font-size:11px;color:rgba(248,250,252,0.45);max-height:420px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;line-height:1.7}
@@ -672,8 +685,23 @@ a{text-decoration:none;color:inherit}
             <!-- LOGS -->
             <div class="pg" id="p-logs">
                 <div class="pg-title"><i class="fas fa-scroll"></i> <span data-i18n="page_logs">Логи</span></div>
-                <div class="tbar"><button class="btn btn-n" onclick="lLg()"><i class="fas fa-sync"></i> <span data-i18n="btn_refresh">Обновить</span></button></div>
-                <div class="logs card" id="lB" style="padding:20px"><span data-i18n="loading_data">Загрузка...</span></div>
+                <div class="tbar">
+                    <button class="btn btn-n" onclick="lLg()"><i class="fas fa-sync"></i> <span data-i18n="btn_refresh">Обновить</span></button>
+                    <button class="btn btn-n" onclick="clearLogs()"><i class="fas fa-trash"></i> Очистить</button>
+                    <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t2);margin-left:auto;cursor:pointer">
+                        <input type="checkbox" id="autoScroll" checked onchange="toggleAutoScroll()"> Автопрокрутка
+                    </label>
+                </div>
+                <div id="logsFilter" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+                    <button class="filter on" onclick="filterLogs('all',this)">Все</button>
+                    <button class="filter" onclick="filterLogs('auth',this)">Авторизация</button>
+                    <button class="filter" onclick="filterLogs('user',this)">Пользователи</button>
+                    <button class="filter" onclick="filterLogs('node',this)">Ноды</button>
+                    <button class="filter" onclick="filterLogs('system',this)">Система</button>
+                </div>
+                <div class="card logs-container" id="lB" style="padding:0;max-height:500px;overflow-y:auto">
+                    <div style="padding:20px;text-align:center;color:var(--t4)"><i class="fas fa-scroll" style="font-size:24px;opacity:.3"></i><p>Загрузка...</p></div>
+                </div>
             </div>
 
             <!-- AUDIT -->
@@ -2056,9 +2084,56 @@ async function lSv(){
 function restartService(n){confirmModal('Перезапустить '+n+'?',()=>{fetch('/api/services/'+n+'/restart',{method:'POST'}).then(()=>{toast(n+' OK');setTimeout(lSv,2000)})})}
 
 /* ===== LOGS / AUDIT ===== */
-async function lLg(){const r=await fetch('/api/logs');const d=await r.json();$('lB').textContent=d.logs||'Пусто'}
-async function lAudit(){const r=await fetch('/api/audit');const d=await r.json();$('aB').textContent=d.logs||'Пусто'}
+/* ===== LOGS ===== */
+let logsData=[];
+let logsFilter='all';
+let autoScrollEnabled=true;
 
+function filterLogs(filter,el){
+    logsFilter=filter;
+    document.querySelectorAll('#logsFilter .filter').forEach(b=>b.classList.remove('on'));
+    el.classList.add('on');
+    renderLogs();
+}
+function toggleAutoScroll(){autoScrollEnabled=$('autoScroll').checked}
+function clearLogs(){logsData=[];renderLogs()}
+
+async function lLg(){
+    try{
+        const[r1,r2]=await Promise.all([fetch('/api/logs'),fetch('/api/audit')]);
+        const hyst=await r1.json();
+        const audit=await r2.json();
+        // Parse hysteria logs into structured format
+        const hystLines=(hyst.logs||'').split('\n').filter(l=>l.trim());
+        logsData=hystLines.map(l=>{
+            const m=l.match(/^\[?(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\]?\s*(.*)/);
+            return{time:m?m[1]:'',action:m?m[2]:l,user:'system',type:'system',raw:l};
+        });
+        // Add audit logs
+        if(audit.logs){
+            audit.logs.split('\n').filter(l=>l.trim()).forEach(l=>{
+                const m=l.match(/^\[([^\]]+)\]\s+([^:]+):\s+(\S+)\s*(.*)/);
+                if(m){
+                    const type=m[3].includes('LOGIN')?'auth':m[3].includes('NODE')?'node':'user';
+                    logsData.push({time:m[1],user:m[2],action:m[3],details:m[4],type:type,raw:l});
+                }
+            });
+        }
+        // Sort by time descending
+        logsData.sort((a,b)=>b.time.localeCompare(a.time));
+        renderLogs();
+    }catch(e){console.error('lLg error:',e)}
+}
+
+function renderLogs(){
+    const el=$('lB');
+    const filtered=logsFilter==='all'?logsData:logsData.filter(l=>l.type===logsFilter);
+    if(!filtered.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--t4)"><i class="fas fa-scroll" style="font-size:24px;opacity:.3"></i><p>Нет логов</p></div>';return}
+    el.innerHTML=filtered.slice(0,100).map(l=>`<div class="log-entry ${l.type}"><span class="log-time">${l.time.split(' ')[1]||l.time}</span><span class="log-user">${l.user||'system'}</span><span class="log-action">${l.action||l.raw||''}</span>${l.details?`<span class="log-details">${l.details}</span>`:''}</div>`).join('');
+    if(autoScrollEnabled)el.scrollTop=0;
+}
+
+async function lAudit(){lLg()}
 /* ===== UPDATE ===== */
 let updatePollTimer=null;
 async function checkUpdate(){
@@ -2369,6 +2444,17 @@ function connectWebSocket(){
                 }
                 if(data.stats){
                     dashData.stats=data.stats;
+                }
+                // Real-time log updates
+                if(data.logs&&currentPage==='logs'){
+                    const newLogs=data.logs.map(l=>({time:l.time||'',user:l.user_name||'system',action:l.action||'',details:l.details||'',type:l.action?.includes('LOGIN')?'auth':l.action?.includes('NODE')?'node':'user',raw:l.time+' '+l.user_name+': '+l.action}));
+                    if(newLogs.length){
+                        // Merge with existing, avoid duplicates
+                        const existingTimes=new Set(logsData.map(l=>l.time+l.user+l.action));
+                        newLogs.forEach(l=>{if(!existingTimes.has(l.time+l.user+l.action))logsData.unshift(l)});
+                        logsData=logsData.slice(0,200);
+                        renderLogs();
+                    }
                 }
                 if(data.traffic&&Array.isArray(data.traffic)){
                     const traffic=data.traffic;

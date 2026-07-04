@@ -2543,6 +2543,11 @@ async def websocket_live(websocket: WebSocket):
                             expiring += 1
                 except Exception:
                     pass
+            # Get recent audit logs for real-time updates
+            try:
+                recent_logs = db.get_audit_log(limit=10)
+            except Exception:
+                recent_logs = []
             await websocket.send_json({
                 "traffic": traffic,
                 "online": online_count,
@@ -2553,7 +2558,8 @@ async def websocket_live(websocket: WebSocket):
                     "active": active_users,
                     "expired": expired,
                     "expiring": expiring
-                }
+                },
+                "logs": recent_logs
             })
             await asyncio.sleep(2)
     except WebSocketDisconnect:
