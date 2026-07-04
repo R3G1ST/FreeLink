@@ -224,12 +224,12 @@ a{text-decoration:none;color:inherit}
 
 /* ===== TOOLBAR ===== */
 .tbar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;align-items:center}
-.sbox{flex:1;min-width:180px;position:relative}
-.sbox input{width:100%;padding:8px 12px 8px 34px;background:var(--g1);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-size:12px;outline:none;transition:all .25s;font-family:inherit}
+.sbox{flex:0 1 140px;min-width:100px;position:relative;margin-left:16px}
+.sbox input{width:100%;padding:6px 10px 6px 30px;background:var(--g1);border:1px solid var(--b1);border-radius:6px;color:var(--t1);font-size:11px;outline:none;transition:all .25s;font-family:inherit}
 .sbox input:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(139,92,246,0.1)}
 .sbox input::placeholder{color:var(--t4)}
-.sbox i{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t4);font-size:11px}
-.fgr{display:inline-flex;gap:2px;background:var(--g1);border:1px solid var(--b1);border-radius:8px;padding:2px}
+.sbox i{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--t4);font-size:10px}
+.fgr{display:inline-flex;gap:2px;background:var(--g1);border:1px solid var(--b1);border-radius:8px;padding:2px;margin-left:auto}
 .fb{padding:5px 12px;border:none;border-radius:6px;cursor:pointer;font-size:11px;background:transparent;color:var(--t3);transition:all .15s;font-weight:500;font-family:inherit}
 .fb.on{background:var(--acg);color:var(--ac2);font-weight:600}
 
@@ -314,6 +314,8 @@ a{text-decoration:none;color:inherit}
 
 /* ===== MODAL ===== */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(12px);display:none;justify-content:center;align-items:center;z-index:1000;padding:20px}
+#userBg{z-index:999}
+#modalBg{z-index:1001}
 .modal-bg.open{display:flex;animation:fadeIn .15s}
 .modal{background:var(--c3);border:1px solid var(--b2);border-radius:16px;width:100%;max-width:440px;box-shadow:var(--shadow-lg);animation:modalIn .25s cubic-bezier(0.4,0,0.2,1);position:relative;overflow:hidden}
 .modal.modal-lg{max-width:600px}
@@ -344,7 +346,45 @@ a{text-decoration:none;color:inherit}
 .lang-select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(139,92,246,0.1)}
 .lang-select option{background:#1e1e2a;color:#f8fafc}
 .field .hint{font-size:10px;color:var(--t4);margin-top:4px}
+/* ===== USER MODAL ===== */
+.um-tabs{display:flex;gap:2px;padding:0 20px;border-bottom:1px solid var(--b1);position:sticky;top:0;background:var(--c3);z-index:1}
+.um-tab{padding:10px 14px;border:none;border-bottom:2px solid transparent;background:transparent;color:var(--t3);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;display:flex;align-items:center;gap:5px}
+.um-tab:hover{color:var(--t2)}
+.um-tab.on{color:var(--ac2);border-bottom-color:var(--ac)}
+.um-tab i{font-size:10px}
+.um-tab-content{display:none}.um-tab-content.on{display:block}
+.um-body-wrap{min-height:340px;max-height:340px;overflow-y:auto}
+.um-section{padding:12px;background:var(--g1);border:1px solid var(--b1);border-radius:8px;margin-top:10px}
+.um-section-title{font-size:10px;color:var(--t3);text-transform:uppercase;font-weight:600;letter-spacing:.5px;margin-bottom:8px;display:flex;align-items:center;gap:5px}
+.um-section-title i{font-size:9px;color:var(--ac2)}
+.um-status-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.um-badge{padding:10px;border-radius:8px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px}
+.um-badge.active{background:var(--gng);color:var(--gn)}
+.um-badge.expired{background:var(--org);color:var(--or)}
+.um-badge.inactive{background:var(--rdg);color:var(--rd)}
+.um-badge.online{background:rgba(16,185,129,.08);color:var(--gn)}
+.um-badge.offline{background:rgba(100,116,139,.08);color:#64748b}
+.um-badge .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.um-badge.active .dot{background:var(--gn);box-shadow:0 0 6px rgba(16,185,129,.4)}
+.um-badge.expired .dot{background:var(--or)}
+.um-badge.inactive .dot{background:var(--rd)}
+.um-badge.online .dot{background:var(--gn);box-shadow:0 0 6px rgba(16,185,129,.4)}
+.um-badge.offline .dot{background:#64748b}
+.um-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.um-info-item{padding:8px 10px;background:var(--g2);border-radius:6px}
+.um-info-item .um-label{font-size:9px;color:var(--t4);text-transform:uppercase;font-weight:600;letter-spacing:.3px;margin-bottom:2px}
+.um-info-item .um-value{font-size:12px;font-weight:600}
+.um-progress-wrap{margin-top:8px}
+.um-progress-label{display:flex;justify-content:space-between;font-size:10px;color:var(--t4);margin-bottom:3px}
+.um-progress-bar{background:var(--g2);border-radius:4px;height:6px;overflow:hidden}
+.um-progress-bar .fill{height:100%;border-radius:4px;transition:width .4s}
+.um-quick-btns{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:8px}
+.um-quick-btns .btn{justify-content:center;font-size:10px;padding:8px 6px}
+.um-actions-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.um-actions-grid .btn{justify-content:center;font-size:11px;padding:10px 8px}
+.um-foot{display:none}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
 .field-error{border-color:var(--rd)!important;box-shadow:0 0 0 3px rgba(239,68,68,0.1)!important}
 .error-msg{background:var(--rdg);border:1px solid rgba(239,68,68,0.15);border-radius:8px;padding:10px 14px;font-size:12px;color:#fca5a5;display:none;align-items:center;gap:8px;margin-bottom:14px}
 .error-msg.show{display:flex}
@@ -426,8 +466,13 @@ a{text-decoration:none;color:inherit}
     .notif-bell{width:32px;height:32px;font-size:13px}
     .modal{margin:8px;max-width:calc(100vw - 16px);border-radius:12px}
     .modal-head{padding:20px 16px 0}
-    .modal-body{padding:16px}
+    .modal-body{padding:12px 14px}
     .modal-foot{padding:0 16px 16px}
+    .um-tabs{padding:0 10px;gap:0}
+    .um-tab{padding:8px 8px;font-size:10px;gap:3px}
+    .um-status-grid{grid-template-columns:1fr}
+    .um-info-grid{grid-template-columns:1fr}
+    .um-actions-grid{grid-template-columns:1fr}
     .ftr{font-size:8px;padding:6px 0 3px}
     .chrt .cw{height:180px}
 }
@@ -478,6 +523,7 @@ a{text-decoration:none;color:inherit}
             <div class="nav-item" onclick="go('config',this)" data-tip="Конфиг"><i class="fas fa-file-code"></i> <span data-i18n="nav_config">Конфиг</span></div>
             <div class="nav-item" onclick="go('logs',this)" data-tip="Логи"><i class="fas fa-scroll"></i> <span data-i18n="nav_logs">Логи</span></div>
             <div class="nav-item" onclick="go('audit',this)" data-tip="Аудит"><i class="fas fa-shield-alt"></i> <span data-i18n="nav_audit">Аудит</span></div>
+            <div class="nav-item" onclick="go('settings',this)" data-tip="Настройки"><i class="fas fa-cog"></i> <span data-i18n="nav_settings">Настройки</span></div>
         </div>
         <div class="main">
 
@@ -498,10 +544,7 @@ a{text-decoration:none;color:inherit}
                 <div class="bulk" id="bulk"><span id="bulkN">0</span><button class="btn btn-g btn-sm" onclick="bT()"><i class="fas fa-exchange-alt"></i> <span data-i18n="btn_toggle">Вкл/Выкл</span></button><button class="btn btn-o btn-sm" onclick="bE()"><i class="fas fa-clock"></i> <span data-i18n="btn_extend">Продлить</span></button><button class="btn btn-r btn-sm" onclick="bD()"><i class="fas fa-trash"></i> <span data-i18n="btn_delete">Удалить</span></button><button class="btn btn-n btn-sm" onclick="cSel()"><span data-i18n="btn_cancel">Отмена</span></button></div>
                 <div class="tbar">
                     <button class="btn btn-g" onclick="showCreateUser()"><i class="fas fa-plus"></i> <span data-i18n="btn_create">Создать</span></button>
-                    <button class="btn btn-r" onclick="clExp()"><i class="fas fa-broom"></i> <span data-i18n="btn_clear">Очистить</span></button>
-                    <button class="btn btn-o" onclick="restSrv()"><i class="fas fa-power-off"></i> <span data-i18n="btn_restart_server">Перезапуск</span></button>
-                    <button class="btn btn-b" onclick="expU()"><i class="fas fa-file-export"></i> <span data-i18n="btn_export">Экспорт</span></button>
-                    <button class="btn btn-a" onclick="downloadReport()"><i class="fas fa-file-csv"></i> <span data-i18n="btn_report">Отчёт</span></button>
+                    <button class="btn btn-n" onclick="loadAll()"><i class="fas fa-sync"></i> <span data-i18n="btn_refresh">Обновить</span></button>
                     <div class="sbox"><i class="fas fa-search"></i><input type="text" id="sI" placeholder="Поиск..." data-i18n-placeholder="msg_search" oninput="fU()"></div>
                     <div class="fgr"><button class="fb on" onclick="fS('all',this)">Все</button><button class="fb" onclick="fS('online',this)"><span data-i18n="status_online">Онлайн</span></button><button class="fb" onclick="fS('active',this)"><span data-i18n="status_active">Активные</span></button><button class="fb" onclick="fS('expired',this)">Просрочен.</button></div>
                 </div>
@@ -672,6 +715,25 @@ a{text-decoration:none;color:inherit}
                     <div class="set-item"><div class="si-label"><span data-i18n="settings_server">Сервер</span></div><span style="font-size:12px;color:var(--t3)">Польша — link.qmbox.ru</span></div>
                 </div>
                 <div class="set-group">
+                    <h3><i class="fas fa-tools"></i> Управление</h3>
+                    <div class="set-item">
+                        <div style="flex:1"><div class="si-label">Очистить просроченных</div><div class="si-desc">Удалить пользователей с истёкшей подпиской</div></div>
+                        <button class="btn btn-r btn-sm" onclick="clExp()"><i class="fas fa-broom"></i> Очистить</button>
+                    </div>
+                    <div class="set-item">
+                        <div style="flex:1"><div class="si-label">Перезапуск сервера</div><div class="si-desc">Перезапустить Hysteria 2</div></div>
+                        <button class="btn btn-o btn-sm" onclick="restSrv()"><i class="fas fa-power-off"></i> Перезапуск</button>
+                    </div>
+                    <div class="set-item">
+                        <div style="flex:1"><div class="si-label">Экспорт пользователей</div><div class="si-desc">Скачать всех пользователей в JSON</div></div>
+                        <button class="btn btn-b btn-sm" onclick="expU()"><i class="fas fa-file-export"></i> Экспорт</button>
+                    </div>
+                    <div class="set-item">
+                        <div style="flex:1"><div class="si-label">Отчёт по трафику</div><div class="si-desc">Скачать отчёт в CSV</div></div>
+                        <button class="btn btn-a btn-sm" onclick="downloadReport()"><i class="fas fa-file-csv"></i> Отчёт</button>
+                    </div>
+                </div>
+                <div class="set-group">
                     <h3><i class="fas fa-download"></i> <span data-i18n="settings_update">Обновление</span></h3>
                     <div class="set-item">
                         <div><div class="si-label" id="updateStatusText"><span data-i18n="update_checking">Проверка обновлений...</span></div><div class="si-desc" id="updateDetail"></div></div>
@@ -700,8 +762,14 @@ a{text-decoration:none;color:inherit}
 <!-- USER MODAL -->
 <div class="modal-bg" id="userBg" onclick="if(event.target===this)closeUserModal()"><div class="modal modal-lg">
     <button class="modal-close" onclick="closeUserModal()"><i class="fas fa-times"></i></button>
-    <div class="modal-head"><div class="mh-icon purple"><i class="fas fa-user"></i></div><h3 id="umTitle"></h3></div>
-    <div class="modal-body" id="umBody" style="max-height:420px;overflow-y:auto"></div>
+    <div class="modal-head"><div class="mh-icon purple" id="umLogo" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff"><svg width="36" height="36" viewBox="0 0 512 512"><path d="M280 80 L180 280 L240 280 L200 432 L340 200 L270 200 Z" fill="white"/></svg></div><h3 id="umTitle"></h3></div>
+    <div class="um-tabs">
+        <button class="um-tab on" onclick="umTab('info',this)"><i class="fas fa-info-circle"></i> Инфо</button>
+        <button class="um-tab" onclick="umTab('speed',this)"><i class="fas fa-tachometer-alt"></i> Скорость</button>
+        <button class="um-tab" onclick="umTab('traffic',this)"><i class="fas fa-chart-bar"></i> Трафик</button>
+        <button class="um-tab" onclick="umTab('actions',this)"><i class="fas fa-cog"></i> Действия</button>
+    </div>
+    <div class="modal-body um-body-wrap" id="umBody"></div>
     <div class="modal-foot" id="umFoot"></div>
 </div></div>
 
@@ -1213,9 +1281,11 @@ function showCreateUser(){
 }
 
 /* ===== USER MODAL ===== */
-function openUserModal(id){CUid=id;$('userBg').classList.add('open');refreshUserModal()}
-function closeUserModal(){$('userBg').classList.remove('open');CUid=null;CUd=null}
-async function refreshUserModal(){if(!CUid)return;try{const r=await fetch('/api/user/'+CUid);CUd=await r.json();renderUserModal(CUd)}catch{toast(t('msg_error'))}}
+let umData=null,umTabCur='info';
+function openUserModal(id){CUid=id;$('userBg').classList.add('open');umTabCur='info';refreshUserModal()}
+function closeUserModal(){$('userBg').classList.remove('open');CUid=null;CUd=null;umData=null}
+async function refreshUserModal(){if(!CUid)return;try{const r=await fetch('/api/user/'+CUid);umData=await r.json();CUd=umData;renderUserModal(umData)}catch{toast(t('msg_error'))}}
+function umTab(tab,el){umTabCur=tab;document.querySelectorAll('.um-tab').forEach(b=>b.classList.remove('on'));el.classList.add('on');if(umData)renderUserModal(umData)}
 function renderUserModal(u){
     const isEx=u.expire_date&&u.expire_date!=='Не указан'&&new Date(u.expire_date)<new Date();
     const now=new Date(),exp=new Date(u.expire_date),dl=Math.ceil((exp-now)/864e5);
@@ -1224,32 +1294,99 @@ function renderUserModal(u){
     const bc=up>90?'var(--rd)':up>70?'var(--or)':'var(--gn)';
     const sp=u.expire_date?Math.min(100,Math.max(0,(dl/30)*100)):0;
     const spd=u.speed_limit_mbps||0;
-    const spdText=spd>0?spd+' Мбит/с':'∞ Неограничена';
     $('umTitle').textContent=u.name;
-    $('umBody').innerHTML=`
-    <div class="field-row"><div class="field"><label>${t('table_status')}</label><div style="padding:10px;background:var(--g2);border-radius:8px;font-size:13px;font-weight:600;color:${isEx?'var(--or)':u.active?'var(--gn)':'var(--rd)'}">${isEx?t('status_expired'):u.active?t('status_active'):t('status_inactive')}</div></div><div class="field"><label>${t('table_online')}</label><div style="padding:10px;background:var(--g2);border-radius:8px;font-size:13px;font-weight:600;color:${u.online?'var(--gn)':'#64748b'}">${u.online?t('status_connected'):t('status_disconnected')}</div></div></div>
-    <div class="field-row"><div class="field"><label>${t('table_created')}</label><div style="padding:10px;background:var(--g2);border-radius:8px;font-size:12px">${u.created||'—'}</div></div><div class="field"><label>${t('table_expires')}</label><div style="padding:10px;background:var(--g2);border-radius:8px;font-size:12px;color:${isEx?'var(--rd)':'inherit'}">${u.expire_date||'—'}</div></div></div>
-    <div class="field"><label>${t('table_progress')}</label><div style="background:var(--g2);border-radius:4px;height:6px;overflow:hidden;margin-top:4px"><div style="height:100%;width:${Math.min(100,sp)}%;background:${sp>80?'var(--rd)':sp>50?'var(--or)':'var(--gn)'};border-radius:4px;transition:width .4s"></div></div><div style="font-size:10px;color:var(--t4);margin-top:3px;text-align:right">${dl>0?dl+' '+t('time_day'):t('msg_expired')} — ${Math.round(sp)}%</div></div>
-    <div style="padding:14px;background:var(--g1);border:1px solid var(--b1);border-radius:8px;margin-top:12px">
-    <div style="font-size:10px;color:var(--t3);text-transform:uppercase;font-weight:600;letter-spacing:.5px;margin-bottom:10px">Скорость</div>
-    <div class="field-row"><div class="field"><label>Лимит скорости</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;font-weight:600;color:${spd>0?'var(--or)':'var(--t2)'}">${spdText}</div></div><div class="field"><label>IP-адрес</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;color:var(--t3)">${u.ip||'—'}</div></div></div>
-    </div>
-    <div style="padding:14px;background:var(--g1);border:1px solid var(--b1);border-radius:8px;margin-top:12px">
-    <div style="font-size:10px;color:var(--t3);text-transform:uppercase;font-weight:600;letter-spacing:.5px;margin-bottom:10px">${t('traffic_section')}</div>
-    <div class="field-row"><div class="field"><label>TX</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;color:var(--bl);font-weight:600">${tr.tx_mb||0} ${t('units_mb')}</div></div><div class="field"><label>RX</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;color:var(--ac2);font-weight:600">${tr.rx_mb||0} ${t('units_mb')}</div></div></div>
-    <div class="field-row"><div class="field"><label>${t('traffic_total')}</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;font-weight:600">${tr.total_mb||0} ${t('units_mb')}</div></div><div class="field"><label>${t('traffic_limit')}</label><div style="padding:8px;background:var(--g2);border-radius:8px;font-size:12px;font-weight:600">${isUn?t('traffic_unlimited'):u.traffic_limit+' '+t('units_mb')}</div></div></div>
-    ${!isUn?`<div style="background:var(--g2);border-radius:4px;height:5px;overflow:hidden;margin-top:6px"><div style="height:100%;width:${up}%;background:${bc};border-radius:4px"></div></div>`:''}
-    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:10px">
-    <button class="btn btn-n btn-sm" onclick="setLimit(10240)">10 ${t('units_gb')}</button>
-    <button class="btn btn-n btn-sm" onclick="setLimit(51200)">50 ${t('units_gb')}</button>
-    <button class="btn btn-n btn-sm" onclick="setLimit(102400)">100 ${t('units_gb')}</button>
-    <button class="btn btn-n btn-sm" onclick="setLimit(0)">∞ ${t('plan_unlimited')}</button>
-    <button class="btn btn-n btn-sm" onclick="resetTraffic()" style="border-color:rgba(239,68,68,.15);color:var(--rd)">${t('btn_reset')}</button>
-    </div></div>`;
-    const subUrl=u.service_token?location.origin+'/sub/'+u.service_token:'';
-    $('umFoot').innerHTML=`<button class="btn btn-a btn-sm" onclick="copySubUrlAuto()"><i class="fas fa-share-alt"></i> ${t('btn_subscribe')}</button><button class="btn btn-b btn-sm" onclick="copyUserLink()"><i class="fas fa-link"></i> ${t('btn_link')}</button><button class="btn btn-n btn-sm" onclick="showQRModal()"><i class="fas fa-qrcode"></i> ${t('btn_qr')}</button><button class="btn btn-g btn-sm" onclick="extendUserModal()"><i class="fas fa-clock"></i> ${t('btn_extend')}</button><button class="btn btn-o btn-sm" onclick="toggleUserModal()"><i class="fas fa-exchange-alt"></i> ${t('btn_toggle')}</button><button class="btn btn-r btn-sm" onclick="deleteUserModal()"><i class="fas fa-trash"></i> ${t('btn_delete')}</button>`;
+
+    const statusClass=isEx?'expired':u.active?'active':'inactive';
+    const statusText=isEx?'Истёк':u.active?'Активен':'Неактивен';
+    const onlineClass=u.online?'online':'offline';
+    const onlineText=u.online?'Онлайн':'Офлайн';
+    const progressColor=sp>80?'var(--rd)':sp>50?'var(--or)':'var(--gn)';
+    const daysText=dl>0?dl+' дн':'Истёк';
+
+    let html='';
+    if(umTabCur==='info'){
+        html=`
+        <div class="um-status-grid">
+            <div class="um-badge ${statusClass}"><span class="dot"></span>${statusText}</div>
+            <div class="um-badge ${onlineClass}"><span class="dot"></span>${onlineText}</div>
+        </div>
+        <div class="um-info-grid">
+            <div class="um-info-item"><div class="um-label">Создан</div><div class="um-value">${u.created||'—'}</div></div>
+            <div class="um-info-item"><div class="um-label">Истекает</div><div class="um-value" style="color:${isEx?'var(--rd)':'inherit'}">${u.expire_date||'—'}</div></div>
+        </div>
+        <div class="um-progress-wrap">
+            <div class="um-progress-label"><span>Подписка</span><span>${daysText} — ${Math.round(sp)}%</span></div>
+            <div class="um-progress-bar"><div class="fill" style="width:${Math.min(100,sp)}%;background:${progressColor}"></div></div>
+        </div>`;
+    } else if(umTabCur==='speed'){
+        const spdText=spd>0?spd+' Мбит/с':'∞ Неограничена';
+        html=`
+        <div class="um-section">
+            <div class="um-section-title"><i class="fas fa-tachometer-alt"></i> Лимит скорости</div>
+            <div class="um-info-grid">
+                <div class="um-info-item"><div class="um-label">Текущий</div><div class="um-value" style="color:${spd>0?'var(--or)':'var(--gn)'}">${spdText}</div></div>
+                <div class="um-info-item"><div class="um-label">IP-адрес</div><div class="um-value" style="color:var(--t3)">${u.ip||'—'}</div></div>
+            </div>
+        </div>
+        <div class="um-section">
+            <div class="um-section-title"><i class="fas fa-sliders-h"></i> Установить лимит</div>
+            <div class="um-quick-btns">
+                <button class="btn btn-n btn-sm" onclick="setSpeed(5)">5 Мбит/с</button>
+                <button class="btn btn-n btn-sm" onclick="setSpeed(10)">10 Мбит/с</button>
+                <button class="btn btn-n btn-sm" onclick="setSpeed(20)">20 Мбит/с</button>
+                <button class="btn btn-n btn-sm" onclick="setSpeed(50)">50 Мбит/с</button>
+                <button class="btn btn-n btn-sm" onclick="setSpeed(100)">100 Мбит/с</button>
+                <button class="btn btn-g btn-sm" onclick="setSpeed(0)" style="grid-column:span 2">∞ Без ограничений</button>
+            </div>
+        </div>`;
+    } else if(umTabCur==='traffic'){
+        html=`
+        <div class="um-section">
+            <div class="um-section-title"><i class="fas fa-chart-bar"></i> Статистика</div>
+            <div class="um-info-grid">
+                <div class="um-info-item"><div class="um-label">TX (отдано)</div><div class="um-value" style="color:var(--bl)">${tr.tx_mb||0} МБ</div></div>
+                <div class="um-info-item"><div class="um-label">RX (получено)</div><div class="um-value" style="color:var(--ac2)">${tr.rx_mb||0} МБ</div></div>
+            </div>
+            <div class="um-info-grid" style="margin-top:6px">
+                <div class="um-info-item"><div class="um-label">Всего</div><div class="um-value">${tr.total_mb||0} МБ</div></div>
+                <div class="um-info-item"><div class="um-label">Лимит</div><div class="um-value">${isUn?'∞ Без лимита':u.traffic_limit+' МБ'}</div></div>
+            </div>
+            ${!isUn?`<div class="um-progress-wrap"><div class="um-progress-bar"><div class="fill" style="width:${up}%;background:${bc}"></div></div><div class="um-progress-label"><span>Использовано</span><span>${Math.round(up)}%</span></div></div>`:''}
+        </div>
+        <div class="um-section">
+            <div class="um-section-title"><i class="fas fa-sliders-h"></i> Установить лимит</div>
+            <div class="um-quick-btns">
+                <button class="btn btn-n btn-sm" onclick="setLimit(10240)">10 ГБ</button>
+                <button class="btn btn-n btn-sm" onclick="setLimit(51200)">50 ГБ</button>
+                <button class="btn btn-n btn-sm" onclick="setLimit(102400)">100 ГБ</button>
+                <button class="btn btn-n btn-sm" onclick="setLimit(0)">∞ Без лимита</button>
+            </div>
+            <button class="btn btn-r btn-sm" onclick="resetTraffic()" style="width:100%;margin-top:6px;justify-content:center"><i class="fas fa-undo"></i> Сбросить трафик</button>
+        </div>`;
+    } else if(umTabCur==='actions'){
+        html=`
+        <div class="um-section">
+            <div class="um-section-title"><i class="fas fa-share-alt"></i> Подключение</div>
+            <div class="um-actions-grid">
+                <button class="btn btn-a btn-sm" onclick="copySubUrlAuto()"><i class="fas fa-share-alt"></i> Подписка</button>
+                <button class="btn btn-b btn-sm" onclick="copyUserLink()"><i class="fas fa-link"></i> Ссылка</button>
+                <button class="btn btn-n btn-sm" onclick="showQRModal()"><i class="fas fa-qrcode"></i> QR-код</button>
+            </div>
+        </div>
+        <div class="um-section">
+            <div class="um-section-title"><i class="fas fa-cog"></i> Управление</div>
+            <div class="um-actions-grid">
+                <button class="btn btn-g btn-sm" onclick="extendUserModal()"><i class="fas fa-clock"></i> Продлить</button>
+                <button class="btn btn-o btn-sm" onclick="toggleUserModal()"><i class="fas fa-exchange-alt"></i> Вкл/Выкл</button>
+                <button class="btn btn-r btn-sm" onclick="deleteUserModal()" style="grid-column:span 2"><i class="fas fa-trash"></i> Удалить</button>
+            </div>
+        </div>`;
+    }
+    $('umBody').innerHTML=html;
+    $('umFoot').innerHTML='';
 }
 function setLimit(mb){if(!CUid)return;fetch('/api/user/set-limit/'+CUid+'?limit_mb='+mb,{method:'POST'}).then(()=>{toast(t('traffic_limit')+': '+(mb?mb+' '+t('units_mb'):t('traffic_unlimited')));refreshUserModal()})}
+function setSpeed(mbps){if(!CUid)return;fetch('/api/user/speed-limit/'+CUid,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({speed_mbps:mbps})}).then(()=>{toast('Скорость: '+(mbps?mbps+' Мбит/с':'∞ Неограничена'));refreshUserModal()})}
 function resetTraffic(){if(!CUid)return;confirmModal(t('msg_confirm_reset'),()=>{fetch('/api/user/reset-traffic/'+CUid,{method:'POST'}).then(()=>{toast(t('msg_traffic_reset'));refreshUserModal()})})}
 function copyUserLink(){if(CUd?.link){navigator.clipboard.writeText(CUd.link).then(()=>toast(t('msg_copied')))}}
 function copySubUrl(url){if(!url){toast(t('msg_no_token'));return}navigator.clipboard.writeText(url).then(()=>toast(t('msg_sub_copied')))}
@@ -1266,7 +1403,27 @@ function copySubUrlAuto(){
         }).catch(()=>toast('Ошибка сети'));
     }
 }
-function extendUserModal(){if(!CUid)return;showPromptModal('Продление','Дней:','30',v=>{fetch('/api/user/extend/'+CUid+'?days='+v,{method:'POST'}).then(r=>r.json()).then(d=>{toast('До '+d.new_expire);loadAll();refreshUserModal()})})}
+function extendUserModal(){
+    if(!CUid)return;
+    setModal('clock','green','Продление подписки','Выберите срок или введите количество дней',`
+        <div class="field"><label>Дней</label><input type="number" id="extDays" value="30" min="1" placeholder="30"></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;padding:0 2px">
+            <button class="btn btn-n btn-sm" onclick="$('extDays').value=7" style="flex:1 1 calc(33.33% - 4px);min-width:0">7 дн</button>
+            <button class="btn btn-n btn-sm" onclick="$('extDays').value=14" style="flex:1 1 calc(33.33% - 4px);min-width:0">14 дн</button>
+            <button class="btn btn-n btn-sm" onclick="$('extDays').value=30" style="flex:1 1 calc(33.33% - 4px);min-width:0">30 дн</button>
+            <button class="btn btn-n btn-sm" onclick="$('extDays').value=90" style="flex:1 1 calc(33.33% - 4px);min-width:0">90 дн</button>
+            <button class="btn btn-n btn-sm" onclick="$('extDays').value=180" style="flex:1 1 calc(33.33% - 4px);min-width:0">180 дн</button>
+            <button class="btn btn-n btn-sm" onclick="$('extDays').value=365" style="flex:1 1 calc(33.33% - 4px);min-width:0">365 дн</button>
+            <button class="btn btn-g btn-sm" onclick="$('extDays').value=99999" style="flex:1 1 calc(33.33% - 4px);min-width:0;margin:4px auto 0;max-width:140px"><i class="fas fa-infinity"></i> Бесконечно</button>
+        </div>
+    `,'<button class="btn btn-n" onclick="closeModal()">Отмена</button><button class="btn btn-a" id="extBtn">Продлить</button>');
+    $('extBtn').onclick=async()=>{
+        const d=parseInt($('extDays')?.value)||30;
+        closeModal();
+        await fetch('/api/user/extend/'+CUid+'?days='+d,{method:'POST'}).then(r=>r.json()).then(d=>{toast('До '+d.new_expire);loadAll();refreshUserModal()});
+    };
+    setTimeout(()=>$('extDays')?.focus(),100);
+}
 function toggleUserModal(){if(!CUid)return;fetch('/api/user/toggle/'+CUid,{method:'POST'}).then(()=>{toast('OK');loadAll();refreshUserModal()})}
 function deleteUserModal(){if(!CUid)return;confirmModal('Удалить пользователя?',()=>{fetch('/api/user/'+CUid,{method:'DELETE'}).then(()=>{toast('Удалён');loadAll();closeUserModal()})})}
 

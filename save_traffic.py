@@ -11,7 +11,7 @@ def get_current_traffic():
     try:
         r = requests.get(HYSTERIA_API, timeout=3)
         return r.json() if r.status_code == 200 else None
-    except:
+    except Exception:
         return None
 
 def save_traffic():

@@ -10,7 +10,7 @@ def record():
     try:
         r = requests.get(HYSTERIA_API, timeout=3)
         stats = r.json() if r.status_code == 200 else {}
-    except:
+    except Exception:
         stats = {}
 
     history = []
@@ -18,7 +18,7 @@ def record():
         try:
             with open(HISTORY_FILE, 'r') as f:
                 history = json.load(f)
-        except:
+        except Exception:
             pass
 
     entry = {"time": datetime.now().strftime("%Y-%m-%d %H:%M"), "users": {}}

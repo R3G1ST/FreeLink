@@ -48,9 +48,9 @@ def migrate():
         print(f"  ✓ {len(admins)} admins migrated")
     else:
         print("  ⚠ admins.json not found, creating default admin")
-        import hashlib, secrets
+        import bcrypt, secrets
         pw = secrets.token_urlsafe(16)
-        pw_hash = hashlib.sha256(pw.encode()).hexdigest()
+        pw_hash = bcrypt.hashpw(pw.encode(), bcrypt.gensalt(rounds=12)).decode()
         db.save_admin("admin", {
             "password_hash": pw_hash, "role": "admin",
             "created": "2026-01-01T00:00:00"

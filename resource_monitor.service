@@ -5,6 +5,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/freelink
+EnvironmentFile=/opt/freelink/.env
 ExecStart=/opt/freelink/venv/bin/python3 /opt/freelink/resource_monitor.py
 Restart=always
 RestartSec=10

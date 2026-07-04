@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-3.10.10-8b5cf6?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-3.11.0-8b5cf6?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/Status-Alpha-orange?style=for-the-badge" alt="Status">
   <img src="https://img.shields.io/badge/Python-3.10+-3776ab?style=for-the-badge&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/Hysteria-2-ff6b35?style=for-the-badge" alt="Hysteria">
@@ -538,6 +538,60 @@ journalctl -u freelink-api -f
 - [ ] Добавить гео-локацию для выбора сервера
 - [ ] Создать функционал бэкапа/восстановления
 - [ ] Добавить оповещения о ресурсах системы (пороги CPU/RAM/Disk)
+
+---
+
+## Changelog
+
+### v3.11.0-supernova (2026-07-04)
+
+#### Security Fixes (Critical)
+- **SQL Injection** — whitelist для `update_user_field` в `db.py`
+- **Telegram Auth** — HMAC-проверка подписи `initData`
+- **Session Fixation** — валидация токена перед установкой cookie
+- **Path Traversal** — regex-валидация имён бэкапов
+- **Tarball Slip** — проверка имён файлов при распаковке
+- **Node Registration** — проверка `NODE_API_KEY` из env
+- **SSH Policy** — заменён `AutoAddPolicy` на `WarningPolicy`
+- **Cookie Security** — добавлен `secure=True` на все cookies
+- **Rate Limiting** — `/api/auth` защищён `5 req/min`
+- **GeoIP SSRF** — валидация IP через `ipaddress.ip_address()`
+- **Password Export** — удалены пароли из `/api/export`
+- **CORS** — `allow_headers` ограничен `Content-Type, Authorization`
+- **Weak Crypto** — `gen_id()` заменён на `secrets.token_hex()`
+- **Password Verify** — поддержка legacy SHA-256 + bcrypt
+
+#### Security Fixes (High)
+- **Environment Variables** — все секреты вынесены в `.env`
+- **File Permissions** — `.env` и `admins.json` → `chmod 600`
+- **Obfs Password** — заменён хардкод на env var в deploy-скриптах
+- **Bare Except** — все `except:` заменены на `except Exception:`
+- **RBAC** — проверка роли admin/editor на `/api/clean`, `/api/restart`, `/api/logs`
+- **Nginx Headers** — X-Frame-Options, HSTS, X-Content-Type-Options
+- **Nginx SSL** — `ssl_prefer_server_ciphers`, `ssl_session_cache`
+- **Backup Security** — TLS приватные ключи исключены из архивов
+- **Systemd** — `EnvironmentFile=/opt/freelink/.env` во все сервисы
+
+#### Database
+- **Indexes** — добавлены индексы: `users(name)`, `users(active)`, `users(expire_date)`, `sessions(expires)`, `subscriptions(uid)`, `audit_log(time)`
+- **Session Management** — атомарные SQL-операции вместо read-modify-write
+
+#### UI/UX (Admin Panel)
+- **User Modal Tabs** — модалка пользователя разбита на 4 вкладки: Инфо, Скорость, Трафик, Действия
+- **User Modal Logo** — SVG-логотип FreeLink вместо иконки пользователя
+- **Speed Tab** — кнопки быстрого выбора: 5/10/20/50/100 Мбит/с
+- **Extend Modal** — быстрые кнопки: 7/14/30/90/180/365 дн + Бесконечно
+- **Settings Page** — кнопки Очистить/Перезапуск/Экспорт/Отчёт перенесены из Пользователей
+- **Users Page** — добавлена кнопка «Обновить» для обновления статистики
+- **Search Compact** — поле поиска уменьшено, фильтры прижаты вправо
+- **Navigation** — «Настройки» добавлен в сайдбар
+
+#### Bug Fixes
+- **Login Fix** — `verify_pw()` поддерживает legacy SHA-256 хеши
+- **Node Heartbeat** — исправлен middleware, пропускает `/api/node/*`
+- **IP in User Modal** — поле IP теперь отображается из БД
+- **Bare Except** — исправлены во всех Python-файлах
+- **Resource Monitor** — чтение токена из env vars вместо config.yaml
 
 ---
 

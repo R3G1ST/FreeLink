@@ -5,11 +5,13 @@ BACKUP_DIR="/opt/freelink/backups"
 DATE=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="$BACKUP_DIR/backup_$DATE.tar.gz"
 
-# Создаём бэкап
+# Создаём бэкап (без приватных ключей TLS)
 tar -czf "$BACKUP_FILE" \
     /opt/freelink/data.yaml \
     /opt/freelink/config.yaml \
     /etc/hysteria/config.yaml \
+    --exclude='privkey.pem' \
+    --exclude='*.key' \
     /etc/letsencrypt/live/link.qmbox.ru/ \
     2>/dev/null
 

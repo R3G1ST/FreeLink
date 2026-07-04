@@ -18,7 +18,7 @@ def get_traffic():
     try:
         r = requests.get(HYSTERIA_API, timeout=3)
         return r.json() if r.status_code == 200 else {}
-    except:
+    except Exception:
         return {}
 
 def detect_online():
@@ -43,7 +43,7 @@ def detect_online():
     try:
         with open(ONLINE_FILE, 'w') as f:
             json.dump(online, f, default=str)
-    except:
+    except Exception:
         pass
 
 if __name__ == '__main__':

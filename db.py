@@ -10,13 +10,22 @@ from contextlib import contextmanager
 import psycopg2
 from psycopg2.extras import RealDictCursor, Json
 
-DB_CONFIG = {
-    "host": os.environ.get("PG_HOST", "127.0.0.1"),
-    "port": int(os.environ.get("PG_PORT", 5432)),
-    "dbname": os.environ.get("PG_DB", "freelink_db"),
-    "user": os.environ.get("PG_USER", "freelink"),
-    "password": os.environ.get("PG_PASS", "freelink_pass"),
-}
+def _get_db_config():
+    """Get database configuration from environment variables."""
+    required = ["PG_HOST", "PG_DB", "PG_USER", "PG_PASS"]
+    missing = [var for var in required if not os.environ.get(var)]
+    if missing:
+        raise EnvironmentError(f"Missing required environment variables: {', '.join(missing)}")
+    
+    return {
+        "host": os.environ["PG_HOST"],
+        "port": int(os.environ.get("PG_PORT", "5432")),
+        "dbname": os.environ["PG_DB"],
+        "user": os.environ["PG_USER"],
+        "password": os.environ["PG_PASS"],
+    }
+
+DB_CONFIG = _get_db_config()
 
 _pool = None
 
@@ -223,7 +232,13 @@ def delete_user(uid):
         cur.execute("DELETE FROM users WHERE uid=%s", (uid,))
         return cur.rowcount > 0
 
+ALLOWED_USER_FIELDS = {"name", "active", "expire_date", "password", "password_hash",
+                       "traffic_limit", "traffic_used", "traffic_saved", "link",
+                       "created", "node_id", "note", "service_token"}
+
 def update_user_field(uid, field, value):
+    if field not in ALLOWED_USER_FIELDS:
+        raise ValueError(f"Field '{field}' is not permitted for update")
     with get_conn() as conn:
         cur = conn.cursor()
         cur.execute(f"UPDATE users SET {field}=%s WHERE uid=%s", (value, uid))

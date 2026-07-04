@@ -25,7 +25,7 @@ def get_server_info():
         info["ram_percent"] = mem.percent
         disk = psutil.disk_usage("/")
         info["disk_percent"] = disk.percent
-    except:
+    except Exception:
         info["cpu_percent"] = 0
         info["ram_percent"] = 0
         info["disk_percent"] = 0
@@ -38,7 +38,7 @@ def get_server_info():
             auth = cfg.get("auth", {})
             users = auth.get("user", {}) or auth.get("userpass", {})
             info["total_users"] = len(users)
-    except:
+    except Exception:
         info["total_users"] = 0
 
     # Get traffic stats from hysteria API
@@ -51,7 +51,7 @@ def get_server_info():
         info["online_users"] = len(traffic)
         # Per-user traffic for aggregation
         info["user_traffic"] = {user: {"tx": t.get("tx", 0), "rx": t.get("rx", 0)} for user, t in traffic.items()}
-    except:
+    except Exception:
         info["traffic_sent"] = 0
         info["traffic_recv"] = 0
         info["online_usernames"] = []
@@ -63,7 +63,7 @@ def get_server_info():
         r = subprocess.run(["systemctl", "is-active", "hysteria-server"],
                           capture_output=True, text=True, timeout=5)
         info["hysteria_status"] = "active" if r.stdout.strip() == "active" else "inactive"
-    except:
+    except Exception:
         info["hysteria_status"] = "unknown"
 
     return info
@@ -140,7 +140,7 @@ def main():
                 cfg = json.load(f)
                 node_id = cfg.get("node_id", "")
                 node_token = cfg.get("token", "")
-        except:
+        except Exception:
             pass
 
     if not node_id:

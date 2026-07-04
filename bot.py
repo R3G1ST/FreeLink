@@ -3,6 +3,10 @@ import os, sys, yaml, logging, subprocess, random, string, json, secrets, reques
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ConversationHandler, ContextTypes
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 sys.path.insert(0, "/opt/freelink")
 import db
@@ -18,7 +22,7 @@ def load_config():
     try:
         with open(CONFIG_FILE, 'r') as f:
             return yaml.safe_load(f)
-    except:
+    except Exception:
         return None
 
 def load_data():
@@ -30,13 +34,24 @@ def save_data(data):
         db.save_user(uid, user_data)
 
 def is_admin(user_id):
+    # Check environment variable first
+    admin_ids_str = os.environ.get("TELEGRAM_ADMIN_IDS", "")
+    if admin_ids_str:
+        try:
+            admin_ids = [int(x.strip()) for x in admin_ids_str.split(",")]
+            if user_id in admin_ids:
+                return True
+        except ValueError:
+            pass
+    
+    # Fallback to config
     config = load_config()
     if not config:
         return False
     return user_id in config.get("telegram", {}).get("admins", [])
 
 def gen_id():
-    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+    return secrets.token_hex(4)
 
 def gen_link(uid):
     config = load_config()
@@ -44,13 +59,13 @@ def gen_link(uid):
     user = data.get("users", {}).get(uid)
     if not user:
         return ""
-    h = config.get("hysteria", {})
-    s = config.get("server", {})
-    domain = s.get("domain", "link.qmbox.ru")
+    h = config.get("hysteria", {}) if config else {}
+    s = config.get("server", {}) if config else {}
+    domain = os.environ.get("DOMAIN", s.get("domain", "link.qmbox.ru"))
     port = 443
     name = user.get("name", uid)
-    password = user.get("password", h.get("user_password", ""))
-    obfs = h.get("obfs_password", "")
+    password = user.get("password", os.environ.get("HYSTERIA_USER_PASSWORD", ""))
+    obfs = os.environ.get("HYSTERIA_OBFS_PASSWORD", "")
     if obfs:
         return f"hysteria2://{name}:{password}@{domain}:{port}?sni={domain}&obfs=salamander&obfs-password={obfs}&insecure=0#{name}"
     return f"hysteria2://{name}:{password}@{domain}:{port}?sni={domain}&insecure=0#{name}"
@@ -87,14 +102,14 @@ def get_server_info():
         info["disk_used"] = round(disk.used / (1024**3), 1)
         info["disk_total"] = round(disk.total / (1024**3), 1)
         return info
-    except:
+    except Exception:
         return {}
 
 def check_hysteria():
     try:
         r = subprocess.run(["/usr/bin/systemctl", "is-active", "hysteria-server"], capture_output=True, text=True, timeout=5)
         return r.stdout.strip() == "active"
-    except:
+    except Exception:
         return False
 
 # ====== MAIN KEYBOARD ======
@@ -444,7 +459,7 @@ async def cmd_services(update: Update, context: ContextTypes.DEFAULT_TYPE):
             active = r.stdout.strip() == "active"
             icon = "🟢" if active else "🔴"
             lines.append(f"{icon} <code>{svc}</code>")
-        except:
+        except Exception:
             lines.append(f"⚪ <code>{svc}</code>")
 
     text = "⚙️ <b>Сервисы:</b>\n\n" + "\n".join(lines)
@@ -472,7 +487,7 @@ async def clean_expired(query):
                 if datetime.strptime(expire, "%Y-%m-%d %H:%M") < now:
                     del data["users"][uid]
                     deleted += 1
-            except:
+            except Exception:
                 pass
     save_data(data)
     await query.edit_message_text(f"🧹 Удалено просроченных: <b>{deleted}</b>", parse_mode="HTML")
@@ -508,7 +523,7 @@ async def extend_user_cb(query, uid):
         return
     try:
         current = datetime.strptime(user["expire_date"], "%Y-%m-%d %H:%M")
-    except:
+    except Exception:
         current = datetime.now()
     user["expire_date"] = (current + timedelta(days=30)).strftime("%Y-%m-%d %H:%M")
     save_data(data)
@@ -562,14 +577,25 @@ async def user_info_cb(query, uid):
 def main():
     db.init_db()
     config = load_config()
-    if not config:
-        logger.error("Cannot load config.yaml")
+    
+    # Read Telegram token from environment variable
+    token = os.environ.get("TELEGRAM_TOKEN")
+    if not token:
+        # Fallback to config for backward compatibility
+        token = config.get("telegram", {}).get("token") if config else None
+    if not token:
+        logger.error("Telegram token not found. Set TELEGRAM_TOKEN in .env")
         return
 
-    token = config.get("telegram", {}).get("token")
-    if not token:
-        logger.error("Telegram token not found")
-        return
+    # Read admin IDs from environment variable
+    admin_ids_str = os.environ.get("TELEGRAM_ADMIN_IDS", "")
+    if admin_ids_str:
+        try:
+            admin_ids = [int(x.strip()) for x in admin_ids_str.split(",")]
+            if config:
+                config.setdefault("telegram", {})["admins"] = admin_ids
+        except ValueError:
+            logger.error("Invalid TELEGRAM_ADMIN_IDS format")
 
     app_builder = Application.builder().token(token).build()
 
@@ -612,9 +638,9 @@ def main():
                                 f"📅 До: {expire_str}",
                                 parse_mode="HTML"
                             )
-                        except:
+                        except Exception:
                             pass
-            except:
+            except Exception:
                 pass
 
     job_queue = app_builder.job_queue

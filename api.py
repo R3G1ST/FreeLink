@@ -4,12 +4,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse, Response, HTMLResponse, RedirectResponse
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
-import yaml, os, subprocess, re, json, requests, time, hashlib, secrets, base64, io, sys, tarfile
+import yaml, os, subprocess, re, json, requests, time, hashlib, secrets, base64, io, sys, tarfile, hmac
 from datetime import datetime, timedelta
 import random, string
 import psutil
 import uvicorn
+import bcrypt
+from dotenv import load_dotenv
 import db
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 # ====== PYDANTIC MODELS (for Swagger docs) ======
@@ -53,7 +58,7 @@ class NodeDeploy(BaseModel):
     key: str = Field("", description="SSH private key content")
     name: str = Field("")
     region: str = Field("")
-    panel_url: str = Field("https://link.qmbox.ru")
+    panel_url: str = Field("https://link.qmbox.ru")  # Default, overridden by env
 
 class AdminCreate(BaseModel):
     username: str = Field(..., min_length=3, pattern=r'^[a-zA-Z0-9_]+$')
@@ -134,12 +139,24 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
 )
 
+# CORS configuration - restricted to allowed origins
+ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "https://link.qmbox.ru").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Content-Type", "Authorization"],
 )
+
+# Rate limiting
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 DATA_FILE = "/opt/freelink/data.yaml"
 CONFIG_FILE = "/opt/freelink/config.yaml"
@@ -162,7 +179,23 @@ def save_admins(admins):
         db.save_admin(username, data)
 
 def hash_pw(pw):
-    return hashlib.sha256(pw.encode()).hexdigest()
+    """Hash password with bcrypt (12 rounds)."""
+    return bcrypt.hashpw(pw.encode(), bcrypt.gensalt(rounds=12)).decode()
+
+def verify_pw(pw, hashed):
+    """Verify password against bcrypt or legacy SHA-256 hash."""
+    if not hashed or not pw:
+        return False
+    if is_legacy_hash(hashed):
+        return hashlib.sha256(pw.encode()).hexdigest() == hashed
+    try:
+        return bcrypt.checkpw(pw.encode(), hashed.encode())
+    except Exception:
+        return False
+
+def is_legacy_hash(hashed):
+    """Check if hash is legacy SHA-256 (64 hex chars, no $ prefix)."""
+    return len(hashed) == 64 and not hashed.startswith("$")
 
 def load_sessions():
     return db.load_sessions()
@@ -176,9 +209,9 @@ def audit_log(user, action, details=""):
 
 def create_session(username):
     token = secrets.token_urlsafe(32)
-    sessions = load_sessions()
-    sessions[token] = {"user": username, "created": datetime.now().isoformat(), "expires": (datetime.now() + timedelta(hours=24)).isoformat()}
-    save_sessions(sessions)
+    data = {"user": username, "created": datetime.now().isoformat(),
+            "expires": (datetime.now() + timedelta(hours=24)).isoformat()}
+    db.save_session(token, data)
     return token
 
 def validate_session(token):
@@ -189,24 +222,11 @@ def validate_session(token):
     if not s:
         return None
     if datetime.fromisoformat(s["expires"]) < datetime.now():
-        del sessions[token]
-        save_sessions(sessions)
+        db.delete_session(token)
         return None
     return s["user"]
 
-def load_env():
-    env = {}
-    try:
-        with open("/opt/freelink/.env", 'r') as f:
-            for line in f:
-                if '=' in line and not line.startswith('#'):
-                    key, val = line.strip().split('=', 1)
-                    env[key] = val
-    except:
-        pass
-    return env
-
-API_TOKEN = load_env().get("API_TOKEN", "")
+API_TOKEN = os.environ.get("API_TOKEN", "")
 
 @app.middleware("http")
 async def check_auth(request: Request, call_next):
@@ -220,25 +240,21 @@ async def check_auth(request: Request, call_next):
     if path in ["/api/login", "/api/logout", "/api/auth", "/api/miniapp/auth", "/api/miniapp/login", "/api/miniapp/quick-login", "/form-login"]:
         return await call_next(request)
 
-    # Open API endpoints (no auth needed)
-    open_api = ["/api/status", "/api/online", "/api/server-info", "/api/traffic-history",
-                "/api/services", "/api/hysteria/stats", "/api/live-traffic", "/api/miniapp/",
-                "/api/notifications", "/api/check-expiry", "/api/qr/", "/api/geo/",
-                "/api/node/", "/api/nodes", "/api/client/", "/api/subscriptions", "/api/plans",
-                "/api/nodes/main-info", "/sub/", "/api/user/gen-service-token/", "/api/version"]
-    if any(path.startswith(p) for p in open_api):
+    # Node endpoints (authenticated via node token in body, not session cookie)
+    if path.startswith("/api/node/"):
         return await call_next(request)
 
-    # Self-service portal (no auth)
+    # Truly public endpoints (no auth needed - minimal info only)
+    public_api = ["/api/status", "/api/version", "/api/plans"]
+    if any(path.startswith(p) for p in public_api):
+        return await call_next(request)
+
+    # Self-service portal (token-gated, no session auth)
     if path.startswith("/s/"):
         return await call_next(request)
 
     # Client portal
     if path in ["/client", "/c"] or path.startswith("/client/"):
-        return await call_next(request)
-
-    # WebSocket (skip auth for now)
-    if path == "/ws/live":
         return await call_next(request)
 
     # Check session for all other API and page requests
@@ -257,7 +273,7 @@ def load_config():
     try:
         with open(CONFIG_FILE, 'r') as f:
             return yaml.safe_load(f)
-    except:
+    except Exception:
         return {}
 
 def load_data():
@@ -269,7 +285,7 @@ def save_data(data):
         db.save_user(uid, user_data)
 
 def gen_id():
-    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+    return secrets.token_hex(4)
 
 def get_user(uid):
     return db.get_user(uid)
@@ -292,13 +308,13 @@ def get_user_link(uid, user):
         return user["link"]
 
     config = load_config()
-    h = config.get("hysteria", {})
-    s = config.get("server", {})
-    domain = s.get("domain", "link.qmbox.ru")
+    h = config.get("hysteria", {}) if config else {}
+    s = config.get("server", {}) if config else {}
+    domain = os.environ.get("DOMAIN", s.get("domain", "link.qmbox.ru"))
     port = 443
     name = user.get("name", uid)
-    password = user.get("password", h.get("user_password", ""))
-    obfs = h.get("obfs_password", "")
+    password = user.get("password", os.environ.get("HYSTERIA_USER_PASSWORD", ""))
+    obfs = os.environ.get("HYSTERIA_OBFS_PASSWORD", "")
 
     if obfs:
         return f"hysteria2://{name}:{password}@{domain}:{port}?sni={domain}&obfs=salamander&obfs-password={obfs}&insecure=0#{name}"
@@ -310,7 +326,7 @@ def get_hysteria_stats():
         if response.status_code == 200:
             return response.json()
         return None
-    except:
+    except Exception:
         return None
 
 def find_online_user(online_status, username):
@@ -329,7 +345,7 @@ def get_online_status():
             try:
                 last = datetime.fromisoformat(node.get("last_seen", ""))
                 is_online = (datetime.now() - last).total_seconds() < 120
-            except:
+            except Exception:
                 is_online = False
             if not is_online:
                 continue
@@ -361,34 +377,29 @@ def get_server_info():
         info["net_recv_gb"] = round(net.bytes_recv / (1024**3), 2)
         uptime = subprocess.run(["uptime", "-p"], capture_output=True, text=True, timeout=3)
         info["uptime"] = uptime.stdout.strip().replace("up ", "") if uptime.returncode == 0 else "?"
-    except:
+    except Exception:
         pass
     return info
 
 # ====== AUTH ======
 
 @app.post("/api/auth")
+@limiter.limit("5/minute")
 async def auth_user(request: Request):
     try:
         data = await request.json()
         auth_password = data.get("auth")
-        config = load_config()
-        h = config.get("hysteria", {})
-        user_password = h.get("user_password", "")
 
         if ':' in (auth_password or ''):
             username, password = auth_password.split(':', 1)
             users = get_all_users()
             for uid, user in users.items():
-                if user.get("name") == username and user.get("password") == password:
+                if user.get("name") == username and hmac.compare_digest(user.get("password", ""), password):
                     return JSONResponse(status_code=200, content={"ok": True, "id": username})
-
-        if auth_password == user_password:
-            return JSONResponse(status_code=200, content={"ok": True})
 
         return JSONResponse(status_code=401, content={"error": "Invalid credentials"})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        return JSONResponse(status_code=500, content={"error": "Internal server error"})
 
 # ====== MINI APP ======
 
@@ -397,23 +408,26 @@ async def miniapp_page():
     with open("/opt/freelink/web/miniapp.html", "r") as f:
         content = f.read()
     return HTMLResponse(content=content, headers={
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        "Access-Control-Allow-Origin": "*"
+        "Cache-Control": "no-cache, no-store, must-revalidate"
     })
 
 @app.get("/app/{token}")
 async def miniapp_page_token(token: str):
-    """Mini app with token in URL — sets cookie and serves page."""
+    """Mini app with token in URL — validates token and sets cookie."""
+    # Validate that the token is a real session before setting cookie
+    sessions = load_sessions()
+    if token not in sessions:
+        return RedirectResponse(url="/app?error=invalid_token", status_code=302)
     with open("/opt/freelink/web/miniapp.html", "r") as f:
         content = f.read()
     resp = HTMLResponse(content=content, headers={
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        "Access-Control-Allow-Origin": "*"
+        "Cache-Control": "no-cache, no-store, must-revalidate"
     })
-    resp.set_cookie("session", token, max_age=86400, httponly=True, samesite="none")
+    resp.set_cookie("session", token, max_age=86400, httponly=True, secure=True, samesite="lax")
     return resp
 
 @app.post("/form-login")
+@limiter.limit("5/minute")
 async def form_login(request: Request):
     """Traditional form POST login — no JS required."""
     from starlette.formparsers import MultiPartParser
@@ -424,30 +438,62 @@ async def form_login(request: Request):
         return RedirectResponse(url="/app?error=empty", status_code=302)
     admins = load_admins()
     admin = admins.get(username)
-    if not admin or admin["password_hash"] != hash_pw(password):
+    if not admin or not verify_pw(password, admin["password_hash"]):
         return RedirectResponse(url="/app?error=bad", status_code=302)
     token = create_session(username)
     audit_log(username, "MINIAPP_LOGIN", "method=form")
     resp = RedirectResponse(url=f"/app/{token}", status_code=302)
-    resp.set_cookie("session", token, max_age=86400, httponly=True, samesite="none")
+    resp.set_cookie("session", token, max_age=86400, httponly=True, secure=True, samesite="lax")
     return resp
 
 @app.post("/api/miniapp/auth")
+@limiter.limit("5/minute")
 async def miniapp_auth(request: Request):
     data = await request.json()
     init_data = data.get("initData", "")
     if not init_data:
         return JSONResponse(status_code=400, content={"error": "Нет данных"})
-    from urllib.parse import unquote
-    decoded = unquote(init_data)
-    params = dict(item.split("=", 1) for item in decoded.split("&") if "=" in item)
-    user_json = params.get("user", "{}")
+
+    # Verify Telegram HMAC signature
+    bot_token = os.environ.get("TELEGRAM_TOKEN", "")
+    if bot_token:
+        from urllib.parse import unquote
+        decoded = unquote(init_data)
+        pairs = decoded.split("&")
+        # Extract hash and build data_check_string
+        received_hash = None
+        data_check_pairs = []
+        for pair in pairs:
+            if "=" not in pair:
+                continue
+            key, val = pair.split("=", 1)
+            if key == "hash":
+                received_hash = val
+            else:
+                data_check_pairs.append(pair)
+        if not received_hash:
+            return JSONResponse(status_code=401, content={"error": "Missing hash"})
+        data_check_string = "\n".join(sorted(data_check_pairs))
+        secret_key = hmac.new("WebAppData".encode(), bot_token.encode(), hashlib.sha256).digest()
+        expected_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(expected_hash, received_hash):
+            audit_log("unknown", "MINIAPP_AUTH_FAILED", "invalid_signature")
+            return JSONResponse(status_code=401, content={"error": "Invalid signature"})
+        # Parse user data after successful verification
+        params = dict(item.split("=", 1) for item in pairs if "=" in item and item.split("=", 1)[0] != "hash")
+        user_json = params.get("user", "{}")
+    else:
+        from urllib.parse import unquote
+        decoded = unquote(init_data)
+        params = dict(item.split("=", 1) for item in decoded.split("&") if "=" in item)
+        user_json = params.get("user", "{}")
+
     try:
         user_data = json.loads(user_json)
         username = user_data.get("username", "")
         user_id = user_data.get("id", 0)
         first_name = user_data.get("first_name", "")
-    except:
+    except Exception:
         username = ""
         user_id = 0
         first_name = ""
@@ -455,10 +501,11 @@ async def miniapp_auth(request: Request):
     token = create_session(f"tg:{display_name}")
     audit_log(f"tg:{display_name}", "MINIAPP_LOGIN", f"tg_id={user_id}")
     resp = JSONResponse(content={"success": True, "username": display_name})
-    resp.set_cookie("session", token, max_age=86400, httponly=True, samesite="lax")
+    resp.set_cookie("session", token, max_age=86400, httponly=True, secure=True, samesite="lax")
     return resp
 
 @app.post("/api/miniapp/login")
+@limiter.limit("5/minute")
 async def miniapp_login(request: Request):
     data = await request.json()
     username = data.get("username", "").strip()
@@ -467,13 +514,13 @@ async def miniapp_login(request: Request):
         return JSONResponse(status_code=400, content={"error": "Заполните все поля"})
     admins = load_admins()
     admin = admins.get(username)
-    if not admin or admin["password_hash"] != hash_pw(password):
+    if not admin or not verify_pw(password, admin["password_hash"]):
         audit_log(username or "unknown", "MINIAPP_LOGIN_FAILED")
         return JSONResponse(status_code=401, content={"error": "Неверный логин или пароль"})
     token = create_session(username)
     audit_log(username, "MINIAPP_LOGIN", "method=password")
     resp = JSONResponse(content={"success": True, "username": username, "token": token})
-    resp.set_cookie("session", token, max_age=86400, httponly=True, samesite="none")
+    resp.set_cookie("session", token, max_age=86400, httponly=True, secure=True, samesite="lax")
     return resp
 
 @app.get("/api/miniapp/quick-login")
@@ -483,12 +530,12 @@ async def miniapp_quick_login(username: str = "", password: str = ""):
         return RedirectResponse(url="/app")
     admins = load_admins()
     admin = admins.get(username)
-    if not admin or admin["password_hash"] != hash_pw(password):
+    if not admin or not verify_pw(password, admin["password_hash"]):
         return RedirectResponse(url="/app?error=1")
     token = create_session(username)
     audit_log(username, "MINIAPP_LOGIN", "method=quick-login")
     resp = RedirectResponse(url=f"/app/{token}")
-    resp.set_cookie("session", token, max_age=86400, httponly=True, samesite="none")
+    resp.set_cookie("session", token, max_age=86400, httponly=True, secure=True, samesite="lax")
     return resp
 
 @app.get("/api/miniapp/status")
@@ -496,7 +543,7 @@ async def miniapp_status():
     try:
         result = subprocess.run(["/usr/bin/systemctl", "is-active", "hysteria-server"], capture_output=True, text=True, timeout=5)
         return {"status": "active" if result.stdout.strip() == "active" else "inactive"}
-    except:
+    except Exception:
         return {"status": "unknown"}
 
 @app.get("/api/miniapp/users")
@@ -570,7 +617,7 @@ async def miniapp_server_info():
             if hours > 0: parts.append(f"{hours} ч")
             parts.append(f"{mins} мин")
             info["uptime"] = ", ".join(parts)
-        except:
+        except Exception:
             info["uptime"] = "?"
     except Exception as e:
         info["error"] = str(e)
@@ -585,7 +632,7 @@ async def miniapp_traffic_history(hours: int = 1):
             history = json.load(f)
         cutoff = (datetime.now() - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M")
         return {"history": [h for h in history if h["time"] >= cutoff]}
-    except:
+    except Exception:
         return {"history": []}
 
 @app.get("/api/miniapp/live-traffic")
@@ -621,7 +668,7 @@ async def miniapp_nodes():
             try:
                 last = datetime.fromisoformat(node.get("last_seen", ""))
                 is_online = (now - last).total_seconds() < 120
-            except:
+            except Exception:
                 is_online = False
         node["id"] = nid
         node["is_online"] = is_online
@@ -636,7 +683,7 @@ async def miniapp_deploy_node(request: Request):
     username = data.get("username", "").strip()
     password = data.get("password", "")
     node_name = data.get("name", host).strip()
-    panel_url = data.get("panel_url", "https://link.qmbox.ru")
+    panel_url = data.get("panel_url", f"https://{os.environ.get('DOMAIN', 'link.qmbox.ru')}")
 
     if not host or not username:
         return JSONResponse(status_code=400, content={"error": "host и username обязательны"})
@@ -647,7 +694,7 @@ async def miniapp_deploy_node(request: Request):
 
     def _do_deploy():
         ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.set_missing_host_key_policy(paramiko.WarningPolicy())
         try:
             ssh.connect(hostname=host, port=port, username=username, password=password, timeout=15)
         except Exception as e:
@@ -690,7 +737,7 @@ auth:
 obfs:
   type: salamander
   salamander:
-    password: "X7kM9wQ2pL5vR8nC3sF6hJ1tB4dG0aN"
+    password: "{os.environ.get('HYSTERIA_OBFS_PASSWORD', '')}"
 trafficStats:
   listen: 127.0.0.1:9999
 quic:
@@ -768,7 +815,7 @@ async def miniapp_services():
         try:
             r = subprocess.run(["/usr/bin/systemctl", "is-active", svc], capture_output=True, text=True, timeout=3)
             result.append({"name": svc, "active": r.stdout.strip() == "active"})
-        except:
+        except Exception:
             result.append({"name": svc, "active": False})
     return {"services": result}
 
@@ -828,7 +875,7 @@ async def miniapp_extend_user(uid: str, days: int = 30):
         raise HTTPException(status_code=404, detail="Not found")
     try:
         current = datetime.strptime(user["expire_date"], "%Y-%m-%d %H:%M")
-    except:
+    except Exception:
         current = datetime.now()
     user["expire_date"] = (current + timedelta(days=days)).strftime("%Y-%m-%d %H:%M")
     save_user(uid, user)
@@ -843,19 +890,20 @@ async def miniapp_delete_user(uid: str):
 # ====== PAGES ======
 
 @app.post("/api/login")
+@limiter.limit("5/minute")
 async def login(request: Request):
     data = await request.json()
     username = data.get("username", "")
     password = data.get("password", "")
     admins = load_admins()
     admin = admins.get(username)
-    if not admin or admin["password_hash"] != hash_pw(password):
+    if not admin or not verify_pw(password, admin["password_hash"]):
         audit_log(username or "unknown", "LOGIN_FAILED")
         return JSONResponse(status_code=401, content={"error": "Неверный логин или пароль"})
     token = create_session(username)
     audit_log(username, "LOGIN")
     resp = JSONResponse(content={"success": True, "username": username})
-    resp.set_cookie("session", token, max_age=86400, httponly=True, samesite="lax")
+    resp.set_cookie("session", token, max_age=86400, httponly=True, secure=True, samesite="lax")
     return resp
 
 @app.post("/api/logout")
@@ -864,9 +912,7 @@ async def logout(request: Request):
     if token:
         sessions = load_sessions()
         user = sessions.get(token, {}).get("user", "?")
-        if token in sessions:
-            del sessions[token]
-            save_sessions(sessions)
+        db.delete_session(token)
         audit_log(user, "LOGOUT")
     resp = JSONResponse(content={"success": True})
     resp.delete_cookie("session")
@@ -895,7 +941,7 @@ async def change_password(request: Request):
         return JSONResponse(status_code=400, content={"error": "Минимум 6 символов"})
     admins = load_admins()
     admin = admins.get(user)
-    if not admin or admin["password_hash"] != hash_pw(old_pw):
+    if not admin or not verify_pw(old_pw, admin["password_hash"]):
         return JSONResponse(status_code=400, content={"error": "Неверный текущий пароль"})
     admins[user]["password_hash"] = hash_pw(new_pw)
     save_admins(admins)
@@ -918,7 +964,7 @@ async def change_username(request: Request):
     admins = load_admins()
     if new_name in admins:
         return JSONResponse(status_code=400, content={"error": "Логин уже занят"})
-    if not admins.get(user) or admins[user]["password_hash"] != hash_pw(password):
+    if not admins.get(user) or not verify_pw(password, admins[user]["password_hash"]):
         return JSONResponse(status_code=400, content={"error": "Неверный пароль"})
     admins[new_name] = admins.pop(user)
     save_admins(admins)
@@ -1027,7 +1073,7 @@ async def get_audit(request: Request):
         with open(AUDIT_FILE, 'r') as f:
             lines = f.readlines()[-200:]
         return {"logs": "".join(lines)}
-    except:
+    except Exception:
         return {"logs": ""}
 
 @app.get("/")
@@ -1055,7 +1101,7 @@ async def get_language():
         with open(CONFIG_FILE, 'r') as f:
             cfg = yaml.safe_load(f) or {}
         return {"language": cfg.get("language", "ru")}
-    except:
+    except Exception:
         return {"language": "ru"}
 
 @app.get("/api/version")
@@ -1089,9 +1135,10 @@ async def get_status():
         users = get_all_users()
         online = get_online_status()
         online_count = sum(1 for u in online.values() if u.get("online"))
+        config = load_config()
         return {
-            "server": "Польша",
-            "domain": "link.qmbox.ru",
+            "server": config.get("server", {}).get("name", "Польша") if config else "Польша",
+            "domain": os.environ.get("DOMAIN", "link.qmbox.ru"),
             "status": status,
             "total_users": len(users),
             "active_users": sum(1 for u in users.values() if u.get("active", True)),
@@ -1200,6 +1247,7 @@ async def get_user_endpoint(uid: str):
         "link": link,
         "online": user_online.get("online", False),
         "last_seen": user_online.get("last_active", ""),
+        "ip": user.get("ip", ""),
         "traffic": traffic,
         "traffic_limit": traffic_limit,
         "traffic_used": total_mb,
@@ -1250,7 +1298,7 @@ async def extend_user(uid: str, days: int = 30):
         raise HTTPException(status_code=404, detail="User not found")
     try:
         current = datetime.strptime(user["expire_date"], "%Y-%m-%d %H:%M")
-    except:
+    except Exception:
         current = datetime.now()
     new_expire = current + timedelta(days=days)
     user["expire_date"] = new_expire.strftime("%Y-%m-%d %H:%M")
@@ -1318,7 +1366,7 @@ async def bulk_extend(request: Request):
         if user:
             try:
                 current = datetime.strptime(user["expire_date"], "%Y-%m-%d %H:%M")
-            except:
+            except Exception:
                 current = datetime.now()
             user["expire_date"] = (current + timedelta(days=days)).strftime("%Y-%m-%d %H:%M")
             save_user(uid, user)
@@ -1345,7 +1393,7 @@ async def bulk_speed_limit(request: Request):
                 ["/opt/freelink/venv/bin/python3", "/opt/freelink/speed_limiter.py"],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
             )
-        except:
+        except Exception:
             pass
     audit_log("admin", "BULK_SPEED_LIMIT", f"users={updated} speed={speed_mbps}Mbps")
     return {"updated": updated}
@@ -1376,7 +1424,7 @@ async def get_plans():
 async def create_plan(request: Request):
     data = await request.json()
     plans = load_plans()
-    plan_id = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+    plan_id = secrets.token_hex(3)
     plan = {
         "id": plan_id,
         "name": data.get("name", "Новый план"),
@@ -1458,13 +1506,12 @@ async def export_users(fmt: str = "json"):
             "active": user.get("active", True),
             "created": user.get("created", ""),
             "expire_date": user.get("expire_date", ""),
-            "password": user.get("password", ""),
             "traffic_limit": user.get("traffic_limit", 0),
             "link": user.get("link", "")
         })
     if fmt == "csv":
         if not result:
-            return Response(content="id,name,active,created,expire_date,password,traffic_limit,link\n", media_type="text/csv")
+            return Response(content="id,name,active,created,expire_date,traffic_limit,link\n", media_type="text/csv")
         headers = result[0].keys()
         lines = [",".join(str(h) for h in headers)]
         for row in result:
@@ -1484,7 +1531,7 @@ async def get_services():
         try:
             r = subprocess.run(["/usr/bin/systemctl", "is-active", svc], capture_output=True, text=True, timeout=3)
             active = r.stdout.strip() == "active"
-        except:
+        except Exception:
             active = False
         result.append({"name": svc, "active": active})
     return {"services": result}
@@ -1513,7 +1560,7 @@ def record_traffic_snapshot():
         try:
             with open(TRAFFIC_HISTORY_FILE, 'r') as f:
                 history = json.load(f)
-        except:
+        except Exception:
             pass
 
     entry = {
@@ -1543,52 +1590,82 @@ async def traffic_history(hours: int = 24):
         cutoff = (datetime.now() - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M")
         filtered = [h for h in history if h["time"] >= cutoff]
         return {"history": filtered}
-    except:
+    except Exception:
         return {"history": []}
 
 # ====== CLEANUP ======
 
 @app.post("/api/clean")
-async def clean_expired():
+async def clean_expired(request: Request):
+    token = request.cookies.get("session")
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    admins = load_admins()
+    if admins.get(user, {}).get("role") not in ("admin", "editor"):
+        return JSONResponse(status_code=403, content={"error": "Insufficient permissions"})
     users = get_all_users()
     deleted = 0
-    for uid, user in list(users.items()):
-        expire = user.get("expire_date", "")
+    for uid, user_data in list(users.items()):
+        expire = user_data.get("expire_date", "")
         if expire and expire != "2099-12-31 23:59":
             try:
                 if datetime.strptime(expire, "%Y-%m-%d %H:%M") < datetime.now():
                     delete_user(uid)
                     deleted += 1
-            except:
+            except Exception:
                 pass
+    audit_log(user, "CLEAN_EXPIRED", f"deleted={deleted}")
     return {"deleted": deleted}
 
 # ====== SERVER ======
 
 @app.get("/api/restart")
-async def restart_server():
+async def restart_server(request: Request):
+    token = request.cookies.get("session")
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    admins = load_admins()
+    if admins.get(user, {}).get("role") != "admin":
+        return JSONResponse(status_code=403, content={"error": "Admin only"})
     try:
         subprocess.run(["/usr/bin/systemctl", "restart", "hysteria-server"], check=True)
+        audit_log(user, "RESTART_SERVER")
         return {"success": True}
     except Exception as e:
-        return {"error": str(e)}
+        return JSONResponse(status_code=500, content={"error": "Restart failed"})
 
 @app.get("/api/logs")
-async def get_logs():
+async def get_logs(request: Request):
+    token = request.cookies.get("session")
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    admins = load_admins()
+    if admins.get(user, {}).get("role") not in ("admin", "editor"):
+        return JSONResponse(status_code=403, content={"error": "Insufficient permissions"})
     try:
         result = subprocess.run(["/usr/bin/journalctl", "-u", "hysteria-server", "-n", "100", "--no-pager"], capture_output=True, text=True)
         return {"logs": result.stdout}
-    except Exception as e:
-        return {"error": str(e)}
+    except Exception:
+        return JSONResponse(status_code=500, content={"error": "Failed to read logs"})
 
 @app.get("/api/logs/all")
-async def get_all_logs():
+async def get_all_logs(request: Request):
+    token = request.cookies.get("session")
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    admins = load_admins()
+    if admins.get(user, {}).get("role") != "admin":
+        return JSONResponse(status_code=403, content={"error": "Admin only"})
     try:
         lines = int(500)
         result = subprocess.run(["/usr/bin/journalctl", "-u", "hysteria-server", "-n", str(lines), "--no-pager"], capture_output=True, text=True)
         return {"logs": result.stdout}
-    except Exception as e:
-        return {"error": str(e)}
+    except Exception:
+        return JSONResponse(status_code=500, content={"error": "Failed to read logs"})
 
 # ====== ONLINE ======
 
@@ -1668,7 +1745,8 @@ async def get_qr(uid: str):
     if not service_token:
         service_token = secrets.token_urlsafe(24)
         db.save_user(uid, {**user, "service_token": service_token})
-    portal_url = f"https://link.qmbox.ru/sub/{service_token}"
+    domain = os.environ.get("DOMAIN", "link.qmbox.ru")
+    portal_url = f"https://{domain}/sub/{service_token}"
     link = get_user_link(uid, user)
     if not HAS_QR:
         return JSONResponse(status_code=500, content={"error": "qrcode not installed"})
@@ -1692,6 +1770,12 @@ GEOIP_CACHE = {}
 def geo_lookup(ip: str) -> dict:
     if not ip or ip in ("127.0.0.1", "::1", ""):
         return {"country": "", "city": "", "org": ""}
+    # Validate IP address to prevent SSRF
+    import ipaddress
+    try:
+        ipaddress.ip_address(ip)
+    except ValueError:
+        return {"country": "", "city": "", "org": ""}
     if ip in GEOIP_CACHE:
         return GEOIP_CACHE[ip]
     try:
@@ -1706,7 +1790,7 @@ def geo_lookup(ip: str) -> dict:
             }
             GEOIP_CACHE[ip] = result
             return result
-    except:
+    except Exception:
         pass
     return {"country": "", "city": "", "org": ""}
 
@@ -1735,7 +1819,7 @@ async def set_speed_limit(uid: str, request: Request):
             ["/opt/freelink/venv/bin/python3", "/opt/freelink/speed_limiter.py"],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
         )
-    except:
+    except Exception:
         pass
     audit_log("admin", "SPEED_LIMIT_CHANGED", f"uid={uid} speed={speed_mbps}Mbps")
     return {"success": True, "speed_mbps": speed_mbps}
@@ -1910,7 +1994,7 @@ def get_hysteria_local_version():
         m = _re.search(r"Version:\s*v?([\d.]+)", r.stdout)
         if m:
             return "v" + m.group(1)
-    except:
+    except Exception:
         pass
     return None
 
@@ -1924,7 +2008,7 @@ def get_hysteria_remote_version():
             if "/" in tag:
                 tag = tag.rsplit("/", 1)[-1]
             return tag if tag.startswith("v") else "v" + tag
-    except:
+    except Exception:
         pass
     return None
 
@@ -2027,6 +2111,11 @@ async def hysteria_update_status_ep(request: Request):
 # ====== BACKUP & RESTORE ======
 
 BACKUP_DIR = "/opt/freelink/backups"
+
+def _validate_backup_name(name: str) -> bool:
+    """Validate backup name to prevent path traversal."""
+    import re
+    return bool(re.match(r'^[a-zA-Z0-9_\-]+\.tar\.gz$', name))
 BACKUP_FILES = ["data.yaml", "admins.json", "config.yaml", "nodes.json",
                 "plans.json", "subscriptions.json"]
 
@@ -2066,9 +2155,13 @@ async def create_backup(request: Request):
         with tarfile.open(backup_path, "w:gz") as tar:
             # PostgreSQL dump
             pg_dump_path = f"/tmp/freelink_pg_{ts}.sql"
+            pg_user = os.environ.get("PG_USER", "freelink")
+            pg_pass = os.environ.get("PG_PASS", "")
+            pg_host = os.environ.get("PG_HOST", "127.0.0.1")
+            pg_db = os.environ.get("PG_DB", "freelink_db")
             r = subprocess.run(
-                ["/usr/bin/pg_dump", "-U", "freelink", "-h", "127.0.0.1", "freelink_db"],
-                capture_output=True, text=True, timeout=60, env={**os.environ, "PGPASSWORD": "freelink_pass"})
+                ["/usr/bin/pg_dump", "-U", pg_user, "-h", pg_host, pg_db],
+                capture_output=True, text=True, timeout=60, env={**os.environ, "PGPASSWORD": pg_pass})
             if r.returncode == 0 and r.stdout:
                 with open(pg_dump_path, "w") as f:
                     f.write(r.stdout)
@@ -2096,6 +2189,8 @@ async def restore_backup(request: Request):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     data = await request.json()
     name = data.get("name", "")
+    if not _validate_backup_name(name):
+        return JSONResponse(status_code=400, content={"error": "Invalid backup name"})
     backup_path = os.path.join(BACKUP_DIR, name)
     if not os.path.exists(backup_path):
         return JSONResponse(status_code=404, content={"error": "Backup not found"})
@@ -2113,18 +2208,25 @@ async def restore_backup(request: Request):
         with tarfile.open(backup_path, "r:gz") as tar:
             for member in tar.getmembers():
                 basename = member.name
+                # Security: reject path traversal attempts in tar members
+                if ".." in basename or basename.startswith("/") or "\\" in basename:
+                    continue
                 if basename == "freelink_db.sql":
                     # Restore PostgreSQL from dump
                     tar.extract(member, "/tmp")
                     sql_path = f"/tmp/freelink_db.sql"
                     # Drop and recreate
-                    subprocess.run(["/usr/bin/psql", "-U", "freelink", "-h", "127.0.0.1", "-d", "freelink_db",
+                    pg_user = os.environ.get("PG_USER", "freelink")
+                    pg_pass = os.environ.get("PG_PASS", "")
+                    pg_host = os.environ.get("PG_HOST", "127.0.0.1")
+                    pg_db = os.environ.get("PG_DB", "freelink_db")
+                    subprocess.run(["/usr/bin/psql", "-U", pg_user, "-h", pg_host, "-d", pg_db,
                                    "-c", "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"],
-                                  capture_output=True, timeout=30, env={**os.environ, "PGPASSWORD": "freelink_pass"})
-                    r = subprocess.run(["/usr/bin/psql", "-U", "freelink", "-h", "127.0.0.1", "-d", "freelink_db",
+                                  capture_output=True, timeout=30, env={**os.environ, "PGPASSWORD": pg_pass})
+                    r = subprocess.run(["/usr/bin/psql", "-U", pg_user, "-h", pg_host, "-d", pg_db,
                                        "-f", sql_path],
                                       capture_output=True, text=True, timeout=60,
-                                      env={**os.environ, "PGPASSWORD": "freelink_pass"})
+                                      env={**os.environ, "PGPASSWORD": pg_pass})
                     os.unlink(sql_path)
                     if r.returncode != 0:
                         audit_log(user, "BACKUP_RESTORE_WARNING", f"pg_restore: {r.stderr[:200]}")
@@ -2145,6 +2247,8 @@ async def delete_backup(name: str, request: Request):
     user = validate_session(token)
     if not user:
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    if not _validate_backup_name(name):
+        return JSONResponse(status_code=400, content={"error": "Invalid backup name"})
     backup_path = os.path.join(BACKUP_DIR, name)
     if not os.path.exists(backup_path):
         return JSONResponse(status_code=404, content={"error": "Not found"})
@@ -2158,6 +2262,8 @@ async def download_backup(name: str, request: Request):
     user = validate_session(token)
     if not user:
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    if not _validate_backup_name(name):
+        return JSONResponse(status_code=400, content={"error": "Invalid backup name"})
     backup_path = os.path.join(BACKUP_DIR, name)
     if not os.path.exists(backup_path):
         return JSONResponse(status_code=404, content={"error": "Not found"})
@@ -2170,7 +2276,7 @@ def get_local_version():
     try:
         with open(VERSION_FILE, "r") as f:
             return f.read().strip()
-    except:
+    except Exception:
         return "unknown"
 
 def get_remote_version():
@@ -2179,7 +2285,7 @@ def get_remote_version():
                          timeout=10, headers={"Accept": "application/vnd.github.v3.raw"})
         if r.status_code == 200:
             return r.text.strip()
-    except:
+    except Exception:
         pass
     return None
 
@@ -2189,7 +2295,7 @@ def get_remote_changelog():
                          timeout=10, headers={"Accept": "application/vnd.github.v3.raw"})
         if r.status_code == 200:
             return r.text[:2000]
-    except:
+    except Exception:
         pass
     return ""
 
@@ -2298,6 +2404,13 @@ ws_clients = set()
 
 @app.websocket("/ws/live")
 async def websocket_live(websocket: WebSocket):
+    # Authenticate WebSocket connection
+    token = websocket.query_params.get("token", "")
+    user = validate_session(token)
+    if not user:
+        await websocket.close(code=4001, reason="Unauthorized")
+        return
+    
     await websocket.accept()
     ws_clients.add(websocket)
     try:
@@ -2321,7 +2434,7 @@ async def websocket_live(websocket: WebSocket):
             await asyncio.sleep(2)
     except WebSocketDisconnect:
         ws_clients.discard(websocket)
-    except:
+    except Exception:
         ws_clients.discard(websocket)
 
 import asyncio
@@ -2348,7 +2461,7 @@ async def broadcast_update():
     for ws in ws_clients:
         try:
             await ws.send_json({"traffic": traffic, "online": online_count, "time": time.strftime("%H:%M:%S")})
-        except:
+        except Exception:
             dead.add(ws)
     ws_clients -= dead
 
@@ -2361,7 +2474,7 @@ def load_notifications():
         try:
             with open(NOTIFICATIONS_FILE, "r") as f:
                 return json.load(f)
-        except:
+        except Exception:
             pass
     return []
 
@@ -2413,7 +2526,7 @@ async def check_expiry():
                 add_notification("warning", f"У {user.get('name', uid)} истекает через {days_left} дн.", f"uid={uid}")
             elif days_left < 0:
                 add_notification("danger", f"Подписка {user.get('name', uid)} истекла.", f"uid={uid}")
-        except:
+        except Exception:
             pass
     return {"expiring": expiring}
 
@@ -2467,7 +2580,7 @@ async def miniapp_widgets():
         try:
             if user.get("expire_date") and datetime.strptime(user["expire_date"], "%Y-%m-%d %H:%M") < now:
                 expired += 1
-        except:
+        except Exception:
             pass
     return {
         "server": info,
@@ -2479,7 +2592,7 @@ def check_hysteria_sync():
     try:
         r = subprocess.run(["/usr/bin/systemctl", "is-active", "hysteria-server"], capture_output=True, text=True, timeout=5)
         return r.stdout.strip() == "active"
-    except:
+    except Exception:
         return False
 
 # ===================================================================
@@ -2496,7 +2609,7 @@ async def deploy_node(request: Request):
     key_content = data.get("key", "")
     node_name = data.get("name", host).strip()
     node_region = data.get("region", "")
-    panel_url = data.get("panel_url", "https://link.qmbox.ru")
+    panel_url = data.get("panel_url", f"https://{os.environ.get('DOMAIN', 'link.qmbox.ru')}")
 
     if not host or not username:
         return JSONResponse(status_code=400, content={"error": "host и username обязательны"})
@@ -2507,7 +2620,7 @@ async def deploy_node(request: Request):
 
     def _do_deploy():
         ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.set_missing_host_key_policy(paramiko.WarningPolicy())
         try:
             connect_kwargs = {"hostname": host, "port": port, "username": username, "timeout": 15}
             if key_content:
@@ -2599,7 +2712,7 @@ auth:
 obfs:
   type: salamander
   salamander:
-    password: "X7kM9wQ2pL5vR8nC3sF6hJ1tB4dG0aN"
+    password: "{os.environ.get('HYSTERIA_OBFS_PASSWORD', '')}"
 trafficStats:
   listen: 127.0.0.1:9999
 quic:
@@ -2787,11 +2900,19 @@ async def get_agent_script():
     with open("/opt/freelink/node_agent.py", "r") as f:
         return Response(content=f.read(), media_type="text/plain")
 
-# Serve TLS certificates for nodes
+# Serve TLS certificates for nodes (requires valid node token)
 @app.get("/api/node/cert")
-async def get_cert():
+async def get_cert(request: Request, token: str = ""):
     import tarfile, tempfile
-    cert_dir = "/etc/letsencrypt/live/link.qmbox.ru"
+    
+    # Authenticate: require a valid node token
+    nodes = load_nodes()
+    valid_tokens = [n.get("token") for n in nodes.values() if n.get("token")]
+    if not token or token not in valid_tokens:
+        raise HTTPException(status_code=403, detail="Invalid or missing node token")
+    
+    domain = os.environ.get("DOMAIN", "link.qmbox.ru")
+    cert_dir = f"/etc/letsencrypt/live/{domain}"
     if not os.path.exists(cert_dir):
         return JSONResponse(status_code=404, content={"error": "No certs found"})
     tmp = tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False)
@@ -2819,7 +2940,7 @@ def load_panel_config():
     try:
         with open(CONFIG_FILE, "r") as f:
             return yaml.safe_load(f) or {}
-    except:
+    except Exception:
         return {}
 
 CERT_HASH_CACHE = ""
@@ -2831,13 +2952,14 @@ def get_cert_hash():
         return CERT_HASH_CACHE
     try:
         import subprocess
-        cert_path = "/etc/letsencrypt/live/link.qmbox.ru/fullchain.pem"
+        domain = os.environ.get("DOMAIN", "link.qmbox.ru")
+        cert_path = f"/etc/letsencrypt/live/{domain}/fullchain.pem"
         cmd = f"openssl x509 -in {cert_path} -noout -pubkey | openssl pkey -pubin -outform der 2>/dev/null | openssl dgst -sha256 -binary | base64"
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=5)
         if result.returncode == 0 and result.stdout.strip():
             CERT_HASH_CACHE = result.stdout.strip()
             return CERT_HASH_CACHE
-    except:
+    except Exception:
         pass
     # Fallback: hardcoded hash
     return "8WTwYZZpI9MjrSYzZkMNItepQn03XsdMZM0hT1iJO2s="
@@ -2845,14 +2967,13 @@ def get_cert_hash():
 def ensure_main_node():
     nodes = load_nodes()
     cfg = load_panel_config()
-    srv = cfg.get("server", {})
-    h = cfg.get("hysteria", {})
+    srv = cfg.get("server", {}) if cfg else {}
     # Ensure all nodes have domain field
     for nid, node in nodes.items():
         if "domain" not in node:
             node["domain"] = node.get("ip", "")
     if MAIN_NODE_ID in nodes:
-        nodes[MAIN_NODE_ID]["domain"] = h.get("domain", "link.qmbox.ru")
+        nodes[MAIN_NODE_ID]["domain"] = os.environ.get("DOMAIN", "link.qmbox.ru")
         nodes[MAIN_NODE_ID]["name"] = srv.get("name", "Основной")
         nodes[MAIN_NODE_ID]["ip"] = srv.get("ip", "127.0.0.1")
         nodes[MAIN_NODE_ID]["last_seen"] = datetime.now().isoformat()
@@ -2865,14 +2986,14 @@ def ensure_main_node():
                 traffic = r.json()
                 nodes[MAIN_NODE_ID]["online_usernames"] = list(traffic.keys())
                 nodes[MAIN_NODE_ID]["online_users"] = len(traffic)
-        except:
+        except Exception:
             pass
         save_nodes(nodes)
         return
     nodes[MAIN_NODE_ID] = {
         "name": srv.get("name", "Основной"),
-        "ip": srv.get("ip", "127.0.0.1"),
-        "domain": h.get("domain", "link.qmbox.ru"),
+        "ip": os.environ.get("SERVER_IP", "127.0.0.1"),
+        "domain": os.environ.get("DOMAIN", "link.qmbox.ru"),
         "token": gen_node_token(),
         "status": "online",
         "created": datetime.now().isoformat(),
@@ -2906,6 +3027,11 @@ async def node_register(request: Request):
     name = data.get("name", "").strip()
     ip = data.get("ip", "").strip()
     api_key = data.get("api_key", "")
+    # Validate API key
+    expected_key = os.environ.get("NODE_API_KEY", "")
+    if not expected_key or api_key != expected_key:
+        audit_log("node:" + name, "REGISTER_FAILED", "invalid_api_key")
+        return JSONResponse(status_code=403, content={"error": "Invalid API key"})
     if not name or not ip:
         return JSONResponse(status_code=400, content={"error": "name and ip required"})
     nodes = load_nodes()
@@ -3040,7 +3166,7 @@ async def list_nodes():
                 info["traffic_sent"] = round(net.bytes_sent / (1024**2))
                 info["traffic_recv"] = round(net.bytes_recv / (1024**2))
                 info["hysteria_status"] = "active"
-            except:
+            except Exception:
                 info = {}
             # Count users from data.yaml
             users_data = load_data().get("users", {})
@@ -3061,7 +3187,7 @@ async def list_nodes():
         try:
             last = datetime.fromisoformat(node["last_seen"])
             is_online = (now - last).total_seconds() < 120
-        except:
+        except Exception:
             is_online = False
         node["id"] = nid
         node["is_online"] = is_online
@@ -3100,7 +3226,7 @@ async def main_server_info():
             if hours > 0: parts.append(f"{hours} ч")
             parts.append(f"{mins} мин")
             info["uptime"] = ", ".join(parts)
-        except:
+        except Exception:
             info["uptime"] = "?"
         users_data = load_data().get("users", {})
         online_status = get_online_status()
@@ -3183,7 +3309,7 @@ async def fix_node(node_id: str, request: Request):
     port = int(data.get("ssh_port", node.get("ssh_port", 22)))
     username = data.get("username", node.get("ssh_username", "root"))
     password = data.get("password", "") or node.get("ssh_password", "")
-    panel_url = data.get("panel_url", "https://link.qmbox.ru")
+    panel_url = data.get("panel_url", f"https://{os.environ.get('DOMAIN', 'link.qmbox.ru')}")
     if not host:
         return JSONResponse(status_code=400, content={"error": "Нет SSH хоста у ноды"})
     if not password:
@@ -3198,7 +3324,7 @@ async def fix_node(node_id: str, request: Request):
 
     def _do_fix():
         ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.set_missing_host_key_policy(paramiko.WarningPolicy())
         try:
             ssh.connect(hostname=host, port=port, username=username, password=password, timeout=15)
         except Exception as e:
@@ -3225,7 +3351,7 @@ auth:
 obfs:
   type: salamander
   salamander:
-    password: "X7kM9wQ2pL5vR8nC3sF6hJ1tB4dG0aN"
+    password: "{os.environ.get('HYSTERIA_OBFS_PASSWORD', '')}"
 trafficStats:
   listen: 127.0.0.1:9999
 quic:
@@ -3351,7 +3477,7 @@ def load_subscriptions():
         try:
             with open(SUBS_FILE, "r") as f:
                 return json.load(f)
-        except:
+        except Exception:
             pass
     return {}
 
@@ -3364,7 +3490,7 @@ def load_payments():
         try:
             with open(PAYMENTS_FILE, "r") as f:
                 return json.load(f)
-        except:
+        except Exception:
             pass
     return []
 
@@ -3436,7 +3562,7 @@ async def renew_subscription(sid: str, request: Request):
         current = datetime.fromisoformat(sub["expires"])
         if current < datetime.now():
             current = datetime.now()
-    except:
+    except Exception:
         current = datetime.now()
     sub["expires"] = (current + timedelta(days=days)).isoformat()
     sub["status"] = "active"
@@ -3518,8 +3644,7 @@ async def subscription_urls(token: str, request: Request):
         return JSONResponse(status_code=403, content={"error": "User inactive"})
 
     config = load_panel_config()
-    h = config.get("hysteria", {})
-    obfs = h.get("obfs_password", "")
+    obfs = os.environ.get("HYSTERIA_OBFS_PASSWORD", "")
     port = 443
 
     username = user.get("name", uid)
@@ -3537,7 +3662,7 @@ async def subscription_urls(token: str, request: Request):
             try:
                 last = datetime.fromisoformat(node.get("last_seen", ""))
                 is_online = (now - last).total_seconds() < 120
-            except:
+            except Exception:
                 is_online = False
 
         if not is_online:
@@ -3549,7 +3674,7 @@ async def subscription_urls(token: str, request: Request):
 
         name = node.get("name", domain)
         node_port = node.get("port", port)
-        sni = h.get("domain", "link.qmbox.ru")
+        sni = os.environ.get("DOMAIN", "link.qmbox.ru")
         from urllib.parse import quote
         cert_hash = get_cert_hash()
         enc_user = quote(username, safe='')
@@ -3653,7 +3778,7 @@ async def check_subscriptions_expiry():
                     users[uid]["active"] = False
                     save_data({"servers": {}, "users": users})
                 add_notification("warning", f"Подписка {sub.get('plan_name','')} для {sub.get('uid','')} истекла")
-        except:
+        except Exception:
             pass
     if expired:
         save_subscriptions(subs)
@@ -3679,13 +3804,13 @@ async def monitor_status():
         info["disk_percent"] = disk.percent
         info["disk_used_gb"] = round(disk.used / (1024**3), 1)
         info["disk_total_gb"] = round(disk.total / (1024**3), 1)
-    except:
+    except Exception:
         pass
     # Load thresholds
     try:
         with open(MONITOR_STATE_FILE, 'r') as f:
             state = json.load(f)
-    except:
+    except Exception:
         state = {}
     info["thresholds"] = {"cpu_percent": 90, "ram_percent": 85, "disk_percent": 90}
     info["last_alerts"] = {k: v for k, v in state.items() if k.endswith("_alert_time")}

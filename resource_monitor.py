@@ -32,7 +32,7 @@ def load_config():
         import yaml
         with open(CONFIG_FILE, 'r') as f:
             return yaml.safe_load(f) or {}
-    except:
+    except Exception:
         return {}
 
 
@@ -40,7 +40,7 @@ def load_state():
     try:
         with open(STATE_FILE, 'r') as f:
             return json.load(f)
-    except:
+    except Exception:
         return {}
 
 
@@ -58,7 +58,7 @@ def send_telegram_message(token, admin_ids, text):
                 "text": text,
                 "parse_mode": "HTML"
             }, timeout=10)
-        except:
+        except Exception:
             pass
 
 
@@ -86,19 +86,15 @@ def format_bar(pct):
 
 def main():
     print("[resource-monitor] Started (interval=%ds)" % CHECK_INTERVAL, flush=True)
-    config = load_config()
-    token = config.get("telegram", {}).get("token", "")
-    admins = config.get("telegram", {}).get("admins", [])
+    token = os.environ.get("TELEGRAM_TOKEN", "")
+    admins_str = os.environ.get("TELEGRAM_ADMIN_IDS", "")
+    admins = [int(x.strip()) for x in admins_str.split(",") if x.strip().isdigit()]
 
     if not token:
         print("[resource-monitor] WARNING: No Telegram token, alerts disabled", flush=True)
 
     while True:
         try:
-            config = load_config()
-            token = config.get("telegram", {}).get("token", "")
-            admins = config.get("telegram", {}).get("admins", [])
-
             info = check_resources()
             state = load_state()
             now = time.time()
