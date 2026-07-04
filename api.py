@@ -233,7 +233,7 @@ async def check_auth(request: Request, call_next):
     path = request.url.path
 
     # Static files, login page, and docs - always allowed
-    if path in ["/favicon.ico", "/login", "/app", "/deploy-test", "/docs", "/redoc"] or path.startswith("/static/") or path.startswith("/api/docs") or path.startswith("/api/redoc") or path.startswith("/api/openapi") or path.startswith("/app/"):
+    if path in ["/favicon.ico", "/login", "/app", "/deploy-test", "/docs", "/redoc"] or path.startswith("/static/") or path.startswith("/api/docs") or path.startswith("/api/redoc") or path.startswith("/api/openapi") or path.startswith("/app/") or path.startswith("/ws/"):
         return await call_next(request)
 
     # API auth endpoints - always allowed
