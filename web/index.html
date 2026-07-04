@@ -1413,10 +1413,17 @@ function toggleWidgetSettings(){
     el.style.display=el.style.display==='none'?'block':'none';
 }
 function renderWidgetToggles(){
-    $('widgetToggles').innerHTML=WIDGET_DEFS.map(w=>{
+    const allChecked=WIDGET_DEFS.every(w=>widgetPrefs[w.id]!==false);
+    $('widgetToggles').innerHTML=`<button class="btn btn-n btn-sm" onclick="toggleAllWidgets(${!allChecked})" style="margin-right:4px">${allChecked?'Убрать все':'Выбрать все'}</button>`+WIDGET_DEFS.map(w=>{
         const hidden=widgetPrefs[w.id]===false;
-        return`<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t2);cursor:pointer;opacity:${hidden?.5:1}"><input type="checkbox" ${!hidden?'checked':''} onchange="toggleWidget('${w.id}',this.checked);this.parentElement.style.opacity=this.checked?1:.5"> ${w.label()}</label>`;
+        return`<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t2);cursor:pointer;opacity:${hidden?.5:1}"><input type="checkbox" ${!hidden?'checked':''} onchange="toggleWidget('${w.id}',this.checked);renderWidgetToggles()"> ${w.label()}</label>`;
     }).join('');
+}
+function toggleAllWidgets(show){
+    WIDGET_DEFS.forEach(w=>widgetPrefs[w.id]=show);
+    localStorage.setItem('dash_widgets',JSON.stringify(widgetPrefs));
+    renderWidgetToggles();
+    renderDashboard();
 }
 function toggleWidget(id,show){
     widgetPrefs[id]=show;
