@@ -615,13 +615,26 @@ def get_online_users(window_seconds=60):
 # ===== CONNECTION TRACKING =====
 
 def log_connection(username, client_ip, node_id="__main__"):
-    """Log a new connection from a client."""
+    """Log a new connection from a client. Deduplicates same IP within 5 minutes."""
     with get_conn() as conn:
         cur = conn.cursor()
+        # Check if there's an existing open connection from this IP in last 5 min
         cur.execute("""
-            INSERT INTO connection_log (username, client_ip, node_id, connected_at)
-            VALUES (%s, %s, %s, NOW())
-        """, (username, client_ip, node_id))
+            SELECT id FROM connection_log
+            WHERE username = %s AND client_ip = %s AND disconnected_at IS NULL
+              AND connected_at > NOW() - make_interval(minutes => 5)
+            LIMIT 1
+        """, (username, client_ip))
+        existing = cur.fetchone()
+        if existing:
+            # Just update the timestamp, don't create new entry
+            cur.execute("UPDATE connection_log SET connected_at = NOW() WHERE id = %s", (existing[0],))
+        else:
+            # New connection from new IP or after disconnect
+            cur.execute("""
+                INSERT INTO connection_log (username, client_ip, node_id, connected_at)
+                VALUES (%s, %s, %s, NOW())
+            """, (username, client_ip, node_id))
         # Update user's current IP
         cur.execute("UPDATE users SET ip=%s WHERE name=%s", (client_ip, username))
 
@@ -671,12 +684,14 @@ def get_user_unique_ips(username, days=30):
 
 
 def get_user_device_count(username):
-    """Count active (currently connected) devices by open connections."""
+    """Count recent unique connections (last hour) as proxy for device count."""
     with get_conn() as conn:
         cur = conn.cursor()
         cur.execute("""
-            SELECT COUNT(*) FROM connection_log
-            WHERE username = %s AND disconnected_at IS NULL
+            SELECT COUNT(DISTINCT client_ip)
+            FROM connection_log
+            WHERE username = %s
+              AND connected_at > NOW() - make_interval(hours => 1)
         """, (username,))
         row = cur.fetchone()
         return row[0] if row else 0

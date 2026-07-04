@@ -3135,6 +3135,12 @@ async def node_heartbeat(request: Request):
                 "rx": ut.get("rx", 0)
             })
         db.save_traffic_snapshots_batch(snapshots)
+    # Log connections for online users on remote nodes
+    online_usernames = data.get("online_usernames", [])
+    for username in online_usernames:
+        node_ip = node.get("ip", "")
+        if node_ip:
+            db.log_connection(username, node_ip, node_id)
     # Return users for this node
     # If node has explicit assigned_users, use those; otherwise push ALL active users
     assigned = node.get("assigned_users", [])
