@@ -182,11 +182,15 @@ python3 migrate_passwords.py
 
 ## Remaining Work (Phase 2)
 
+- [x] SQL injection fix in update_user_field (whitelist)
+- [x] Nginx security headers (HSTS, X-Frame-Options, etc.)
+- [x] RBAC checks on admin endpoints
+- [x] Auth: block expired/disabled users
+- [x] Device limit per user account
+- [x] Connection tracking (connection_log table)
 - [ ] SSH password encryption at rest
 - [ ] 2FA implementation
 - [ ] Systemd service hardening (User=freelink)
-- [ ] Nginx security headers
-- [ ] SQL injection fix in update_user_field
 
 ---
 

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-3.11.0-8b5cf6?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-3.12.0--aurora-8b5cf6?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/Status-Alpha-orange?style=for-the-badge" alt="Status">
   <img src="https://img.shields.io/badge/Python-3.10+-3776ab?style=for-the-badge&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/Hysteria-2-ff6b35?style=for-the-badge" alt="Hysteria">
@@ -542,6 +542,24 @@ journalctl -u freelink-api -f
 ---
 
 ## Changelog
+
+### v3.12.0-aurora (2026-07-04)
+
+#### Features
+- **Device Limit** — ограничение количества устройств на аккаунт (max_devices)
+- **Connection Tracking** — полная история подключений (IP, время, длительность, нода)
+- **Auth Hardening** — блокировка просроченных и неактивных пользователей на уровне auth
+- **User Modal Tabs** — модалка пользователя разбита на 5 вкладок: Инфо, Скорость, Трафик, Устройства, Действия
+- **Settings Page** — кнопки Очистить/Перезапуск/Экспорт/Отчёт перенесены в Настройки
+- **Node Names** — история подключений показывает имена нод вместо ID
+
+#### Bug Fixes
+- **Happ Error 39** — `/sub/` добавлен в публичные эндпоинты
+- **PostgreSQL Compatibility** — `make_interval` заменён на `INTERVAL` синтаксис
+- **Auth Date Format** — поддержка форматов `HH:MM` и `HH:MM:SS` для expire_date
+- **Device Count** — дедупликация подключений с одного IP в течение 5 минут
+
+---
 
 ### v3.11.0-supernova (2026-07-04)
 
