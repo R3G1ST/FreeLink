@@ -1303,7 +1303,7 @@ const WIDGET_DEFS = [
 const DEFAULT_WIDGET_ORDER = ['total','active','online','expiring','expired','devices','cpu','ram','disk','network','uptime','hysteria','node_users','node_traffic','node_region','top_users'];
 
 let widgetPrefs = JSON.parse(localStorage.getItem('dash_widgets')||'{}');
-let widgetOrder = JSON.parse(localStorage.getItem('dash_widget_order')||'null') || [...DEFAULT_WIDGET_ORDER];
+let widgetOrder = [...new Set(JSON.parse(localStorage.getItem('dash_widget_order')||'null') || [...DEFAULT_WIDGET_ORDER])];
 let currentServer = 'main';
 let dashData = {users:[], server:{}, online:{}};
 let nodesCache = [];
@@ -1397,10 +1397,9 @@ function initDragDrop(){
     document.addEventListener('mouseup',()=>{
         if(dragSrc){
             dragSrc.classList.remove('dragging');
-            // Save order
+            // Save order (deduplicated)
             const grid=$('dashWidgets');
-            const newOrder=[];
-            [...grid.children].forEach(w=>{if(w.dataset.widget)newOrder.push(w.dataset.widget)});
+            const newOrder=[...new Set([...grid.children].filter(w=>w.dataset.widget).map(w=>w.dataset.widget))];
             widgetOrder=newOrder;
             localStorage.setItem('dash_widget_order',JSON.stringify(widgetOrder));
             dragSrc=null;
@@ -1432,7 +1431,10 @@ function renderDashboard(){
     const isRemote=currentServer!=='main';
     const nodeLabel=isRemote?(nodesCache.find(n=>n.id===currentServer)||{}).name||'':'';
     const mainLabel='🇵🇱 Основная';
+    const seen=new Set();
     widgetOrder.forEach(id=>{
+        if(seen.has(id))return;
+        seen.add(id);
         const w=WIDGET_DEFS.find(x=>x.id===id);
         if(!w||widgetPrefs[w.id]===false)return;
         const r=w.render(dashData.server||{},dashData.users||[]);
