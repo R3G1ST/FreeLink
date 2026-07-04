@@ -1082,6 +1082,10 @@ widget_traffic_week:{ru:'За 7 дней',en:'7 Days'},
 widget_top_users:{ru:'Топ пользователей',en:'Top Users'},
 widget_select_server:{ru:'Выберите сервер',en:'Select server'},
 widget_customize:{ru:'Настроить виджеты',en:'Customize widgets'},
+widget_hysteria:{ru:'Hysteria',en:'Hysteria'},
+widget_node_users:{ru:'Нода: Юзеры',en:'Node: Users'},
+widget_node_traffic:{ru:'Нода: Трафик',en:'Node: Traffic'},
+widget_node_region:{ru:'Нода: Регион',en:'Node: Region'},
 page_analytics_title:{ru:'Аналитика',en:'Analytics'},
 page_plans_title:{ru:'Планы',en:'Plans'},
 btn_new_plan:{ru:'Новый план',en:'New plan'},
@@ -1273,7 +1277,7 @@ async function loadMe(){try{const r=await fetch('/api/me');if(!r.ok){window.loca
 const WIDGET_DEFS = [
     {id:'total', label:()=>t('widget_total'), icon:'fa-users', color:'pu', render:(s,u)=>({value:u.length, sub:t('metric_users_label')})},
     {id:'active', label:()=>t('widget_active'), icon:'fa-check-circle', color:'gn', render:(s,u)=>({value:u.filter(x=>x.active).length, sub:t('metric_subscriptions_label')})},
-    {id:'online', label:()=>t('widget_online'), icon:'fa-wifi', color:'cy', render:(s,u)=>({value:OD.online||0, sub:t('metric_now_label')})},
+    {id:'online', label:()=>t('widget_online'), icon:'fa-wifi', color:'cy', render:(s,u)=>({value:OD.online||s.online_users||0, sub:t('metric_now_label')})},
     {id:'expiring', label:()=>t('widget_expiring'), icon:'fa-clock', color:'or', render:(s,u)=>({value:u.filter(x=>{try{const d=new Date(x.expire_date),n=new Date();return d>n&&d-n<3*864e5&&x.active}catch{return false}}).length, sub:t('metric_3days')})},
     {id:'expired', label:()=>t('widget_expired'), icon:'fa-exclamation-triangle', color:'rd', render:(s,u)=>({value:u.filter(x=>{try{return x.expire_date&&x.expire_date!=='Не указан'&&new Date(x.expire_date)<new Date()}catch{return false}}).length, sub:t('metric_needs_delete')})},
     {id:'devices', label:()=>t('widget_devices'), icon:'fa-mobile-alt', color:'bl', render:(s,u)=>({value:u.reduce((a,x)=>a+(x.active_devices||0),0), sub:'активных'})},
@@ -1282,13 +1286,21 @@ const WIDGET_DEFS = [
     {id:'disk', label:()=>t('widget_disk'), icon:'fa-hdd', render:s=>({value:(s.disk_percent||0)+'%', sub:(s.disk_used_gb||0)+'/'+(s.disk_total_gb||0)+' ГБ', pct:s.disk_percent||0, color:(s.disk_percent||0)>80?'rd':(s.disk_percent||0)>50?'or':'gn'})},
     {id:'network', label:()=>t('widget_network'), icon:'fa-network-wired', render:s=>({value:'', sub:'↑'+(s.net_sent_gb||0)+' ↓'+(s.net_recv_gb||0)+' ГБ', color:'bl'})},
     {id:'uptime', label:()=>t('widget_uptime'), icon:'fa-clock', render:s=>({value:s.uptime||'—', sub:'аптайм', color:'gn'})},
+    {id:'hysteria', label:()=>t('widget_hysteria'), icon:'fa-shield-alt', render:s=>({value:s.hysteria_status||'—', sub:'статус VPN', color:s.hysteria_status==='active'?'gn':'rd'})},
+    {id:'node_users', label:()=>t('widget_node_users'), icon:'fa-server', render:s=>({value:(s.online_users||0)+'/'+(s.total_users||0), sub:'юзеров на ноде', color:'cy'})},
+    {id:'node_traffic', label:()=>t('widget_node_traffic'), icon:'fas fa-exchange-alt', render:s=>{
+        const sent=round((s.traffic_sent||0)/1024/1024);
+        const recv=round((s.traffic_recv||0)/1024/1024);
+        return {value:fmtTraffic(sent+recv), sub:'↑'+fmtTrafficShort(sent)+' ↓'+fmtTrafficShort(recv), color:'bl'};
+    }},
+    {id:'node_region', label:()=>t('widget_node_region'), icon:'fa-globe', render:s=>({value:s.node_name||s.server||'—', sub:'регион', color:'pu'})},
     {id:'top_users', label:()=>t('widget_top_users'), icon:'fa-crown', render:(s,u)=>{
         const sorted=[...u].sort((a,b)=>(b.traffic?.total_mb||0)-(a.traffic?.total_mb||0)).slice(0,5);
         return {value:sorted.length, sub:'пользователей', list:sorted.map(x=>({name:x.name, mb:x.traffic?.total_mb||0}))};
     }},
 ];
 
-const DEFAULT_WIDGET_ORDER = ['total','active','online','expiring','expired','devices','cpu','ram','disk','network','uptime','top_users'];
+const DEFAULT_WIDGET_ORDER = ['total','active','online','expiring','expired','devices','cpu','ram','disk','network','uptime','hysteria','node_users','node_traffic','node_region','top_users'];
 
 let widgetPrefs = JSON.parse(localStorage.getItem('dash_widgets')||'{}');
 let widgetOrder = JSON.parse(localStorage.getItem('dash_widget_order')||'null') || [...DEFAULT_WIDGET_ORDER];
@@ -1327,20 +1339,18 @@ function selectServer(id,label){
 /* ===== LOAD SERVER DATA ===== */
 function loadServerData(serverId){
     if(serverId==='main'){
-        // Use existing data
         fetch('/api/server-info').then(r=>r.json()).then(s=>{
             dashData.server=s;
             renderDashboard();
         }).catch(()=>{});
     }else{
-        // Fetch node data from nodes list
         fetch('/api/nodes').then(r=>r.json()).then(d=>{
             const node=(d.nodes||[]).find(n=>n.id===serverId);
             if(node){
                 dashData.server={
-                    cpu_percent:node.cpu_percent||0,
-                    ram_percent:node.ram_percent||0,
-                    disk_percent:node.disk_percent||0,
+                    cpu_percent:parseFloat(node.cpu_percent)||0,
+                    ram_percent:parseFloat(node.ram_percent)||0,
+                    disk_percent:parseFloat(node.disk_percent)||0,
                     net_sent_gb:0,
                     net_recv_gb:0,
                     uptime:node.last_seen?new Date(node.last_seen).toLocaleString('ru'):'—',
@@ -1348,7 +1358,12 @@ function loadServerData(serverId){
                     ram_used_gb:0,
                     ram_total_gb:0,
                     disk_used_gb:0,
-                    disk_total_gb:0
+                    disk_total_gb:0,
+                    node_name:node.name,
+                    online_users:node.online_users||0,
+                    total_users:node.total_users||0,
+                    traffic_sent:node.traffic_sent||0,
+                    traffic_recv:node.traffic_recv||0
                 };
                 renderDashboard();
             }
@@ -1358,19 +1373,23 @@ function loadServerData(serverId){
 
 /* ===== WIDGET DRAG & DROP ===== */
 let dragWidget=null;
+let dragDropInit=false;
 function initDragDrop(){
+    if(dragDropInit)return;
+    dragDropInit=true;
     const grid=$('dashWidgets');
     if(!grid)return;
     grid.addEventListener('dragstart',e=>{
-        if(!e.target.classList.contains('dw'))return;
-        dragWidget=e.target;
-        e.target.classList.add('dragging');
+        const dw=e.target.closest('.dw');
+        if(!dw)return;
+        dragWidget=dw;
+        dw.classList.add('dragging');
         e.dataTransfer.effectAllowed='move';
+        e.dataTransfer.setData('text/plain','');
     });
     grid.addEventListener('dragend',e=>{
         if(dragWidget)dragWidget.classList.remove('dragging');
         dragWidget=null;
-        // Save new order
         const newOrder=[];
         grid.querySelectorAll('.dw').forEach(w=>newOrder.push(w.dataset.widget));
         widgetOrder=newOrder;
@@ -1379,11 +1398,10 @@ function initDragDrop(){
     grid.addEventListener('dragover',e=>{
         e.preventDefault();
         e.dataTransfer.dropEffect='move';
+        if(!dragWidget)return;
         const afterElement=getDragAfterElement(grid,e.clientY);
-        if(dragWidget){
-            if(afterElement==null)grid.appendChild(dragWidget);
-            else grid.insertBefore(dragWidget,afterElement);
-        }
+        if(afterElement==null)grid.appendChild(dragWidget);
+        else if(afterElement!==dragWidget)grid.insertBefore(dragWidget,afterElement);
     });
 }
 function getDragAfterElement(container,y){
