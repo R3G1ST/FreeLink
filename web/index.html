@@ -699,9 +699,6 @@ a{text-decoration:none;color:inherit}
                         <button class="fb" onclick="filterLogs('dns',this)">DNS</button>
                         <button class="fb" onclick="filterLogs('auth',this)">Аудит</button>
                     </div>
-                    <label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--t3);cursor:pointer">
-                        <input type="checkbox" id="autoScroll" checked onchange="toggleAutoScroll()"> Автопрокрутка
-                    </label>
                 </div>
                 <div class="card logs-container" id="lB" style="padding:0;max-height:500px;overflow-y:auto">
                     <div style="padding:20px;text-align:center;color:var(--t4)"><i class="fas fa-scroll" style="font-size:24px;opacity:.3"></i><p>Загрузка...</p></div>
@@ -2137,7 +2134,20 @@ function renderLogs(){
 }
 
 /* ===== AUDIT (redirect to logs) ===== */
-async function lAudit(){lLg()}
+async function lAudit(){
+    try{
+        const r=await fetch('/api/logs/stream?log_type=auth&limit=200');
+        const d=await r.json();
+        const el=$('aB');
+        const logs=d.logs||[];
+        if(!logs.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--t4)"><i class="fas fa-shield-alt" style="font-size:24px;opacity:.3"></i><p>Нет записей</p></div>';return}
+        el.innerHTML=logs.slice(0,200).map(l=>{
+            const time=l.time?l.time.split(' ')[1]||l.time:'';
+            return`<div class="log-entry auth"><span class="log-time">${time}</span><span class="log-user">${l.user||'—'}</span><span class="log-action">${l.action||''}</span><span class="log-details">${l.details||''}</span></div>`;
+        }).join('');
+        el.scrollTop=0;
+    }catch(e){console.error('lAudit error:',e)}
+}
 /* ===== UPDATE ===== */
 let updatePollTimer=null;
 async function checkUpdate(){
