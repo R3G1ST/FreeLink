@@ -2659,7 +2659,7 @@ async def websocket_live(websocket: WebSocket):
                 },
                 "logs": recent_logs
             })
-            await asyncio.sleep(2)
+            await asyncio.sleep(1)
     except WebSocketDisconnect:
         ws_clients.discard(websocket)
     except Exception:
@@ -2689,6 +2689,18 @@ async def broadcast_update():
     for ws in ws_clients:
         try:
             await ws.send_json({"traffic": traffic, "online": online_count, "time": time.strftime("%H:%M:%S")})
+        except Exception:
+            dead.add(ws)
+    ws_clients -= dead
+
+async def broadcast_log(log_entry):
+    """Send a new log entry to all connected WebSocket clients immediately."""
+    if not ws_clients:
+        return
+    dead = set()
+    for ws in ws_clients:
+        try:
+            await ws.send_json({"new_log": log_entry})
         except Exception:
             dead.add(ws)
     ws_clients -= dead

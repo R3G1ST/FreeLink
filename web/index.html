@@ -689,18 +689,19 @@ a{text-decoration:none;color:inherit}
                 <div class="tbar">
                     <button class="btn btn-n" onclick="lLg()"><i class="fas fa-sync"></i> <span data-i18n="btn_refresh">Обновить</span></button>
                     <button class="btn btn-b" onclick="exportLogs()"><i class="fas fa-download"></i> CSV</button>
-                    <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t2);margin-left:auto;cursor:pointer">
+                    <div class="sbox" style="flex:0 1 180px;min-width:120px;margin-left:auto"><i class="fas fa-search"></i><input type="text" id="logSearch" placeholder="Поиск..." oninput="lLg()"></div>
+                </div>
+                <div style="display:flex;gap:6px;margin-bottom:10px;align-items:center">
+                    <div class="fgr">
+                        <button class="fb on" onclick="filterLogs('all',this)">Все</button>
+                        <button class="fb" onclick="filterLogs('connect',this)">Подключения</button>
+                        <button class="fb" onclick="filterLogs('disconnect',this)">Отключения</button>
+                        <button class="fb" onclick="filterLogs('dns',this)">DNS</button>
+                        <button class="fb" onclick="filterLogs('auth',this)">Аудит</button>
+                    </div>
+                    <label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--t3);cursor:pointer">
                         <input type="checkbox" id="autoScroll" checked onchange="toggleAutoScroll()"> Автопрокрутка
                     </label>
-                </div>
-                <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
-                    <div class="sbox" style="flex:1;min-width:120px"><i class="fas fa-search"></i><input type="text" id="logSearch" placeholder="Поиск..." oninput="lLg()"></div>
-                    <button class="filter on" onclick="filterLogs('all',this)">Все</button>
-                    <button class="filter" onclick="filterLogs('connect',this)">🟢 Подключения</button>
-                    <button class="filter" onclick="filterLogs('disconnect',this)">🔴 Отключения</button>
-                    <button class="filter" onclick="filterLogs('dns',this)">🔵 DNS</button>
-                    <button class="filter" onclick="filterLogs('auth',this)">🟡 Авторизация</button>
-                    <button class="filter" onclick="filterLogs('system',this)">🟠 Система</button>
                 </div>
                 <div class="card logs-container" id="lB" style="padding:0;max-height:500px;overflow-y:auto">
                     <div style="padding:20px;text-align:center;color:var(--t4)"><i class="fas fa-scroll" style="font-size:24px;opacity:.3"></i><p>Загрузка...</p></div>
@@ -2104,8 +2105,13 @@ function exportLogs(){
     window.open('/api/logs/export?format=csv','_blank');
 }
 
-const LOG_ICONS={connect:'🟢',disconnect:'🔴',dns:'🔵',auth:'🟡',system:'🟠'};
-const LOG_LABELS={connect:'Подключение',disconnect:'Отключение',dns:'DNS',auth:'Авторизация',system:'Система'};
+const LOG_TYPES={
+    connect:{cls:'cg',label:'Подкл.',icon:'fa-arrow-right'},
+    disconnect:{cls:'cr',label:'Откл.',icon:'fa-arrow-left'},
+    dns:{cls:'cb',label:'DNS',icon:'fa-globe'},
+    auth:{cls:'co',label:'Аудит',icon:'fa-shield-alt'},
+    system:{cls:'cv',label:'Система',icon:'fa-cog'}
+};
 
 async function lLg(){
     try{
@@ -2124,8 +2130,8 @@ function renderLogs(){
     if(!logsData.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--t4)"><i class="fas fa-scroll" style="font-size:24px;opacity:.3"></i><p>Нет логов</p></div>';return}
     el.innerHTML=logsData.slice(0,200).map(l=>{
         const time=l.time?l.time.split(' ')[1]||l.time:'';
-        const icon=LOG_ICONS[l.type]||'⚪';
-        return`<div class="log-entry ${l.type}"><span class="log-time">${time}</span><span style="min-width:20px;text-align:center">${icon}</span><span class="log-user">${l.user||'—'}</span><span class="log-action">${l.action||''}</span><span class="log-details">${l.details||''}</span></div>`;
+        const t=LOG_TYPES[l.type]||{cls:'cv',label:l.type||'—',icon:'fa-circle'};
+        return`<div class="log-entry ${l.type}"><span class="log-time">${time}</span><span class="pil ${t.cls}" style="font-size:9px"><i class="fas ${t.icon}" style="font-size:8px"></i> ${t.label}</span><span class="log-user">${l.user||'—'}</span><span class="log-action">${l.action||''}</span><span class="log-details">${l.details||''}</span></div>`;
     }).join('');
     if(autoScrollEnabled)el.scrollTop=0;
 }
@@ -2504,6 +2510,7 @@ loadMe();
 loadAll().then(()=>{const saved=localStorage.getItem('vpn_page');if(saved&&saved!=='dashboard'&&document.getElementById('p-'+saved)){const navMap={users:1,traffic:2,plans:3,nodes:4,services:5,config:6,logs:7,audit:8,settings:9};go(saved,document.querySelectorAll('.nav-item')[navMap[saved]])}else{setTimeout(()=>{renderPieChart();renderBarChart()},500)};connectWebSocket()});
 setInterval(()=>{fetch('/api/server-info').then(r=>r.json()).then(d=>rSy(d)).catch(()=>{})},15000);
 setInterval(pollNotifications,30000);
+setInterval(()=>{if(currentPage==='logs')lLg()},3000);
 setTimeout(pollNotifications,2000);
 
 /* Close notif panel on outside click */
