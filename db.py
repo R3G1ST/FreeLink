@@ -470,6 +470,30 @@ def get_structured_logs(log_type=None, search=None, limit=200):
             if search and search.lower() not in str(entry).lower():
                 continue
             results.append(entry)
+    # 3. DNS logs from file
+    try:
+        import json as _json
+        dns_file = "/opt/freelink/dns_log.json"
+        if os.path.exists(dns_file):
+            with open(dns_file, 'r') as f:
+                dns_entries = _json.load(f)
+            for d in reversed(dns_entries):
+                if log_type and log_type != "dns":
+                    continue
+                entry = {
+                    "time": d.get("time", ""),
+                    "user": d.get("user", ""),
+                    "type": "dns",
+                    "action": d.get("domain", ""),
+                    "details": d.get("ip", ""),
+                    "ip": d.get("ip", ""),
+                    "node": d.get("node_id", "")
+                }
+                if search and search.lower() not in str(entry).lower():
+                    continue
+                results.append(entry)
+    except Exception:
+        pass
     # Sort by time descending
     results.sort(key=lambda x: x.get("time", ""), reverse=True)
     return results[:limit]
