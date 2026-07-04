@@ -449,7 +449,7 @@ def _row_to_user(row):
         "plan": row["plan"] or "", "speed_limit_mbps": row["speed_limit_mbps"] or 0,
         "subscription_id": row["subscription_id"] or "",
         "ip": row["ip"] or "",
-        "max_devices": row["max_devices"] or 0
+        "max_devices": row.get("max_devices") or 0
     }
 
 # ===== TRAFFIC SNAPSHOTS =====
@@ -535,7 +535,7 @@ def get_online_users(window_seconds=60):
                            ORDER BY captured_at DESC
                        ) as rn
                 FROM traffic_snapshots
-                WHERE captured_at > NOW() - make_interval(secs => %s)
+                WHERE captured_at > NOW() - (%s || ' seconds')::interval
             )
             SELECT username, node_id,
                    MAX(CASE WHEN rn = 1 THEN tx END) as tx,
@@ -624,7 +624,7 @@ def log_connection(username, client_ip, node_id="__main__"):
         cur.execute("""
             SELECT id FROM connection_log
             WHERE username = %s AND client_ip = %s AND disconnected_at IS NULL
-              AND connected_at > NOW() - make_interval(minutes => 5)
+              AND connected_at > NOW() - '5 minutes'::interval
             LIMIT 1
         """, (username, client_ip))
         existing = cur.fetchone()
@@ -679,7 +679,7 @@ def get_user_unique_ips(username, days=30):
             SELECT COUNT(DISTINCT client_ip)
             FROM connection_log
             WHERE username = %s
-              AND connected_at > NOW() - make_interval(days => %s)
+              AND connected_at > NOW() - (%s || ' days')::interval
         """, (username, days))
         row = cur.fetchone()
         return row[0] if row else 0
@@ -693,7 +693,7 @@ def get_user_device_count(username):
             SELECT COUNT(DISTINCT client_ip)
             FROM connection_log
             WHERE username = %s
-              AND connected_at > NOW() - make_interval(hours => 1)
+              AND connected_at > NOW() - '1 hour'::interval
         """, (username,))
         row = cur.fetchone()
         return row[0] if row else 0
@@ -708,7 +708,7 @@ def get_active_device_count(username):
             FROM connection_log
             WHERE username = %s
               AND disconnected_at IS NULL
-              AND connected_at > NOW() - make_interval(minutes => 5)
+              AND connected_at > NOW() - '5 minutes'::interval
         """, (username,))
         row = cur.fetchone()
         return row[0] if row else 0
@@ -730,7 +730,7 @@ def check_device_limit(username, client_ip):
             SELECT COUNT(*) FROM connection_log
             WHERE username = %s AND client_ip = %s
               AND disconnected_at IS NULL
-              AND connected_at > NOW() - make_interval(minutes => 5)
+              AND connected_at > NOW() - '5 minutes'::interval
         """, (username, client_ip))
         row = cur.fetchone()
         if row and row[0] > 0:
@@ -751,5 +751,5 @@ def cleanup_old_connections(days=90):
     """Delete connection logs older than N days."""
     with get_conn() as conn:
         cur = conn.cursor()
-        cur.execute("DELETE FROM connection_log WHERE connected_at < NOW() - make_interval(days => %s)", (days,))
+        cur.execute("DELETE FROM connection_log WHERE connected_at < NOW() - (%s || ' days')::interval", (days,))
         return cur.rowcount
