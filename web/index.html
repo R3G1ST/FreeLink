@@ -1337,6 +1337,7 @@ function renderSrvDropdown(){
     dd.innerHTML=html;
 }
 function selectServer(id,label){
+    console.log('selectServer:',id,label);
     currentServer=id;
     $('srvLabel').textContent=label;
     $('srvDropdown').classList.remove('open');
@@ -1345,8 +1346,10 @@ function selectServer(id,label){
 
 /* ===== LOAD SERVER DATA ===== */
 function loadServerData(serverId){
+    console.log('loadServerData:',serverId);
     if(serverId==='main'){
         fetch('/api/server-info').then(r=>r.json()).then(s=>{
+            console.log('Main server data:',s);
             dashData.server=s;
             renderDashboard();
         }).catch(e=>console.error('loadServerData main error:',e));
@@ -1354,7 +1357,8 @@ function loadServerData(serverId){
         fetch('/api/nodes').then(r=>r.json()).then(d=>{
             const nodes=d.nodes||[];
             const node=nodes.find(n=>n.id===serverId);
-            if(!node){console.error('Node not found:',serverId);return}
+            console.log('Node found:',node);
+            if(!node){console.error('Node not found:',serverId,'Available:',nodes.map(n=>n.id));return}
             dashData.server={
                 cpu_percent:parseFloat(node.cpu_percent)||0,
                 ram_percent:parseFloat(node.ram_percent)||0,
@@ -1374,6 +1378,7 @@ function loadServerData(serverId){
                 traffic_recv:node.traffic_recv||0,
                 hysteria_status:node.hysteria_status||'unknown'
             };
+            console.log('dashData.server set to:',dashData.server);
             renderDashboard();
         }).catch(e=>console.error('loadServerData node error:',e));
     }
