@@ -1342,32 +1342,33 @@ function loadServerData(serverId){
         fetch('/api/server-info').then(r=>r.json()).then(s=>{
             dashData.server=s;
             renderDashboard();
-        }).catch(()=>{});
+        }).catch(e=>console.error('loadServerData main error:',e));
     }else{
         fetch('/api/nodes').then(r=>r.json()).then(d=>{
-            const node=(d.nodes||[]).find(n=>n.id===serverId);
-            if(node){
-                dashData.server={
-                    cpu_percent:parseFloat(node.cpu_percent)||0,
-                    ram_percent:parseFloat(node.ram_percent)||0,
-                    disk_percent:parseFloat(node.disk_percent)||0,
-                    net_sent_gb:0,
-                    net_recv_gb:0,
-                    uptime:node.last_seen?new Date(node.last_seen).toLocaleString('ru'):'—',
-                    cpu_count:0,
-                    ram_used_gb:0,
-                    ram_total_gb:0,
-                    disk_used_gb:0,
-                    disk_total_gb:0,
-                    node_name:node.name,
-                    online_users:node.online_users||0,
-                    total_users:node.total_users||0,
-                    traffic_sent:node.traffic_sent||0,
-                    traffic_recv:node.traffic_recv||0
-                };
-                renderDashboard();
-            }
-        }).catch(()=>{});
+            const nodes=d.nodes||[];
+            const node=nodes.find(n=>n.id===serverId);
+            if(!node){console.error('Node not found:',serverId);return}
+            dashData.server={
+                cpu_percent:parseFloat(node.cpu_percent)||0,
+                ram_percent:parseFloat(node.ram_percent)||0,
+                disk_percent:parseFloat(node.disk_percent)||0,
+                net_sent_gb:0,
+                net_recv_gb:0,
+                uptime:node.last_seen?new Date(node.last_seen).toLocaleString('ru'):'—',
+                cpu_count:node.cpu_count||0,
+                ram_used_gb:node.ram_used_gb||0,
+                ram_total_gb:node.ram_total_gb||0,
+                disk_used_gb:node.disk_used_gb||0,
+                disk_total_gb:node.disk_total_gb||0,
+                node_name:node.name,
+                online_users:node.online_users||0,
+                total_users:node.total_users||0,
+                traffic_sent:node.traffic_sent||0,
+                traffic_recv:node.traffic_recv||0,
+                hysteria_status:node.hysteria_status||'unknown'
+            };
+            renderDashboard();
+        }).catch(e=>console.error('loadServerData node error:',e));
     }
 }
 
