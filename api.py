@@ -727,6 +727,21 @@ apt-get install -y -qq python3 python3-pip curl certbot
 bash <(curl -fsSL https://get.hy2.sh/) || true
 echo "=== Установка зависимостей агента ==="
 pip3 install psutil pyyaml 2>/dev/null || pip3 install --break-system-packages psutil pyyaml
+echo "=== Установка DNS логгера ==="
+apt-get install -y -qq dnsmasq 2>/dev/null || true
+cat > /etc/dnsmasq.d/freelink.conf << 'DNSCFG'
+port=53
+bind-interfaces
+listen-address=127.0.0.1
+log-queries
+log-facility=/var/log/dnsmasq.log
+server=8.8.8.8
+server=8.8.4.4
+cache-size=1000
+no-resolv
+DNSCFG
+systemctl enable dnsmasq 2>/dev/null || true
+systemctl restart dnsmasq 2>/dev/null || true
 echo "=== Создание агента ==="
 mkdir -p /opt/hysteria-agent
 curl -fsSL "{panel_url}/api/node/agent-script" -o /opt/hysteria-agent/node_agent.py 2>/dev/null || true
@@ -748,6 +763,10 @@ auth:
   type: userpass
   userpass:
     placeholder: placeholder
+dns:
+  listen: 0.0.0.0:53
+  upstream:
+    - 127.0.0.1:53
 obfs:
   type: salamander
   salamander:
