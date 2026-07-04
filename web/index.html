@@ -200,8 +200,10 @@ a{text-decoration:none;color:inherit}
 .dash-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
 .dash-section-title{font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
 .dash-section-title i{font-size:10px;color:var(--ac2)}
-.dw{background:var(--c1);border:1px solid rgba(255,255,255,.06);border-radius:var(--R);padding:14px;transition:all .2s}
+.dw{background:var(--c1);border:1px solid rgba(255,255,255,.06);border-radius:var(--R);padding:14px;transition:all .2s;cursor:grab;position:relative}
 .dw:hover{border-color:var(--b2);transform:translateY(-1px)}
+.dw:active{cursor:grabbing}
+.dw.dragging{opacity:.5;border-color:var(--ac)}
 .dw .dw-icon{font-size:18px;margin-bottom:6px}
 .dw .dw-label{font-size:10px;color:var(--t4);text-transform:uppercase;letter-spacing:.4px;font-weight:600}
 .dw .dw-value{font-size:22px;font-weight:800;line-height:1.2;margin:4px 0}
@@ -214,6 +216,18 @@ a{text-decoration:none;color:inherit}
 .dw.or .dw-value{color:var(--or)}.dw.or .dw-icon{color:var(--or)}
 .dw.rd .dw-value{color:var(--rd)}.dw.rd .dw-icon{color:var(--rd)}
 .dw.pu .dw-value{color:var(--ac2)}.dw.pu .dw-icon{color:var(--ac2)}
+/* Server selector */
+.srv-select{position:relative;cursor:pointer}
+.srv-selected{display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--g1);border:1px solid var(--b1);border-radius:var(--R2);font-size:12px;color:var(--t1);font-weight:600;transition:all .15s;min-width:160px}
+.srv-selected:hover{border-color:var(--ac);background:var(--g2)}
+.srv-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--c2);border:1px solid var(--b1);border-radius:var(--R2);margin-top:4px;display:none;z-index:100;box-shadow:var(--shadow-lg);overflow:hidden}
+.srv-dropdown.open{display:block}
+.srv-item{padding:8px 12px;font-size:12px;color:var(--t2);cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .1s}
+.srv-item:hover{background:var(--acg);color:var(--ac2)}
+.srv-item.active{background:var(--acg);color:var(--ac2);font-weight:600}
+.srv-item .srv-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.srv-item .srv-dot.on{background:var(--gn)}
+.srv-item .srv-dot.off{background:var(--rd)}
 .mc.co .v{color:var(--or)}
 .mc.cb .v{color:var(--bl)}
 
@@ -551,9 +565,11 @@ a{text-decoration:none;color:inherit}
                 <div class="pg-title" style="display:flex;justify-content:space-between;align-items:center">
                     <span><i class="fas fa-th-large"></i> <span data-i18n="page_dashboard">Обзор</span></span>
                     <div style="display:flex;gap:8px;align-items:center">
-                        <select id="serverSelect" onchange="changeServer(this.value)" style="padding:6px 10px;background:var(--g2);border:1px solid var(--b1);border-radius:6px;color:var(--t1);font-size:12px;font-family:inherit;cursor:pointer">
-                            <option value="main">🇵🇱 Основная (Польша)</option>
-                        </select>
+                        <!-- Custom server selector -->
+                        <div class="srv-select" id="srvSelect" onclick="toggleSrvDropdown()">
+                            <div class="srv-selected"><i class="fas fa-server"></i> <span id="srvLabel">Основная</span> <i class="fas fa-chevron-down" style="font-size:9px;margin-left:4px;opacity:.5"></i></div>
+                            <div class="srv-dropdown" id="srvDropdown"></div>
+                        </div>
                         <button class="btn btn-n btn-sm" onclick="toggleWidgetSettings()" title="Настроить виджеты"><i class="fas fa-sliders-h"></i></button>
                     </div>
                 </div>
@@ -562,19 +578,8 @@ a{text-decoration:none;color:inherit}
                     <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--t2)"><i class="fas fa-eye" style="margin-right:6px"></i> Настройка виджетов</div>
                     <div style="display:flex;flex-wrap:wrap;gap:8px" id="widgetToggles"></div>
                 </div>
-                <!-- Metrics row -->
-                <div class="dash-grid" id="dashMetrics"></div>
-                <!-- System + Traffic row -->
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
-                    <div>
-                        <div class="dash-section-title"><i class="fas fa-server"></i> Система</div>
-                        <div class="dash-grid" id="dashSystem"></div>
-                    </div>
-                    <div>
-                        <div class="dash-section-title"><i class="fas fa-chart-area"></i> Трафик</div>
-                        <div class="dash-grid" id="dashTraffic"></div>
-                    </div>
-                </div>
+                <!-- All widgets in one grid -->
+                <div class="dash-grid" id="dashWidgets"></div>
                 <!-- Charts row -->
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
                     <div class="card" data-widget="chart_pie"><div class="card-title"><i class="fas fa-chart-pie"></i> <span data-i18n="chart_status">Статус</span></div><div style="height:200px"><canvas id="cPie"></canvas></div></div>
@@ -1272,100 +1277,192 @@ const WIDGET_DEFS = [
     {id:'expiring', label:()=>t('widget_expiring'), icon:'fa-clock', color:'or', render:(s,u)=>({value:u.filter(x=>{try{const d=new Date(x.expire_date),n=new Date();return d>n&&d-n<3*864e5&&x.active}catch{return false}}).length, sub:t('metric_3days')})},
     {id:'expired', label:()=>t('widget_expired'), icon:'fa-exclamation-triangle', color:'rd', render:(s,u)=>({value:u.filter(x=>{try{return x.expire_date&&x.expire_date!=='Не указан'&&new Date(x.expire_date)<new Date()}catch{return false}}).length, sub:t('metric_needs_delete')})},
     {id:'devices', label:()=>t('widget_devices'), icon:'fa-mobile-alt', color:'bl', render:(s,u)=>({value:u.reduce((a,x)=>a+(x.active_devices||0),0), sub:'активных'})},
-];
-
-const SYS_WIDGETS = [
-    {id:'cpu', label:()=>t('widget_cpu'), icon:'fa-microchip', render:s=>({value:s.cpu_percent+'%', sub:s.cpu_count+' ядер', pct:s.cpu_percent, color:s.cpu_percent>80?'rd':s.cpu_percent>50?'or':'gn'})},
-    {id:'ram', label:()=>t('widget_ram'), icon:'fa-memory', render:s=>({value:s.ram_percent+'%', sub:s.ram_used_gb+'/'+s.ram_total_gb+' ГБ', pct:s.ram_percent, color:s.ram_percent>80?'rd':s.ram_percent>50?'or':'gn'})},
-    {id:'disk', label:()=>t('widget_disk'), icon:'fa-hdd', render:s=>({value:s.disk_percent+'%', sub:s.disk_used_gb+'/'+s.disk_total_gb+' ГБ', pct:s.disk_percent, color:s.disk_percent>80?'rd':s.disk_percent>50?'or':'gn'})},
-    {id:'network', label:()=>t('widget_network'), icon:'fa-network-wired', render:s=>({value:'', sub:'↑'+s.net_sent_gb+' ↓'+s.net_recv_gb+' ГБ', color:'bl'})},
+    {id:'cpu', label:()=>t('widget_cpu'), icon:'fa-microchip', render:s=>({value:(s.cpu_percent||0)+'%', sub:(s.cpu_count||0)+' ядер', pct:s.cpu_percent||0, color:(s.cpu_percent||0)>80?'rd':(s.cpu_percent||0)>50?'or':'gn'})},
+    {id:'ram', label:()=>t('widget_ram'), icon:'fa-memory', render:s=>({value:(s.ram_percent||0)+'%', sub:(s.ram_used_gb||0)+'/'+(s.ram_total_gb||0)+' ГБ', pct:s.ram_percent||0, color:(s.ram_percent||0)>80?'rd':(s.ram_percent||0)>50?'or':'gn'})},
+    {id:'disk', label:()=>t('widget_disk'), icon:'fa-hdd', render:s=>({value:(s.disk_percent||0)+'%', sub:(s.disk_used_gb||0)+'/'+(s.disk_total_gb||0)+' ГБ', pct:s.disk_percent||0, color:(s.disk_percent||0)>80?'rd':(s.disk_percent||0)>50?'or':'gn'})},
+    {id:'network', label:()=>t('widget_network'), icon:'fa-network-wired', render:s=>({value:'', sub:'↑'+(s.net_sent_gb||0)+' ↓'+(s.net_recv_gb||0)+' ГБ', color:'bl'})},
     {id:'uptime', label:()=>t('widget_uptime'), icon:'fa-clock', render:s=>({value:s.uptime||'—', sub:'аптайм', color:'gn'})},
-    {id:'load', label:()=>t('widget_load'), icon:'fa-tachometer-alt', render:s=>({value:s.cpu_percent?s.cpu_percent.toFixed(0)+'%':'—', sub:'нагрузка', color:s.cpu_percent>80?'rd':'gn'})},
-];
-
-const TRAF_WIDGETS = [
     {id:'top_users', label:()=>t('widget_top_users'), icon:'fa-crown', render:(s,u)=>{
         const sorted=[...u].sort((a,b)=>(b.traffic?.total_mb||0)-(a.traffic?.total_mb||0)).slice(0,5);
         return {value:sorted.length, sub:'пользователей', list:sorted.map(x=>({name:x.name, mb:x.traffic?.total_mb||0}))};
     }},
 ];
 
+const DEFAULT_WIDGET_ORDER = ['total','active','online','expiring','expired','devices','cpu','ram','disk','network','uptime','top_users'];
+
 let widgetPrefs = JSON.parse(localStorage.getItem('dash_widgets')||'{}');
+let widgetOrder = JSON.parse(localStorage.getItem('dash_widget_order')||'null') || [...DEFAULT_WIDGET_ORDER];
 let currentServer = 'main';
 let dashData = {users:[], server:{}, online:{}};
+let nodesCache = [];
 
-function toggleWidgetSettings(){
-    const el = $('widgetSettings');
-    el.style.display = el.style.display==='none'?'block':'none';
+/* ===== SERVER SELECTOR ===== */
+function toggleSrvDropdown(){
+    const dd=$('srvDropdown');
+    dd.classList.toggle('open');
+    if(dd.classList.contains('open')){
+        document.addEventListener('click',closeSrvDropdown,{once:true});
+    }
+}
+function closeSrvDropdown(e){
+    if(!$('srvSelect').contains(e.target))$('srvDropdown').classList.remove('open');
+}
+function renderSrvDropdown(){
+    const dd=$('srvDropdown');
+    let html=`<div class="srv-item ${currentServer==='main'?'active':''}" onclick="selectServer('main','Основная')"><span class="srv-dot on"></span> Основная</div>`;
+    nodesCache.forEach(n=>{
+        if(!n.is_main && n.status==='online'){
+            html+=`<div class="srv-item ${currentServer===n.id?'active':''}" onclick="selectServer('${n.id}','${n.name}')"><span class="srv-dot on"></span> ${n.name}</div>`;
+        }
+    });
+    dd.innerHTML=html;
+}
+function selectServer(id,label){
+    currentServer=id;
+    $('srvLabel').textContent=label;
+    $('srvDropdown').classList.remove('open');
+    loadServerData(id);
 }
 
+/* ===== LOAD SERVER DATA ===== */
+function loadServerData(serverId){
+    if(serverId==='main'){
+        // Use existing data
+        fetch('/api/server-info').then(r=>r.json()).then(s=>{
+            dashData.server=s;
+            renderDashboard();
+        }).catch(()=>{});
+    }else{
+        // Fetch node data from nodes list
+        fetch('/api/nodes').then(r=>r.json()).then(d=>{
+            const node=(d.nodes||[]).find(n=>n.id===serverId);
+            if(node){
+                dashData.server={
+                    cpu_percent:node.cpu_percent||0,
+                    ram_percent:node.ram_percent||0,
+                    disk_percent:node.disk_percent||0,
+                    net_sent_gb:0,
+                    net_recv_gb:0,
+                    uptime:node.last_seen?new Date(node.last_seen).toLocaleString('ru'):'—',
+                    cpu_count:0,
+                    ram_used_gb:0,
+                    ram_total_gb:0,
+                    disk_used_gb:0,
+                    disk_total_gb:0
+                };
+                renderDashboard();
+            }
+        }).catch(()=>{});
+    }
+}
+
+/* ===== WIDGET DRAG & DROP ===== */
+let dragWidget=null;
+function initDragDrop(){
+    const grid=$('dashWidgets');
+    if(!grid)return;
+    grid.addEventListener('dragstart',e=>{
+        if(!e.target.classList.contains('dw'))return;
+        dragWidget=e.target;
+        e.target.classList.add('dragging');
+        e.dataTransfer.effectAllowed='move';
+    });
+    grid.addEventListener('dragend',e=>{
+        if(dragWidget)dragWidget.classList.remove('dragging');
+        dragWidget=null;
+        // Save new order
+        const newOrder=[];
+        grid.querySelectorAll('.dw').forEach(w=>newOrder.push(w.dataset.widget));
+        widgetOrder=newOrder;
+        localStorage.setItem('dash_widget_order',JSON.stringify(widgetOrder));
+    });
+    grid.addEventListener('dragover',e=>{
+        e.preventDefault();
+        e.dataTransfer.dropEffect='move';
+        const afterElement=getDragAfterElement(grid,e.clientY);
+        if(dragWidget){
+            if(afterElement==null)grid.appendChild(dragWidget);
+            else grid.insertBefore(dragWidget,afterElement);
+        }
+    });
+}
+function getDragAfterElement(container,y){
+    const elements=[...container.querySelectorAll('.dw:not(.dragging)')];
+    return elements.reduce((closest,child)=>{
+        const box=child.getBoundingClientRect();
+        const offset=y-box.top-box.height/2;
+        if(offset<0&&offset>closest.offset)return{offset,element:child};
+        return closest;
+    },{offset:Number.NEGATIVE_INFINITY}).element;
+}
+
+/* ===== WIDGET SETTINGS ===== */
+function toggleWidgetSettings(){
+    const el=$('widgetSettings');
+    el.style.display=el.style.display==='none'?'block':'none';
+}
 function renderWidgetToggles(){
-    const all = [...WIDGET_DEFS,...SYS_WIDGETS,...TRAF_WIDGETS,{id:'chart_pie'},{id:'chart_bar'}];
-    $('widgetToggles').innerHTML = all.map(w=>{
-        const checked = widgetPrefs[w.id]!==false ? 'checked' : '';
-        const label = w.label ? w.label() : w.id;
-        return `<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t2);cursor:pointer"><input type="checkbox" ${checked} onchange="toggleWidget('${w.id}',this.checked)"> ${label}</label>`;
+    $('widgetToggles').innerHTML=WIDGET_DEFS.map(w=>{
+        const hidden=widgetPrefs[w.id]===false;
+        return`<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t2);cursor:pointer;opacity:${hidden?.5:1}"><input type="checkbox" ${!hidden?'checked':''} onchange="toggleWidget('${w.id}',this.checked);this.parentElement.style.opacity=this.checked?1:.5"> ${w.label()}</label>`;
     }).join('');
 }
-
 function toggleWidget(id,show){
     widgetPrefs[id]=show;
     localStorage.setItem('dash_widgets',JSON.stringify(widgetPrefs));
     renderDashboard();
 }
 
-function renderWidget(container, w, data){
-    if(widgetPrefs[w.id]===false) return;
-    const r = w.render(data.server||{}, data.users||[]);
-    if(!r) return;
-    const pctHtml = r.pct!=null ? `<div class="dw-bar"><div class="fill" style="width:${r.pct}%;background:var(--${r.color})"></div></div>` : '';
-    const listHtml = r.list ? `<div style="margin-top:6px">${r.list.map(x=>`<div style="display:flex;justify-content:space-between;font-size:10px;padding:2px 0;color:var(--t3)"><span>${x.name}</span><span style="font-weight:600">${fmtTraffic(x.mb)}</span></div>`).join('')}</div>` : '';
-    const el = document.createElement('div');
-    el.className = `dw ${r.color||''}`;
-    el.innerHTML = `<div class="dw-icon"><i class="fas ${w.icon}"></i></div><div class="dw-label">${w.label()}</div><div class="dw-value">${r.value}</div><div class="dw-sub">${r.sub||''}</div>${pctHtml}${listHtml}`;
-    container.appendChild(el);
-}
-
+/* ===== RENDER DASHBOARD ===== */
 function renderDashboard(){
-    const mg = $('dashMetrics'); mg.innerHTML='';
-    WIDGET_DEFS.forEach(w=>renderWidget(mg,w,dashData));
-    const sg = $('dashSystem'); sg.innerHTML='';
-    SYS_WIDGETS.forEach(w=>renderWidget(sg,w,dashData));
-    const tg = $('dashTraffic'); tg.innerHTML='';
-    TRAF_WIDGETS.forEach(w=>renderWidget(tg,w,dashData));
-    // Show/hide charts
-    const cp = document.querySelector('[data-widget="chart_pie"]');
-    const cb = document.querySelector('[data-widget="chart_bar"]');
-    if(cp) cp.style.display = widgetPrefs.chart_pie===false?'none':'';
-    if(cb) cb.style.display = widgetPrefs.chart_bar===false?'none':'';
+    const grid=$('dashWidgets');
+    grid.innerHTML='';
+    widgetOrder.forEach(id=>{
+        const w=WIDGET_DEFS.find(x=>x.id===id);
+        if(!w||widgetPrefs[w.id]===false)return;
+        const r=w.render(dashData.server||{},dashData.users||[]);
+        if(!r)return;
+        const pctHtml=r.pct!=null?`<div class="dw-bar"><div class="fill" style="width:${r.pct}%;background:var(--${r.color})"></div></div>`:'';
+        const listHtml=r.list?`<div style="margin-top:6px">${r.list.map(x=>`<div style="display:flex;justify-content:space-between;font-size:10px;padding:2px 0;color:var(--t3)"><span>${x.name}</span><span style="font-weight:600">${fmtTraffic(x.mb)}</span></div>`).join('')}</div>`:'';
+        const el=document.createElement('div');
+        el.className=`dw ${r.color||''}`;
+        el.dataset.widget=w.id;
+        el.draggable=true;
+        el.innerHTML=`<div class="dw-icon"><i class="fas ${w.icon}"></i></div><div class="dw-label">${w.label()}</div><div class="dw-value">${r.value}</div><div class="dw-sub">${r.sub||''}</div>${pctHtml}${listHtml}`;
+        grid.appendChild(el);
+    });
+    initDragDrop();
+    // Charts
+    const cp=document.querySelector('[data-widget="chart_pie"]');
+    const cb=document.querySelector('[data-widget="chart_bar"]');
+    if(cp)cp.style.display=widgetPrefs.chart_pie===false?'none':'';
+    if(cb)cb.style.display=widgetPrefs.chart_bar===false?'none':'';
 }
 
 function changeServer(val){
-    currentServer = val;
-    renderDashboard();
-    if(currentPage==='dashboard') setTimeout(()=>{renderPieChart();renderBarChart()},100);
+    currentServer=val;
+    const label=val==='main'?'Основная':(nodesCache.find(n=>n.id===val)||{}).name||val;
+    $('srvLabel').textContent=label;
+    loadServerData(val);
 }
 
 function loadServerList(){
     fetch('/api/nodes').then(r=>r.json()).then(d=>{
-        const sel = $('serverSelect');
-        sel.innerHTML = '<option value="main">🇵🇱 Основная</option>';
-        (d.nodes||[]).forEach(n=>{
-            if(!n.is_main && n.status==='online'){
-                sel.innerHTML += `<option value="${n.id}">${n.flag||'📍'} ${n.name}</option>`;
-            }
-        });
+        nodesCache=d.nodes||[];
+        renderSrvDropdown();
     }).catch(()=>{});
 }
 
 function rMt(s,u){
-    dashData.users = u;
+    dashData.users=u;
     renderDashboard();
 }
 
 function rSy(s){
-    dashData.server = s;
-    renderDashboard();
+    if(currentServer==='main'){
+        dashData.server=s;
+        renderDashboard();
+    }
 }
 
 function renderPieChart(){
