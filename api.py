@@ -554,6 +554,7 @@ async def miniapp_status():
 async def miniapp_users():
     users = get_all_users()
     online_status = get_online_status()
+    nodes = load_nodes()
     result = []
     for uid, user in users.items():
         link = get_user_link(uid, user)
@@ -562,6 +563,15 @@ async def miniapp_users():
         ts = user.get("traffic_saved", {})
         tx_bytes = ts.get("tx", 0)
         rx_bytes = ts.get("rx", 0)
+        # Aggregate traffic from remote nodes
+        username_lower = username.lower()
+        for nid, node in nodes.items():
+            if node.get("is_main"):
+                continue
+            for node_user, ut in node.get("user_traffic", {}).items():
+                if node_user.lower() == username_lower:
+                    tx_bytes += ut.get("tx", 0)
+                    rx_bytes += ut.get("rx", 0)
         total_mb = round((tx_bytes + rx_bytes) / 1024 / 1024, 2)
         result.append({
             "id": uid, "name": username, "active": user.get("active", True),

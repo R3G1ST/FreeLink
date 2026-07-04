@@ -783,13 +783,21 @@ let wsConn=null,wsReconnectTimer=null,geoipCache={};
 /* ===== TRAFFIC FORMATTER ===== */
 function fmtTraffic(mb) {
     if (!mb || mb === 0) return '0 МБ';
-    if (mb >= 1024) return (mb / 1024).toFixed(1).replace(/\.0$/, '') + ' ГБ';
-    return mb + ' МБ';
+    if (mb >= 1024) {
+        const gb = Math.floor(mb / 1024);
+        const rem = Math.round(mb % 1024);
+        return rem > 0 ? `${gb} ГБ ${rem} МБ` : `${gb} ГБ`;
+    }
+    return Math.round(mb) + ' МБ';
 }
 function fmtTrafficShort(mb) {
     if (!mb || mb === 0) return '0';
-    if (mb >= 1024) return (mb / 1024).toFixed(1).replace(/\.0$/, '') + ' ГБ';
-    return mb + ' МБ';
+    if (mb >= 1024) {
+        const gb = Math.floor(mb / 1024);
+        const rem = Math.round(mb % 1024);
+        return rem > 0 ? `${gb}.${Math.round(rem/10.24)}` : `${gb}`;
+    }
+    return Math.round(mb);
 }
 
 /* ===== I18N ===== */
