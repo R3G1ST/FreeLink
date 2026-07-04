@@ -29,6 +29,14 @@ class AuthHandler(BaseHTTPRequestHandler):
                 username, password = auth.split(':', 1)
                 user, uid = db.get_user_by_credentials(username, password)
                 if user:
+                    # Check device limit
+                    if not db.check_device_limit(username, client_ip):
+                        self.send_response(403)
+                        self.send_header('Content-Type', 'application/json')
+                        self.end_headers()
+                        self.wfile.write(json.dumps({"ok": False, "msg": "device_limit_reached"}).encode())
+                        print(f"Auth blocked (device limit): {username} from {client_ip}", file=sys.stderr)
+                        return
                     db.log_connection(username, client_ip)
                     self.send_response(200)
                     self.send_header('Content-Type', 'application/json')
@@ -36,12 +44,20 @@ class AuthHandler(BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps({"ok": True, "id": username}).encode())
                     print(f"Auth success (new): {username} from {client_ip}", file=sys.stderr)
                     return
-            
+
             # Старый формат — только пароль
             all_users = db.get_all_users()
             for uid, user in all_users.items():
                 if user.get("password") == auth:
                     uname = user.get("name", uid)
+                    # Check device limit
+                    if not db.check_device_limit(uname, client_ip):
+                        self.send_response(403)
+                        self.send_header('Content-Type', 'application/json')
+                        self.end_headers()
+                        self.wfile.write(json.dumps({"ok": False, "msg": "device_limit_reached"}).encode())
+                        print(f"Auth blocked (device limit): {uname} from {client_ip}", file=sys.stderr)
+                        return
                     db.log_connection(uname, client_ip)
                     self.send_response(200)
                     self.send_header('Content-Type', 'application/json')

@@ -76,7 +76,8 @@ def init_db():
                 plan TEXT,
                 speed_limit_mbps INTEGER DEFAULT 0,
                 subscription_id TEXT,
-                ip TEXT
+                ip TEXT,
+                max_devices INTEGER DEFAULT 0
             )
         """)
         cur.execute("""
@@ -247,7 +248,7 @@ def delete_user(uid):
 
 ALLOWED_USER_FIELDS = {"name", "active", "expire_date", "password", "password_hash",
                        "traffic_limit", "traffic_used", "traffic_saved", "link",
-                       "created", "node_id", "note", "service_token"}
+                       "created", "node_id", "note", "service_token", "max_devices"}
 
 def update_user_field(uid, field, value):
     if field not in ALLOWED_USER_FIELDS:
@@ -447,7 +448,8 @@ def _row_to_user(row):
         "link": row["link"] or "", "service_token": row["service_token"] or "",
         "plan": row["plan"] or "", "speed_limit_mbps": row["speed_limit_mbps"] or 0,
         "subscription_id": row["subscription_id"] or "",
-        "ip": row["ip"] or ""
+        "ip": row["ip"] or "",
+        "max_devices": row["max_devices"] or 0
     }
 
 # ===== TRAFFIC SNAPSHOTS =====
@@ -695,6 +697,47 @@ def get_user_device_count(username):
         """, (username,))
         row = cur.fetchone()
         return row[0] if row else 0
+
+
+def get_active_device_count(username):
+    """Count distinct IPs with open connections (last 5 min)."""
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT COUNT(DISTINCT client_ip)
+            FROM connection_log
+            WHERE username = %s
+              AND disconnected_at IS NULL
+              AND connected_at > NOW() - make_interval(minutes => 5)
+        """, (username,))
+        row = cur.fetchone()
+        return row[0] if row else 0
+
+
+def check_device_limit(username, client_ip):
+    """Check if a new connection from client_ip is allowed. Returns True if OK."""
+    result = get_user_by_name(username)
+    user_data = result[0] if result and result[0] else None
+    if not user_data:
+        return True
+    max_devices = user_data.get("max_devices", 0)
+    if max_devices == 0:
+        return True  # Unlimited
+    # Check if this IP is already connected (reconnection = allowed)
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT COUNT(*) FROM connection_log
+            WHERE username = %s AND client_ip = %s
+              AND disconnected_at IS NULL
+              AND connected_at > NOW() - make_interval(minutes => 5)
+        """, (username, client_ip))
+        row = cur.fetchone()
+        if row and row[0] > 0:
+            return True  # Same IP reconnected — allowed
+    # Count distinct active devices
+    active = get_active_device_count(username)
+    return active < max_devices
 
 
 def update_user_ip(username, ip):

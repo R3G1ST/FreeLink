@@ -1367,10 +1367,24 @@ function renderUserModal(u){
     } else if(umTabCur==='devices'){
         const devCount=u.active_devices||0;
         const uniqIps=u.unique_ips_30d||0;
+        const maxDev=u.max_devices||0;
+        const maxText=maxDev>0?maxDev:'∞';
         html=`
         <div class="um-status-grid">
             <div class="um-badge online"><span class="dot"></span>IP: ${u.ip||'—'}</div>
-            <div class="um-badge active"><span class="dot"></span>Устройств: ${devCount}</div>
+            <div class="um-badge active"><span class="dot"></span>Устройств: ${devCount}/${maxText}</div>
+        </div>
+        <div class="um-section">
+            <div class="um-section-title"><i class="fas fa-sliders-h"></i> Лимит устройств</div>
+            <div style="font-size:11px;color:var(--t4);margin-bottom:8px">Текущий лимит: <strong style="color:var(--t1)">${maxDev>0?maxDev+' устройств':'Без ограничений'}</strong></div>
+            <div class="um-quick-btns">
+                <button class="btn btn-n btn-sm" onclick="setMaxDevices(1)">1</button>
+                <button class="btn btn-n btn-sm" onclick="setMaxDevices(2)">2</button>
+                <button class="btn btn-n btn-sm" onclick="setMaxDevices(3)">3</button>
+                <button class="btn btn-n btn-sm" onclick="setMaxDevices(5)">5</button>
+                <button class="btn btn-n btn-sm" onclick="setMaxDevices(10)">10</button>
+                <button class="btn btn-g btn-sm" onclick="setMaxDevices(0)">∞ Без лимита</button>
+            </div>
         </div>
         <div class="um-info-grid" style="margin-top:8px">
             <div class="um-info-item"><div class="um-label">Уникальных IP (30 дн)</div><div class="um-value">${uniqIps}</div></div>
@@ -1420,6 +1434,7 @@ function renderUserModal(u){
 }
 function setLimit(mb){if(!CUid)return;fetch('/api/user/set-limit/'+CUid+'?limit_mb='+mb,{method:'POST'}).then(()=>{toast(t('traffic_limit')+': '+(mb?mb+' '+t('units_mb'):t('traffic_unlimited')));refreshUserModal()})}
 function setSpeed(mbps){if(!CUid)return;fetch('/api/user/speed-limit/'+CUid,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({speed_mbps:mbps})}).then(()=>{toast('Скорость: '+(mbps?mbps+' Мбит/с':'∞ Неограничена'));refreshUserModal()})}
+function setMaxDevices(n){if(!CUid)return;fetch('/api/user/'+CUid+'/max-devices',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({max_devices:n})}).then(()=>{toast('Лимит: '+(n>0?n+' устройств':'Без ограничений'));refreshUserModal()})}
 function resetTraffic(){if(!CUid)return;confirmModal(t('msg_confirm_reset'),()=>{fetch('/api/user/reset-traffic/'+CUid,{method:'POST'}).then(()=>{toast(t('msg_traffic_reset'));refreshUserModal()})})}
 function copyUserLink(){if(CUd?.link){navigator.clipboard.writeText(CUd.link).then(()=>toast(t('msg_copied')))}}
 function copySubUrl(url){if(!url){toast(t('msg_no_token'));return}navigator.clipboard.writeText(url).then(()=>toast(t('msg_sub_copied')))}

@@ -1253,6 +1253,7 @@ async def get_user_endpoint(uid: str):
         "last_seen": user_online.get("last_active", ""),
         "ip": user.get("ip", ""),
         "active_devices": db.get_user_device_count(username),
+        "max_devices": user.get("max_devices", 0),
         "unique_ips_30d": db.get_user_unique_ips(username, 30),
         "traffic": traffic,
         "traffic_limit": traffic_limit,
@@ -1282,6 +1283,24 @@ async def user_connections(uid: str, request: Request, limit: int = 50):
         else:
             conn["node_name"] = nid
     return {"connections": connections}
+
+@app.post("/api/user/{uid}/max-devices")
+async def set_max_devices(uid: str, request: Request):
+    token = request.cookies.get("session")
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    target = get_user(uid)
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    data = await request.json()
+    max_devices = data.get("max_devices", 0)
+    if max_devices < 0:
+        max_devices = 0
+    target["max_devices"] = max_devices
+    save_user(uid, target)
+    audit_log(user, "MAX_DEVICES_CHANGED", f"uid={uid} max={max_devices}")
+    return {"success": True, "max_devices": max_devices}
 
 @app.post("/api/user/create", summary="Create VPN user", description="Create a new VPN user with subscription. Returns user ID, expiry date, and Hysteria2 connection link.")
 async def create_user(name: str, days: int = 30):
