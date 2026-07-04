@@ -1262,6 +1262,13 @@ async function loadMe(){try{const r=await fetch('/api/me');if(!r.ok){window.loca
 /* ===== DASHBOARD ===== */
  async function loadAll(){
     try{
+        // Ensure we have a session token for WebSocket
+        if(!localStorage.getItem('session_token')){
+            try{
+                const tr=await fetch('/api/session-token');
+                if(tr.ok){const td=await tr.json();if(td.token)localStorage.setItem('session_token',td.token)}
+            }catch{}
+        }
         const[sr,ur,or,sr2]=await Promise.all([fetch('/api/status'),fetch('/api/users'),fetch('/api/online'),fetch('/api/server-info')]);
         const s=await sr.json(),u=await ur.json(),o=await or.json(),sv=await sr2.json();
         OD=o;rMt(s,u.users);rSy(sv);CU=u.users;rU();

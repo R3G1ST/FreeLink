@@ -245,7 +245,7 @@ async def check_auth(request: Request, call_next):
         return await call_next(request)
 
     # Truly public endpoints (no auth needed - minimal info only)
-    public_api = ["/api/status", "/api/version", "/api/plans"]
+    public_api = ["/api/status", "/api/version", "/api/plans", "/api/session-token"]
     if any(path.startswith(p) for p in public_api):
         return await call_next(request)
 
@@ -919,6 +919,17 @@ async def login(request: Request):
     resp = JSONResponse(content={"success": True, "username": username, "token": token})
     resp.set_cookie("session", token, max_age=86400, httponly=True, secure=True, samesite="lax")
     return resp
+
+@app.get("/api/session-token")
+async def get_session_token(request: Request):
+    """Return current session token for WebSocket authentication."""
+    token = request.cookies.get("session")
+    if not token:
+        return JSONResponse(status_code=401, content={"error": "No session"})
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Invalid session"})
+    return {"token": token}
 
 @app.post("/api/logout")
 async def logout(request: Request):
