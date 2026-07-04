@@ -41,8 +41,8 @@ def parse_dnsmasq_log():
                 if m:
                     domain = m.group(1)
                     client_ip = m.group(2).split('#')[0]  # Remove port
-                    # Skip localhost and DNS server queries
-                    if client_ip in ('127.0.0.1', '::1', '8.8.8.8', '8.8.4.4'):
+                    # Skip only upstream DNS server queries
+                    if client_ip in ('8.8.8.8', '8.8.4.4'):
                         continue
                     # Get timestamp from log line
                     ts_match = re.search(r'(\w+\s+\d+\s+\d+:\d+:\d+)', line)
@@ -104,24 +104,26 @@ def watch():
                         if m:
                             domain = m.group(1)
                             client_ip = m.group(2).split('#')[0]
-                            if client_ip not in ('127.0.0.1', '::1', '8.8.8.8', '8.8.4.4'):
+                            if client_ip not in ('8.8.8.8', '8.8.4.4'):
                                 queries.append({"domain": domain, "ip": client_ip})
                     
                     if queries:
                         # Get active connections
                         connections = get_active_connections()
-                        # Correlate
+                        # Get all active usernames
+                        active_users = list(set(c["username"] for c in connections.values()))
+                        # Log DNS queries with active users
                         entries = []
                         for q in queries:
-                            conn = connections.get(q["ip"])
-                            if conn:
-                                entries.append({
-                                    "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                    "user": conn["username"],
-                                    "domain": q["domain"],
-                                    "ip": q["ip"],
-                                    "node_id": conn["node_id"]
-                                })
+                            # Associate with first active user (DNS comes from localhost)
+                            user = active_users[0] if active_users else "unknown"
+                            entries.append({
+                                "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                "user": user,
+                                "domain": q["domain"],
+                                "ip": q["ip"],
+                                "node_id": connections.get(q["ip"], {}).get("node_id", "__main__") if connections else "__main__"
+                            })
                         if entries:
                             save_dns_log(entries)
                             print(f"[dns-watcher] Logged {len(entries)} DNS queries", flush=True)
