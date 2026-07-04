@@ -684,20 +684,18 @@ a{text-decoration:none;color:inherit}
 
             <!-- LOGS -->
             <div class="pg" id="p-logs">
-                <div class="pg-title"><i class="fas fa-scroll"></i> <span data-i18n="page_logs">Логи</span></div>
+                <div class="pg-title"><i class="fas fa-scroll"></i> <span data-i18n="page_logs">Логи трафика</span></div>
                 <div class="tbar">
                     <button class="btn btn-n" onclick="lLg()"><i class="fas fa-sync"></i> <span data-i18n="btn_refresh">Обновить</span></button>
-                    <button class="btn btn-n" onclick="clearLogs()"><i class="fas fa-trash"></i> Очистить</button>
                     <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t2);margin-left:auto;cursor:pointer">
                         <input type="checkbox" id="autoScroll" checked onchange="toggleAutoScroll()"> Автопрокрутка
                     </label>
                 </div>
                 <div id="logsFilter" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
                     <button class="filter on" onclick="filterLogs('all',this)">Все</button>
+                    <button class="filter" onclick="filterLogs('connect',this)">Подключения</button>
+                    <button class="filter" onclick="filterLogs('disconnect',this)">Отключения</button>
                     <button class="filter" onclick="filterLogs('auth',this)">Авторизация</button>
-                    <button class="filter" onclick="filterLogs('user',this)">Пользователи</button>
-                    <button class="filter" onclick="filterLogs('node',this)">Ноды</button>
-                    <button class="filter" onclick="filterLogs('system',this)">Система</button>
                 </div>
                 <div class="card logs-container" id="lB" style="padding:0;max-height:500px;overflow-y:auto">
                     <div style="padding:20px;text-align:center;color:var(--t4)"><i class="fas fa-scroll" style="font-size:24px;opacity:.3"></i><p>Загрузка...</p></div>
@@ -2096,31 +2094,20 @@ function filterLogs(filter,el){
     renderLogs();
 }
 function toggleAutoScroll(){autoScrollEnabled=$('autoScroll').checked}
-function clearLogs(){logsData=[];renderLogs()}
 
 async function lLg(){
     try{
-        const[r1,r2]=await Promise.all([fetch('/api/logs'),fetch('/api/audit')]);
-        const hyst=await r1.json();
-        const audit=await r2.json();
-        // Parse hysteria logs into structured format
-        const hystLines=(hyst.logs||'').split('\n').filter(l=>l.trim());
-        logsData=hystLines.map(l=>{
-            const m=l.match(/^\[?(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\]?\s*(.*)/);
-            return{time:m?m[1]:'',action:m?m[2]:l,user:'system',type:'system',raw:l};
-        });
-        // Add audit logs
-        if(audit.logs){
-            audit.logs.split('\n').filter(l=>l.trim()).forEach(l=>{
-                const m=l.match(/^\[([^\]]+)\]\s+([^:]+):\s+(\S+)\s*(.*)/);
-                if(m){
-                    const type=m[3].includes('LOGIN')?'auth':m[3].includes('NODE')?'node':'user';
-                    logsData.push({time:m[1],user:m[2],action:m[3],details:m[4],type:type,raw:l});
-                }
-            });
-        }
-        // Sort by time descending
-        logsData.sort((a,b)=>b.time.localeCompare(a.time));
+        const r=await fetch('/api/traffic-logs');
+        const d=await r.json();
+        logsData=(d.logs||[]).map(l=>({
+            time:l.connected_at||'',
+            user:l.username||'',
+            ip:l.client_ip||'',
+            node:l.node_name||l.node_id||'',
+            disconnected:l.disconnected_at,
+            duration:l.duration_seconds||0,
+            type:l.disconnected_at?'disconnect':'connect'
+        }));
         renderLogs();
     }catch(e){console.error('lLg error:',e)}
 }
@@ -2129,11 +2116,33 @@ function renderLogs(){
     const el=$('lB');
     const filtered=logsFilter==='all'?logsData:logsData.filter(l=>l.type===logsFilter);
     if(!filtered.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--t4)"><i class="fas fa-scroll" style="font-size:24px;opacity:.3"></i><p>Нет логов</p></div>';return}
-    el.innerHTML=filtered.slice(0,100).map(l=>`<div class="log-entry ${l.type}"><span class="log-time">${l.time.split(' ')[1]||l.time}</span><span class="log-user">${l.user||'system'}</span><span class="log-action">${l.action||l.raw||''}</span>${l.details?`<span class="log-details">${l.details}</span>`:''}</div>`).join('');
+    el.innerHTML=filtered.slice(0,100).map(l=>{
+        const time=l.time?l.time.split(' ')[1]||l.time:'';
+        const dur=l.duration?Math.floor(l.duration/60)+'м '+l.duration%60+'с':'активно';
+        const icon=l.type==='disconnect'?'fa-sign-out-alt':'fa-sign-in-alt';
+        const color=l.type==='disconnect'?'var(--rd)':'var(--gn)';
+        return`<div class="log-entry ${l.type}"><span class="log-time">${time}</span><span style="color:${color};min-width:16px"><i class="fas ${icon}" style="font-size:10px"></i></span><span class="log-user">${l.user}</span><span class="log-action">→ ${l.node}</span><span class="log-details">${l.ip} · ${dur}</span></div>`;
+    }).join('');
     if(autoScrollEnabled)el.scrollTop=0;
 }
 
-async function lAudit(){lLg()}
+/* ===== AUDIT ===== */
+async function lAudit(){
+    try{
+        const r=await fetch('/api/audit');
+        const d=await r.json();
+        const el=$('aB');
+        const lines=(d.logs||'').split('\n').filter(l=>l.trim());
+        if(!lines.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--t4)"><i class="fas fa-shield-alt" style="font-size:24px;opacity:.3"></i><p>Нет записей</p></div>';return}
+        el.innerHTML=lines.slice(0,100).map(l=>{
+            const m=l.match(/^\[([^\]]+)\]\s+([^:]+):\s+(\S+)\s*(.*)/);
+            if(!m)return`<div class="log-entry"><span class="log-action">${l}</span></div>`;
+            const type=m[3].includes('LOGIN')?'auth':m[3].includes('NODE')?'node':'user';
+            return`<div class="log-entry ${type}"><span class="log-time">${m[1].split(' ')[1]||m[1]}</span><span class="log-user">${m[2]}</span><span class="log-action">${m[3]}</span><span class="log-details">${m[4]||''}</span></div>`;
+        }).join('');
+        el.scrollTop=0;
+    }catch(e){console.error('lAudit error:',e)}
+}
 /* ===== UPDATE ===== */
 let updatePollTimer=null;
 async function checkUpdate(){

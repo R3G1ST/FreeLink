@@ -1176,6 +1176,32 @@ async def get_status():
 async def server_info():
     return get_server_info()
 
+@app.get("/api/traffic-logs")
+async def traffic_logs(request: Request, limit: int = 100):
+    """Return recent connection logs with node names."""
+    token = request.cookies.get("session")
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    nodes = load_nodes()
+    node_names = {nid: node.get("name", nid) for nid, node in nodes.items()}
+    with db.get_conn() as conn:
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("SELECT * FROM connection_log ORDER BY connected_at DESC LIMIT %s", (limit,))
+        rows = cur.fetchall()
+    result = []
+    for r in rows:
+        result.append({
+            "username": r["username"],
+            "client_ip": r["client_ip"],
+            "node_id": r["node_id"],
+            "node_name": node_names.get(r["node_id"], r["node_id"]),
+            "connected_at": r["connected_at"].strftime("%Y-%m-%d %H:%M:%S") if r["connected_at"] else "",
+            "disconnected_at": r["disconnected_at"].strftime("%Y-%m-%d %H:%M:%S") if r["disconnected_at"] else None,
+            "duration_seconds": r["duration_seconds"] or 0
+        })
+    return {"logs": result}
+
 # ====== USERS ======
 
 @app.get("/api/users", summary="List all users", description="Returns all VPN users with online status, traffic stats, and subscription info.")
