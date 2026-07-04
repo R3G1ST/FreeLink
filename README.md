@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-3.13.0--aurora-8b5cf6?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-3.13.0--nexus-8b5cf6?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/Status-Alpha-orange?style=for-the-badge" alt="Status">
   <img src="https://img.shields.io/badge/Python-3.10+-3776ab?style=for-the-badge&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/Hysteria-2-ff6b35?style=for-the-badge" alt="Hysteria">
@@ -543,11 +543,11 @@ journalctl -u freelink-api -f
 
 ## Changelog
 
-### v3.13.0-aurora (2026-07-04)
+### v3.13.0-nexus (2026-07-04)
 
 #### Features
 - **DNS Logging** — автоматическое логирование DNS-запросов VPN-клиентов через dnsmasq
-- **Marzban-style Logs** — единая страница логов с фильтрами в стиле панели
+- **Structured Logs** — единая страница логов с фильтрами в стиле панели
 - **Real-time Logs** — WebSocket + poll обновляют логи каждые 1-3 секунды
 - **CSV Export** — экспорт логов в CSV файл
 - **Server Selector** — выбор сервера на дашборде для просмотра статистики нод
