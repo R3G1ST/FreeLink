@@ -2337,7 +2337,8 @@ async function deleteAdmin(username){confirmModal('Удалить '+username+'?'
 function connectWebSocket(){
     try{
         const proto=location.protocol==='https:'?'wss:':'ws:';
-        const wsUrl=proto+'//'+location.host+'/ws/live';
+        const token=document.cookie.match(/session=([^;]+)/)?.[1]||'';
+        const wsUrl=proto+'//'+location.host+'/ws/live?token='+token;
         wsConn=new WebSocket(wsUrl);
         wsConn.onopen=function(){
             const el=$('wsStatus');
