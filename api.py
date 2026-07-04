@@ -1246,6 +1246,34 @@ async def traffic_logs(request: Request, limit: int = 100):
     result.sort(key=lambda x: x.get("connected_at", ""), reverse=True)
     return {"logs": result[:limit]}
 
+@app.get("/api/logs/stream")
+async def logs_stream(request: Request, log_type: str = None, search: str = None, limit: int = 200):
+    """Get structured logs from all sources with filtering."""
+    token = request.cookies.get("session")
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    logs = db.get_structured_logs(log_type=log_type, search=search, limit=limit)
+    return {"logs": logs, "total": len(logs)}
+
+@app.get("/api/logs/export")
+async def logs_export(request: Request, format: str = "csv"):
+    """Export logs as CSV."""
+    token = request.cookies.get("session")
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    logs = db.get_structured_logs(limit=1000)
+    if format == "csv":
+        lines = ["time,user,type,action,details,ip,node"]
+        for l in logs:
+            line = f'"{l["time"]}","{l["user"]}","{l["type"]}","{l["action"]}","{l["details"]}","{l["ip"]}","{l["node"]}"'
+            lines.append(line)
+        content = "\n".join(lines)
+        return Response(content=content, media_type="text/csv",
+                       headers={"Content-Disposition": "attachment; filename=logs.csv"})
+    return {"logs": logs}
+
 # ====== USERS ======
 
 @app.get("/api/users", summary="List all users", description="Returns all VPN users with online status, traffic stats, and subscription info.")
@@ -2613,9 +2641,9 @@ async def websocket_live(websocket: WebSocket):
                             expiring += 1
                 except Exception:
                     pass
-            # Get recent audit logs for real-time updates
+            # Get recent structured logs for real-time updates
             try:
-                recent_logs = db.get_audit_log(limit=10)
+                recent_logs = db.get_structured_logs(limit=20)
             except Exception:
                 recent_logs = []
             await websocket.send_json({

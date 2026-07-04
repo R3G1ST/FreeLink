@@ -685,19 +685,29 @@ a{text-decoration:none;color:inherit}
 
             <!-- LOGS -->
             <div class="pg" id="p-logs">
-                <div class="pg-title"><i class="fas fa-scroll"></i> <span data-i18n="page_logs">Логи трафика</span></div>
+                <div class="pg-title"><i class="fas fa-scroll"></i> <span data-i18n="page_logs">Логи</span></div>
                 <div class="tbar">
                     <button class="btn btn-n" onclick="lLg()"><i class="fas fa-sync"></i> <span data-i18n="btn_refresh">Обновить</span></button>
+                    <button class="btn btn-b" onclick="exportLogs()"><i class="fas fa-download"></i> CSV</button>
                     <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t2);margin-left:auto;cursor:pointer">
                         <input type="checkbox" id="autoScroll" checked onchange="toggleAutoScroll()"> Автопрокрутка
                     </label>
+                </div>
+                <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+                    <div class="sbox" style="flex:1;min-width:120px"><i class="fas fa-search"></i><input type="text" id="logSearch" placeholder="Поиск..." oninput="lLg()"></div>
+                    <button class="filter on" onclick="filterLogs('all',this)">Все</button>
+                    <button class="filter" onclick="filterLogs('connect',this)">🟢 Подключения</button>
+                    <button class="filter" onclick="filterLogs('disconnect',this)">🔴 Отключения</button>
+                    <button class="filter" onclick="filterLogs('dns',this)">🔵 DNS</button>
+                    <button class="filter" onclick="filterLogs('auth',this)">🟡 Авторизация</button>
+                    <button class="filter" onclick="filterLogs('system',this)">🟠 Система</button>
                 </div>
                 <div class="card logs-container" id="lB" style="padding:0;max-height:500px;overflow-y:auto">
                     <div style="padding:20px;text-align:center;color:var(--t4)"><i class="fas fa-scroll" style="font-size:24px;opacity:.3"></i><p>Загрузка...</p></div>
                 </div>
             </div>
 
-            <!-- AUDIT -->
+            <!-- AUDIT (redirect to logs) -->
             <div class="pg" id="p-audit">
                 <div class="pg-title"><i class="fas fa-shield-alt"></i> <span data-i18n="page_audit">Аудит</span></div>
                 <div class="tbar"><button class="btn btn-n" onclick="lAudit()"><i class="fas fa-sync"></i> <span data-i18n="btn_refresh">Обновить</span></button></div>
@@ -2084,37 +2094,27 @@ let autoScrollEnabled=true;
 
 function filterLogs(filter,el){
     logsFilter=filter;
-    document.querySelectorAll('#logsFilter .filter').forEach(b=>b.classList.remove('on'));
-    el.classList.add('on');
-    renderLogs();
+    document.querySelectorAll('#logsFilter .filter,#p-logs .filter').forEach(b=>b.classList.remove('on'));
+    if(el)el.classList.add('on');
+    lLg();
 }
 function toggleAutoScroll(){autoScrollEnabled=$('autoScroll').checked}
 
+function exportLogs(){
+    window.open('/api/logs/export?format=csv','_blank');
+}
+
+const LOG_ICONS={connect:'🟢',disconnect:'🔴',dns:'🔵',auth:'🟡',system:'🟠'};
+const LOG_LABELS={connect:'Подключение',disconnect:'Отключение',dns:'DNS',auth:'Авторизация',system:'Система'};
+
 async function lLg(){
     try{
-        const r=await fetch('/api/traffic-logs');
+        const search=($('logSearch')||{}).value||'';
+        const typeParam=logsFilter!=='all'?'&log_type='+logsFilter:'';
+        const searchParam=search?'&search='+encodeURIComponent(search):'';
+        const r=await fetch('/api/logs/stream?limit=200'+typeParam+searchParam);
         const d=await r.json();
-        logsData=(d.logs||[]).map(l=>{
-            if(l.type==='dns'){
-                return{
-                    time:l.connected_at||'',
-                    user:l.user||'',
-                    ip:l.ip||'',
-                    node:'DNS',
-                    domain:l.domain||'',
-                    type:'dns'
-                };
-            }
-            return{
-                time:l.connected_at||'',
-                user:l.username||'',
-                ip:l.client_ip||'',
-                node:l.node_name||l.node_id||'',
-                disconnected:l.disconnected_at,
-                duration:l.duration_seconds||0,
-                type:l.disconnected_at?'disconnect':'connect'
-            };
-        });
+        logsData=d.logs||[];
         renderLogs();
     }catch(e){console.error('lLg error:',e)}
 }
@@ -2122,34 +2122,16 @@ async function lLg(){
 function renderLogs(){
     const el=$('lB');
     if(!logsData.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--t4)"><i class="fas fa-scroll" style="font-size:24px;opacity:.3"></i><p>Нет логов</p></div>';return}
-    el.innerHTML=logsData.slice(0,100).map(l=>{
+    el.innerHTML=logsData.slice(0,200).map(l=>{
         const time=l.time?l.time.split(' ')[1]||l.time:'';
-        if(l.type==='dns'){
-            return`<div class="log-entry dns"><span class="log-time">${time}</span><span style="color:var(--bl);min-width:16px"><i class="fas fa-globe" style="font-size:10px"></i></span><span class="log-user">${l.user}</span><span class="log-action">${l.domain}</span><span class="log-details">${l.ip}</span></div>`;
-        }
-        const dur=l.duration?Math.floor(l.duration/60)+'м '+l.duration%60+'с':'активно';
-        const icon=l.type==='disconnect'?'fa-sign-out-alt':'fa-sign-in-alt';
-        const color=l.type==='disconnect'?'var(--rd)':'var(--gn)';
-        return`<div class="log-entry ${l.type}"><span class="log-time">${time}</span><span style="color:${color};min-width:16px"><i class="fas ${icon}" style="font-size:10px"></i></span><span class="log-user">${l.user}</span><span class="log-action">→ ${l.node}</span><span class="log-details">${l.ip} · ${dur}</span></div>`;
+        const icon=LOG_ICONS[l.type]||'⚪';
+        return`<div class="log-entry ${l.type}"><span class="log-time">${time}</span><span style="min-width:20px;text-align:center">${icon}</span><span class="log-user">${l.user||'—'}</span><span class="log-action">${l.action||''}</span><span class="log-details">${l.details||''}</span></div>`;
     }).join('');
     if(autoScrollEnabled)el.scrollTop=0;
 }
 
-/* ===== AUDIT ===== */
-async function lAudit(){
-    try{
-        const r=await fetch('/api/audit');
-        const d=await r.json();
-        const el=$('aB');
-        const lines=(d.logs||'').split('\n').filter(l=>l.trim());
-        if(!lines.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--t4)"><i class="fas fa-shield-alt" style="font-size:24px;opacity:.3"></i><p>Нет записей</p></div>';return}
-        el.innerHTML=lines.slice(0,100).map(l=>{
-            const m=l.match(/^\[([^\]]+)\]\s+([^:]+):\s+(\S+)\s*(.*)/);
-            if(!m)return`<div class="log-entry"><span class="log-action">${l}</span></div>`;
-            const type=m[3].includes('LOGIN')?'auth':m[3].includes('NODE')?'node':'user';
-            return`<div class="log-entry ${type}"><span class="log-time">${m[1].split(' ')[1]||m[1]}</span><span class="log-user">${m[2]}</span><span class="log-action">${m[3]}</span><span class="log-details">${m[4]||''}</span></div>`;
-        }).join('');
-        el.scrollTop=0;
+/* ===== AUDIT (redirect to logs) ===== */
+async function lAudit(){lLg()}
     }catch(e){console.error('lAudit error:',e)}
 }
 /* ===== UPDATE ===== */
@@ -2465,14 +2447,14 @@ function connectWebSocket(){
                 }
                 // Real-time log updates
                 if(data.logs&&currentPage==='logs'){
-                    const newLogs=data.logs.map(l=>({time:l.time||'',user:l.user_name||'system',action:l.action||'',details:l.details||'',type:l.action?.includes('LOGIN')?'auth':l.action?.includes('NODE')?'node':'user',raw:l.time+' '+l.user_name+': '+l.action}));
-                    if(newLogs.length){
-                        // Merge with existing, avoid duplicates
-                        const existingTimes=new Set(logsData.map(l=>l.time+l.user+l.action));
-                        newLogs.forEach(l=>{if(!existingTimes.has(l.time+l.user+l.action))logsData.unshift(l)});
-                        logsData=logsData.slice(0,200);
-                        renderLogs();
-                    }
+                    const existingIds=new Set(logsData.map(l=>l.time+l.user+l.action));
+                    data.logs.forEach(l=>{
+                        if(!existingIds.has(l.time+l.user+l.action)){
+                            logsData.unshift(l);
+                        }
+                    });
+                    logsData=logsData.slice(0,200);
+                    renderLogs();
                 }
                 if(data.traffic&&Array.isArray(data.traffic)){
                     const traffic=data.traffic;

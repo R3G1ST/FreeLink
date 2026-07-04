@@ -427,6 +427,53 @@ def get_audit_log(limit=200):
         lines = [f"[{r['time']}] {r['user_name']}: {r['action']} {r['details']}" for r in rows]
         return "\n".join(reversed(lines))
 
+def get_structured_logs(log_type=None, search=None, limit=200):
+    """Get logs from all sources in unified format."""
+    results = []
+    # 1. Connection logs
+    with get_conn() as conn:
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("SELECT * FROM connection_log ORDER BY connected_at DESC LIMIT %s", (limit,))
+        for r in cur.fetchall():
+            t = "disconnect" if r["disconnected_at"] else "connect"
+            if log_type and log_type != t:
+                continue
+            entry = {
+                "time": r["connected_at"].strftime("%Y-%m-%d %H:%M:%S") if r["connected_at"] else "",
+                "user": r["username"],
+                "type": t,
+                "action": f"→ {r['node_id']}" if t == "connect" else f"← {r['node_id']}",
+                "details": f"{r['client_ip']} · {r['duration_seconds'] or 0}с" if r["disconnected_at"] else r["client_ip"],
+                "ip": r["client_ip"],
+                "node": r["node_id"]
+            }
+            if search and search.lower() not in str(entry).lower():
+                continue
+            results.append(entry)
+    # 2. Audit log
+    with get_conn() as conn:
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("SELECT * FROM audit_log ORDER BY id DESC LIMIT %s", (limit,))
+        for r in cur.fetchall():
+            t = "auth" if "LOGIN" in (r["action"] or "") else "system"
+            if log_type and log_type != t:
+                continue
+            entry = {
+                "time": r["time"] or "",
+                "user": r["user_name"],
+                "type": t,
+                "action": r["action"] or "",
+                "details": r["details"] or "",
+                "ip": "",
+                "node": ""
+            }
+            if search and search.lower() not in str(entry).lower():
+                continue
+            results.append(entry)
+    # Sort by time descending
+    results.sort(key=lambda x: x.get("time", ""), reverse=True)
+    return results[:limit]
+
 # ===== HELPERS =====
 
 def _row_to_user(row):
