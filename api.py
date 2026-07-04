@@ -504,7 +504,7 @@ async def miniapp_auth(request: Request):
     display_name = username or first_name or f"tg_{user_id}"
     token = create_session(f"tg:{display_name}")
     audit_log(f"tg:{display_name}", "MINIAPP_LOGIN", f"tg_id={user_id}")
-    resp = JSONResponse(content={"success": True, "username": display_name})
+    resp = JSONResponse(content={"success": True, "username": display_name, "token": token})
     resp.set_cookie("session", token, max_age=86400, httponly=True, secure=True, samesite="lax")
     return resp
 
