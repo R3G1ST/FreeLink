@@ -916,7 +916,7 @@ async def login(request: Request):
         return JSONResponse(status_code=401, content={"error": "Неверный логин или пароль"})
     token = create_session(username)
     audit_log(username, "LOGIN")
-    resp = JSONResponse(content={"success": True, "username": username})
+    resp = JSONResponse(content={"success": True, "username": username, "token": token})
     resp.set_cookie("session", token, max_age=86400, httponly=True, secure=True, samesite="lax")
     return resp
 

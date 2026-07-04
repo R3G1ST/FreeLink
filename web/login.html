@@ -115,7 +115,10 @@ async function doLogin(e){
     try{
         const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('user').value,password:document.getElementById('pass').value})});
         const d=await r.json();
-        if(r.ok){window.location.href='/'}
+        if(r.ok){
+            if(d.token)localStorage.setItem('session_token',d.token);
+            window.location.href='/'
+        }
         else{document.getElementById('errMsg').textContent=d.error||I18N.err_login[currentLang];err.classList.add('show')}
     }catch{document.getElementById('errMsg').textContent=I18N.err_network[currentLang];err.classList.add('show')}
     btn.disabled=false;btn.textContent=I18N.btn_login[currentLang];

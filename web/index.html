@@ -1256,7 +1256,7 @@ function go(page,el){
     applyLang();
 }
 
-async function doLogout(){await fetch('/api/logout',{method:'POST'});window.location.href='/login'}
+async function doLogout(){localStorage.removeItem('session_token');await fetch('/api/logout',{method:'POST'});window.location.href='/login'}
 async function loadMe(){try{const r=await fetch('/api/me');if(!r.ok){window.location.href='/login';return}const d=await r.json();const roleNames={admin:{ru:'Админ',en:'Admin'},editor:{ru:'Саппорт',en:'Support'},viewer:{ru:'Юзер',en:'User'}};const roleLabel=roleNames[d.role]?.[currentLang]||roleNames[d.role]?.['ru']||d.role;const initial=d.username[0].toUpperCase();$('avatar').textContent=initial;$('udAvatar').textContent=initial;$('udName').textContent=d.username;$('udRole').textContent=roleLabel;const sr=$('settingsRole');if(sr)sr.textContent=roleLabel}catch{window.location.href='/login'}}
 
 /* ===== DASHBOARD ===== */
@@ -2337,7 +2337,7 @@ async function deleteAdmin(username){confirmModal('Удалить '+username+'?'
 function connectWebSocket(){
     try{
         const proto=location.protocol==='https:'?'wss:':'ws:';
-        const token=document.cookie.match(/session=([^;]+)/)?.[1]||'';
+        const token=localStorage.getItem('session_token')||'';
         const wsUrl=proto+'//'+location.host+'/ws/live?token='+token;
         wsConn=new WebSocket(wsUrl);
         wsConn.onopen=function(){
