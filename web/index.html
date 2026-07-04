@@ -1447,7 +1447,9 @@ function toggleWidget(id,show){
 /* ===== RENDER DASHBOARD ===== */
 function renderDashboard(){
     const grid=$('dashWidgets');
+    if(!grid){console.error('dashWidgets not found');return}
     grid.innerHTML='';
+    console.log('renderDashboard: clearing grid, currentServer=',currentServer);
     const isRemote=currentServer!=='main';
     const nodeLabel=isRemote?(nodesCache.find(n=>n.id===currentServer)||{}).name||'':'';
     const mainLabel='🇵🇱 Основная';
