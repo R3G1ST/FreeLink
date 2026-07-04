@@ -23,12 +23,20 @@ def get_server_info():
         info["cpu_percent"] = psutil.cpu_percent(interval=1)
         mem = psutil.virtual_memory()
         info["ram_percent"] = mem.percent
+        info["ram_used_gb"] = round(mem.used / (1024**3), 1)
+        info["ram_total_gb"] = round(mem.total / (1024**3), 1)
         disk = psutil.disk_usage("/")
         info["disk_percent"] = disk.percent
+        info["disk_used_gb"] = round(disk.used / (1024**3), 1)
+        info["disk_total_gb"] = round(disk.total / (1024**3), 1)
     except Exception:
         info["cpu_percent"] = 0
         info["ram_percent"] = 0
         info["disk_percent"] = 0
+        info["ram_used_gb"] = 0
+        info["ram_total_gb"] = 0
+        info["disk_used_gb"] = 0
+        info["disk_total_gb"] = 0
 
     # Count users from hysteria config (check both user and userpass)
     try:

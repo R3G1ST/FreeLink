@@ -3209,7 +3209,11 @@ async def node_heartbeat(request: Request):
     node["status"] = "online"
     node["cpu_percent"] = data.get("cpu_percent", 0)
     node["ram_percent"] = data.get("ram_percent", 0)
+    node["ram_used_gb"] = data.get("ram_used_gb", 0)
+    node["ram_total_gb"] = data.get("ram_total_gb", 0)
     node["disk_percent"] = data.get("disk_percent", 0)
+    node["disk_used_gb"] = data.get("disk_used_gb", 0)
+    node["disk_total_gb"] = data.get("disk_total_gb", 0)
     node["online_users"] = data.get("online_users", 0)
     node["total_users"] = data.get("total_users", 0)
     node["traffic_sent"] = data.get("traffic_sent", 0)
