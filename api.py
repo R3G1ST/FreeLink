@@ -1271,6 +1271,16 @@ async def user_connections(uid: str, request: Request, limit: int = 50):
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
     connections = db.get_user_connections(target.get("name", uid), limit)
+    # Resolve node_id to node names
+    nodes = load_nodes()
+    for conn in connections:
+        nid = conn.get("node_id", "")
+        if nid == "__main__":
+            conn["node_name"] = "Основная"
+        elif nid in nodes:
+            conn["node_name"] = nodes[nid].get("name", nid)
+        else:
+            conn["node_name"] = nid
     return {"connections": connections}
 
 @app.post("/api/user/create", summary="Create VPN user", description="Create a new VPN user with subscription. Returns user ID, expiry date, and Hysteria2 connection link.")

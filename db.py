@@ -671,14 +671,12 @@ def get_user_unique_ips(username, days=30):
 
 
 def get_user_device_count(username):
-    """Count active (currently connected) devices by unique IP."""
+    """Count active (currently connected) devices by open connections."""
     with get_conn() as conn:
         cur = conn.cursor()
         cur.execute("""
-            SELECT COUNT(DISTINCT client_ip)
-            FROM connection_log
-            WHERE username = %s
-              AND disconnected_at IS NULL
+            SELECT COUNT(*) FROM connection_log
+            WHERE username = %s AND disconnected_at IS NULL
         """, (username,))
         row = cur.fetchone()
         return row[0] if row else 0

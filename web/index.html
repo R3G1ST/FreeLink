@@ -1283,7 +1283,7 @@ function showCreateUser(){
 
 /* ===== USER MODAL ===== */
 let umData=null,umTabCur='info';
-function openUserModal(id){CUid=id;$('userBg').classList.add('open');umTabCur='info';refreshUserModal()}
+function openUserModal(id){CUid=id;$('userBg').classList.add('open');umTabCur='info';document.querySelectorAll('.um-tab').forEach(b=>b.classList.remove('on'));document.querySelector('.um-tab').classList.add('on');refreshUserModal()}
 function closeUserModal(){$('userBg').classList.remove('open');CUid=null;CUd=null;umData=null}
 async function refreshUserModal(){if(!CUid)return;try{const r=await fetch('/api/user/'+CUid);umData=await r.json();CUd=umData;renderUserModal(umData)}catch{toast(t('msg_error'))}}
 function umTab(tab,el){umTabCur=tab;document.querySelectorAll('.um-tab').forEach(b=>b.classList.remove('on'));el.classList.add('on');if(umData)renderUserModal(umData)}
@@ -1390,7 +1390,7 @@ function renderUserModal(u){
                 conns.forEach(c=>{
                     const dur=c.duration_seconds?Math.floor(c.duration_seconds/60)+'м':'-active';
                     const color=c.disconnected_at?'var(--t4)':'var(--gn)';
-                    h+=`<tr style="border-top:1px solid rgba(255,255,255,.04);color:${color}"><td style="padding:4px;font-family:monospace">${c.client_ip}</td><td style="padding:4px">${c.node_id}</td><td style="padding:4px">${(c.connected_at||'').substring(0,16)}</td><td style="padding:4px">${dur}</td></tr>`;
+                    h+=`<tr style="border-top:1px solid rgba(255,255,255,.04);color:${color}"><td style="padding:4px;font-family:monospace">${c.client_ip}</td><td style="padding:4px">${c.node_name||c.node_id}</td><td style="padding:4px">${(c.connected_at||'').substring(0,16)}</td><td style="padding:4px">${dur}</td></tr>`;
                 });
                 h+='</table>';
                 $('connHistory').innerHTML=h;
