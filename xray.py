@@ -197,7 +197,7 @@ def generate_client_config_for_user(user_uuid, name, server=None):
 
 # ==================== SHADOWSOCKS ====================
 SS_PORT = 8388
-SS_METHOD = "2022-blake3-aes-128-gcm"
+SS_METHOD = "aes-256-gcm"
 
 
 def generate_ss_password():
