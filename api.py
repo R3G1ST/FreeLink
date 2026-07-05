@@ -427,7 +427,9 @@ def _add_extra_proto_links(plain_lines, user, username, nodes):
         domain = os.environ.get("DOMAIN", "link.qmbox.ru")
         port = user.get("ss_port", 8388)
         method = user.get("ss_method", "2022-blake3-aes-128-gcm")
-        ss_link = xray_mod.generate_ss_link(user["ss_password"], username, domain, port, method)
+        main_node = nodes.get("__main__", {})
+        main_name = main_node.get("name", "Основной")
+        ss_link = xray_mod.generate_ss_link(user["ss_password"], main_name, domain, port, method)
         plain_lines.append(ss_link)
         # Shadowsocks - remote nodes
         for nid, node in nodes.items():
