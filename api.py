@@ -421,7 +421,7 @@ def _add_extra_proto_links(plain_lines, user, username, nodes):
                 vless_link = xray_mod.generate_vless_link(user["vless_uuid"], node_name, node_server, node_port)
                 plain_lines.append(vless_link)
 
-    # Shadowsocks
+    # Shadowsocks - main server
     if "shadowsocks" in protos and user.get("ss_password"):
         import xray as xray_mod
         domain = os.environ.get("DOMAIN", "link.qmbox.ru")
@@ -429,6 +429,27 @@ def _add_extra_proto_links(plain_lines, user, username, nodes):
         method = user.get("ss_method", "2022-blake3-aes-128-gcm")
         ss_link = xray_mod.generate_ss_link(user["ss_password"], username, domain, port, method)
         plain_lines.append(ss_link)
+        # Shadowsocks - remote nodes
+        for nid, node in nodes.items():
+            if node.get("is_main"):
+                continue
+            if not node.get("ss_enabled"):
+                continue
+            try:
+                from datetime import datetime
+                last = datetime.fromisoformat(node.get("last_seen", ""))
+                is_online = (datetime.now() - last).total_seconds() < 120
+            except Exception:
+                is_online = False
+            if not is_online:
+                continue
+            node_server = node.get("domain") or node.get("ip", "")
+            node_port = node.get("ss_port", 8388)
+            node_method = node.get("ss_method", "2022-blake3-aes-128-gcm")
+            node_name = node.get("name", node.get("region", "Нода"))
+            if node_server:
+                ss_link = xray_mod.generate_ss_link(user["ss_password"], node_name, node_server, node_port, node_method)
+                plain_lines.append(ss_link)
 
 
 def _get_protocols(user):
