@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-3.13.0--nexus-8b5cf6?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-3.14.0--nexus-8b5cf6?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/Status-Alpha-orange?style=for-the-badge" alt="Status">
   <img src="https://img.shields.io/badge/Python-3.10+-3776ab?style=for-the-badge&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/Hysteria-2-ff6b35?style=for-the-badge" alt="Hysteria">
@@ -27,9 +27,10 @@
 
 | Feature | Description |
 |---------|-------------|
+| **Multi-protocol** | Hysteria2 + WireGuard + VLESS(Xray) в одной подписке |
 | **Multi-server** | Main server + unlimited remote nodes via SSH |
-| **Subscriptions** | One URL for all servers (Hysteria2, Clash, v2rayN, Happ) |
-| **Telegram Bot** | User management, notifications, VPN links |
+| **Subscriptions** | One URL for all servers and protocols (Hysteria2, WireGuard, VLESS, Clash) |
+| **Telegram Bot** | User management, notifications, VPN links, protocol selection |
 | **Mini App** | Mobile admin panel for Telegram |
 | **Web Panel** | Admin dashboard with real-time metrics |
 | **Auto-deploy** | One-click server setup via SSH |
@@ -39,6 +40,16 @@
 | **Speed limits** | Per-user bandwidth control |
 | **Auth server** | External Hysteria auth for multi-node setups |
 | **Traffic history** | JSON-based charts with period selection |
+
+### Multi-Protocol Support
+
+| Protocol | Transport | Port | Clients |
+|----------|-----------|------|---------|
+| **Hysteria2** | UDP + obfs | 443 | Hiddify, Clash, v2rayN, NekoBox |
+| **WireGuard** | UDP | 51820 | Standard WireGuard clients |
+| **VLESS** | WS + TLS | 443 (nginx) | V2rayNG, NekoBox, Streisand, Hiddify |
+
+Each user can have multiple protocols enabled simultaneously. The subscription URL contains all configured protocols across all online nodes with country labels.
 
 ---
 
