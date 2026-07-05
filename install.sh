@@ -1,7 +1,7 @@
 #!/bin/bash
-# FreeLink VPN Panel — Full Installation Script
+# FreeLink VPN Panel — Full Installation Script v3.15.0-aurora
 # Supports: Main Server + Remote Nodes
-# Protocols: Hysteria2 + WireGuard + VLESS(Xray)
+# Protocols: Hysteria2 + WireGuard + VLESS(Xray) + Shadowsocks
 
 set -e
 
@@ -100,20 +100,28 @@ EOF
 
 # ==================== CONFIGURE XRAY ====================
 configure_xray() {
-    log "Настройка Xray VLESS+WS..."
+    log "Настройка Xray VLESS+WS + Shadowsocks..."
     KEYS=$(xray x25519 2>/dev/null)
     PRIVKEY=$(echo "$KEYS" | grep "PrivateKey" | awk '{print $2}')
     PUBKEY=$(echo "$KEYS" | grep "PublicKey" | awk '{print $2}')
+    SS_PASS=$(python3 -c "import base64,os;print(base64.b64encode(os.urandom(32)).decode())")
 
     cat > /usr/local/etc/xray/config.json << EOF
 {
     "log": {"loglevel": "warning", "access": "/var/log/xray/access.log", "error": "/var/log/xray/error.log"},
-    "inbounds": [{
-        "listen": "127.0.0.1", "port": 10001, "protocol": "vless",
-        "settings": {"clients": [], "decryption": "none"},
-        "streamSettings": {"network": "ws", "wsSettings": {"path": "/vless"}},
-        "sniffing": {"enabled": true, "destOverride": ["http", "tls"]}
-    }],
+    "inbounds": [
+        {
+            "listen": "127.0.0.1", "port": 10001, "protocol": "vless",
+            "settings": {"clients": [], "decryption": "none"},
+            "streamSettings": {"network": "ws", "wsSettings": {"path": "/vless"}},
+            "sniffing": {"enabled": true, "destOverride": ["http", "tls"]}
+        },
+        {
+            "listen": "0.0.0.0", "port": 8388, "protocol": "shadowsocks",
+            "settings": {"method": "aes-256-gcm", "password": "${SS_PASS}", "network": "tcp,udp"},
+            "tag": "shadowsocks"
+        }
+    ],
     "outbounds": [{"protocol": "freedom", "tag": "direct"}, {"protocol": "blackhole", "tag": "block"}],
     "routing": {"domainStrategy": "AsIs", "rules": [{"type": "field", "ip": ["geoip:private"], "outboundTag": "block"}]}
 }
@@ -121,8 +129,9 @@ EOF
 
     systemctl enable xray 2>/dev/null
     systemctl restart xray 2>/dev/null
-    log "Xray настроен: port=10001, ws=/vless"
+    log "Xray настроен: VLESS(10001) + SS(8388)"
     echo "$PUBKEY" > /tmp/xray_pubkey.txt
+    echo "$SS_PASS" > /tmp/ss_password.txt
 }
 
 # ==================== CONFIGURE HYSTERIA ====================
@@ -335,6 +344,8 @@ setup_firewall() {
     ufw allow 80/tcp 2>/dev/null
     ufw allow 443/tcp 2>/dev/null
     ufw allow 443/udp 2>/dev/null
+    ufw allow 8388/tcp 2>/dev/null
+    ufw allow 8388/udp 2>/dev/null
     ufw allow 51820/udp 2>/dev/null
     ufw --force enable 2>/dev/null
     log "Фаервол настроен"
@@ -345,6 +356,7 @@ setup_node() {
     NODE_IP=$1
     NODE_PASS=$2
     NODE_NAME=${3:-"Node"}
+    MAIN_SS_PASS=${4:-""}
 
     info "Настройка ноды: $NODE_NAME ($NODE_IP)"
 
@@ -393,15 +405,25 @@ WGEOF
         XRAY_PUBKEY=\$(echo \"\$KEYS\" | grep PublicKey | awk '{print \$2}')
         echo \"\$XRAY_PUBKEY\" > /tmp/xray_pubkey_node.txt
 
+        # Use same SS password as main server
+        SS_PASS=\"${MAIN_SS_PASS}\"
+
         cat > /usr/local/etc/xray/config.json << XRAYEOF
 {
     \"log\": {\"loglevel\": \"warning\"},
-    \"inbounds\": [{
-        \"listen\": \"127.0.0.1\", \"port\": 10001, \"protocol\": \"vless\",
-        \"settings\": {\"clients\": [], \"decryption\": \"none\"},
-        \"streamSettings\": {\"network\": \"ws\", \"wsSettings\": {\"path\": \"/vless\"}},
-        \"sniffing\": {\"enabled\": true, \"destOverride\": [\"http\", \"tls\"]}
-    }],
+    \"inbounds\": [
+        {
+            \"listen\": \"127.0.0.1\", \"port\": 10001, \"protocol\": \"vless\",
+            \"settings\": {\"clients\": [], \"decryption\": \"none\"},
+            \"streamSettings\": {\"network\": \"ws\", \"wsSettings\": {\"path\": \"/vless\"}},
+            \"sniffing\": {\"enabled\": true, \"destOverride\": [\"http\", \"tls\"]}
+        },
+        {
+            \"listen\": \"0.0.0.0\", \"port\": 8388, \"protocol\": \"shadowsocks\",
+            \"settings\": {\"method\": \"aes-256-gcm\", \"password\": \"\${SS_PASS}\", \"network\": \"tcp,udp\"},
+            \"tag\": \"shadowsocks\"
+        }
+    ],
     \"outbounds\": [{\"protocol\": \"freedom\", \"tag\": \"direct\"}],
     \"routing\": {\"rules\": [{\"type\": \"field\", \"ip\": [\"geoip:private\"], \"outboundTag\": \"direct\"}]}
 }
@@ -409,7 +431,7 @@ XRAYEOF
         systemctl enable xray 2>/dev/null
         systemctl start xray 2>/dev/null
 
-        # SSL cert (self-signed for now, will be replaced)
+        # SSL cert (from main server or self-signed)
         mkdir -p /etc/ssl/xray
         openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout /etc/ssl/xray/server.key -out /etc/ssl/xray/server.crt -subj '/CN=${DOMAIN:-link.qmbox.ru}' 2>/dev/null
 
@@ -437,6 +459,8 @@ NGINXEOF
         # Firewall
         ufw allow 443/tcp 2>/dev/null
         ufw allow 443/udp 2>/dev/null
+        ufw allow 8388/tcp 2>/dev/null
+        ufw allow 8388/udp 2>/dev/null
         ufw allow 51820/udp 2>/dev/null
 
         echo \"NODE_COMPLETE:WG_PUB=\$(cat /etc/wireguard/server.pub):XRAY_PUB=\$XRAY_PUBKEY\"
@@ -473,10 +497,14 @@ case "${1:-install}" in
 
     node)
         if [ -z "$2" ] || [ -z "$3" ]; then
-            err "Использование: $0 node <IP> <SSH_PASSWORD> [имя_ноды]"
+            err "Использование: $0 node <IP> <SSH_PASSWORD> [имя_ноды] [ss_password]"
         fi
         DOMAIN=${DOMAIN:-"link.qmbox.ru"}
-        setup_node "$2" "$3" "${4:-Node}"
+        MAIN_SS_PASS=${5:-""}
+        if [ -z "$MAIN_SS_PASS" ] && [ -f /tmp/ss_password.txt ]; then
+            MAIN_SS_PASS=$(cat /tmp/ss_password.txt)
+        fi
+        setup_node "$2" "$3" "${4:-Node}" "$MAIN_SS_PASS"
         ;;
 
     update)

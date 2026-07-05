@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-3.14.0--nexus-8b5cf6?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-3.15.0--aurora-8b5cf6?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/Status-Alpha-orange?style=for-the-badge" alt="Status">
   <img src="https://img.shields.io/badge/Python-3.10+-3776ab?style=for-the-badge&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/Hysteria-2-ff6b35?style=for-the-badge" alt="Hysteria">
@@ -48,6 +48,7 @@
 | **Hysteria2** | UDP + obfs | 443 | Hiddify, Clash, v2rayN, NekoBox |
 | **WireGuard** | UDP | 51820 | Standard WireGuard clients |
 | **VLESS** | WS + TLS | 443 (nginx) | V2rayNG, NekoBox, Streisand, Hiddify |
+| **Shadowsocks** | TCP/UDP | 8388 | Clash, v2rayN, NekoBox, V2rayNG, Hiddify |
 
 Each user can have multiple protocols enabled simultaneously. The subscription URL contains all configured protocols across all online nodes with country labels.
 
@@ -648,6 +649,44 @@ journalctl -u freelink-api -f
 - **IP in User Modal** — поле IP теперь отображается из БД
 - **Bare Except** — исправлены во всех Python-файлах
 - **Resource Monitor** — чтение токена из env vars вместо config.yaml
+
+---
+
+## Changelog
+
+### v3.15.0-aurora (2026-07-05)
+
+#### Multi-Protocol Support
+- **Shadowsocks** — добавлен протокол SS (aes-256-gcm, port 8388)
+- **WireGuard** — полная интеграция (port 51820, per-user ключи, per-node ключи)
+- **VLESS+WS+TLS** — через Xray (port 443 через nginx, shared Let's Encrypt cert)
+- Каждый пользователь может иметь несколько протоколов одновременно
+- Подписка содержит ссылки для всех протоколов со всех нод с названиями стран
+
+#### Multi-Node Protocol Support
+- WireGuard: ключи генерируются для каждой ноды отдельно
+- VLESS: общий UUID, разные серверы/порты для каждой ноды
+- Shadowsocks: общий пароль для всех нод
+- Подписка автоматически включает ссылки со всех онлайн-нод
+
+#### Frontend
+- Чекбоксы протоколов при создании и в карточке пользователя
+- Модалка "Ссылки" — все ссылки по протоколам и странам с QR
+- Splash screen с анимацией
+- PWA: мета-теги, service worker, safe-area-inset
+- SVG-логотип молнии
+
+#### Backend
+- `wireguard.py` — модуль управления WireGuard
+- `xray.py` — модуль управления Xray (VLESS + Shadowsocks)
+- `db.py` — колонки protocols, wg_*, vless_*, ss_*
+- Подписка генерирует ссылки для всех протоколов и нод
+
+#### Infrastructure
+- Xray: VLESS+WS на порту 10001, проксируется nginx на 443
+- Shadowsocks: прямое подключение на порту 8388
+- WireGuard: порт 51820, subnets 10.10.0.0/24 + 10.10.1.0/24
+- Установочный скрипт `install.sh` для сервера и нод
 
 ---
 
