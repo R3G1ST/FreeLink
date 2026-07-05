@@ -193,3 +193,80 @@ def generate_client_config_for_user(user_uuid, name, server=None):
         server = domain
     config = generate_vless_config(user_uuid, name, server)
     return json.dumps(config, indent=2)
+
+
+# ==================== SHADOWSOCKS ====================
+SS_PORT = 8388
+SS_METHOD = "2022-blake3-aes-128-gcm"
+
+
+def generate_ss_password():
+    """Generate a Shadowsocks password (32-char hex for 2022-blake3)."""
+    import secrets
+    return secrets.token_hex(16)
+
+
+def generate_ss_link(ss_password, name="FreeLink", server=None, port=None, method=None):
+    """Generate a ss:// URI for Shadowsocks."""
+    import base64
+    domain = os.environ.get("DOMAIN", "link.qmbox.ru")
+    if not server:
+        server = domain
+    if not port:
+        port = SS_PORT
+    if not method:
+        method = SS_METHOD
+
+    # Format: base64(method:password)@server:port
+    userinfo = f"{method}:{ss_password}"
+    userinfo_b64 = base64.urlsafe_b64encode(userinfo.encode()).decode().rstrip("=")
+    link = f"ss://{userinfo_b64}@{server}:{port}#{name}"
+    return link
+
+
+def add_ss_user(ss_password, email=""):
+    """Add Shadowsocks user to Xray config."""
+    config = _load_config()
+    if not config:
+        return False
+
+    # Check if SS inbound exists
+    ss_inbound = None
+    for inbound in config.get("inbounds", []):
+        if inbound.get("protocol") == "shadowsocks":
+            ss_inbound = inbound
+            break
+
+    if not ss_inbound:
+        # Create SS inbound
+        ss_inbound = {
+            "listen": "127.0.0.1",
+            "port": 10002,
+            "protocol": "shadowsocks",
+            "settings": {
+                "method": SS_METHOD,
+                "password": ss_password,
+                "network": "tcp,udp"
+            },
+            "tag": "shadowsocks"
+        }
+        config["inbounds"].append(ss_inbound)
+    else:
+        # Update password
+        ss_inbound["settings"]["password"] = ss_password
+
+    _save_config(config)
+    _restart_xray()
+    return True
+
+
+def remove_ss_user():
+    """Remove Shadowsocks inbound from Xray config."""
+    config = _load_config()
+    if not config:
+        return False
+
+    config["inbounds"] = [i for i in config.get("inbounds", []) if i.get("protocol") != "shadowsocks"]
+    _save_config(config)
+    _restart_xray()
+    return True

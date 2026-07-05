@@ -159,7 +159,10 @@ def init_db():
             ("wg_port", "INTEGER", "51820"),
             ("vless_uuid", "TEXT", "NULL"),
             ("vless_server", "TEXT", "NULL"),
-            ("vless_port", "INTEGER", "8443"),
+            ("vless_port", "INTEGER", "443"),
+            ("ss_password", "TEXT", "NULL"),
+            ("ss_port", "INTEGER", "8388"),
+            ("ss_method", "TEXT", "'2022-blake3-aes-128-gcm'"),
         ]:
             try:
                 cur.execute(f"ALTER TABLE users ADD COLUMN {col} {typ} DEFAULT {default}")
@@ -232,8 +235,9 @@ def save_user(uid, user_data):
                 traffic_saved_total_mb, traffic_saved_updated, devices, total_sessions,
                 link, service_token, plan, speed_limit_mbps, subscription_id, ip,
                 protocol, protocols, wg_public_key, wg_private_key, wg_address, wg_port,
-                wg_node_keys, vless_uuid, vless_server, vless_port)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                wg_node_keys, vless_uuid, vless_server, vless_port,
+                ss_password, ss_port, ss_method)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             ON CONFLICT (uid) DO UPDATE SET
                 name=EXCLUDED.name, active=EXCLUDED.active, created=EXCLUDED.created,
                 expire_date=EXCLUDED.expire_date, port=EXCLUDED.port, server=EXCLUDED.server,
@@ -251,7 +255,9 @@ def save_user(uid, user_data):
                 wg_address=EXCLUDED.wg_address, wg_port=EXCLUDED.wg_port,
                 wg_node_keys=EXCLUDED.wg_node_keys,
                 vless_uuid=EXCLUDED.vless_uuid, vless_server=EXCLUDED.vless_server,
-                vless_port=EXCLUDED.vless_port
+                vless_port=EXCLUDED.vless_port,
+                ss_password=EXCLUDED.ss_password, ss_port=EXCLUDED.ss_port,
+                ss_method=EXCLUDED.ss_method
         """, (
             uid, user_data.get("name", uid), user_data.get("active", True),
             user_data.get("created", ""), user_data.get("expire_date", ""),
@@ -268,7 +274,9 @@ def save_user(uid, user_data):
             user_data.get("wg_address"), user_data.get("wg_port", 51820),
             Json(user_data.get("wg_node_keys", {})),
             user_data.get("vless_uuid"), user_data.get("vless_server"),
-            user_data.get("vless_port", 8443)
+            user_data.get("vless_port", 443),
+            user_data.get("ss_password"), user_data.get("ss_port", 8388),
+            user_data.get("ss_method", "2022-blake3-aes-128-gcm")
         ))
 
 def delete_user(uid):
@@ -587,7 +595,10 @@ def _row_to_user(row):
         "wg_node_keys": row.get("wg_node_keys") or {},
         "vless_uuid": row.get("vless_uuid"),
         "vless_server": row.get("vless_server"),
-        "vless_port": row.get("vless_port") or 8443,
+        "vless_port": row.get("vless_port") or 443,
+        "ss_password": row.get("ss_password"),
+        "ss_port": row.get("ss_port") or 8388,
+        "ss_method": row.get("ss_method") or "2022-blake3-aes-128-gcm",
     }
 
 # ===== TRAFFIC SNAPSHOTS =====

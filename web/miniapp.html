@@ -663,7 +663,8 @@ ${wgInfo}
 <div style="font-size:10px;color:var(--t3);text-transform:uppercase;font-weight:600;margin-bottom:6px">Протоколы</div>
 <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600;margin-bottom:4px"><input type="checkbox" ${protos.includes('hysteria2')?'checked':''} onchange="toggleProtoMG('${u.id}','hysteria2',this.checked)" style="accent-color:var(--ac)"> ⚡ Hysteria2</label>
 <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600;margin-bottom:4px"><input type="checkbox" ${protos.includes('wireguard')?'checked':''} onchange="toggleProtoMG('${u.id}','wireguard',this.checked)" style="accent-color:#3b82f6"> 🔒 WireGuard</label>
-<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600"><input type="checkbox" ${protos.includes('vless')?'checked':''} onchange="toggleProtoMG('${u.id}','vless',this.checked)" style="accent-color:#10b981"> 🌐 VLESS</label>
+<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600;margin-bottom:4px"><input type="checkbox" ${protos.includes('vless')?'checked':''} onchange="toggleProtoMG('${u.id}','vless',this.checked)" style="accent-color:#10b981"> 🌐 VLESS</label>
+<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600"><input type="checkbox" ${protos.includes('shadowsocks')?'checked':''} onchange="toggleProtoMG('${u.id}','shadowsocks',this.checked)" style="accent-color:#f59e0b"> 🛡 SS</label>
 </div>
 ${vlessInfo}
 <div style="background:var(--c2);padding:12px;border-radius:var(--R2);margin-bottom:12px">
@@ -709,12 +710,12 @@ function showLinks(id){
         const lines=text.split('\n').filter(Boolean);
         let items=[];
         lines.forEach(l=>{
-            const proto=l.startsWith('wireguard')?'WireGuard':l.startsWith('vless://')?'VLESS':'Hysteria2';
+            const proto=l.startsWith('wireguard')?'WireGuard':l.startsWith('vless://')?'VLESS':l.startsWith('ss://')?'Shadowsocks':'Hysteria2';
             let region='Основной';
             const hashIdx=l.lastIndexOf('#');
             if(hashIdx>-1){try{region=decodeURIComponent(l.substring(hashIdx+1))}catch(e){region=l.substring(hashIdx+1)}}
-            const icon=proto==='WireGuard'?'🔒':proto==='VLESS'?'🌐':'⚡';
-            const color=proto==='WireGuard'?'#3b82f6':proto==='VLESS'?'#10b981':'var(--ac2)';
+            const icon=proto==='WireGuard'?'🔒':proto==='VLESS'?'🌐':proto==='Shadowsocks'?'🛡':'⚡';
+            const color=proto==='WireGuard'?'#3b82f6':proto==='VLESS'?'#10b981':proto==='Shadowsocks'?'#f59e0b':'var(--ac2)';
             items.push({proto,region,link:l,icon,color});
         });
         const h2=items.filter(i=>i.proto==='Hysteria2');
@@ -736,6 +737,11 @@ function showLinks(id){
         if(vl.length){
             html+='<div style="font-size:10px;color:#10b981;text-transform:uppercase;font-weight:700;margin:10px 0 4px">🌐 VLESS (Xray)</div>';
             vl.forEach(it=>{html+=renderLinkItemMG(it)});
+        }
+        const ss=items.filter(i=>i.proto==='Shadowsocks');
+        if(ss.length){
+            html+='<div style="font-size:10px;color:#f59e0b;text-transform:uppercase;font-weight:700;margin:10px 0 4px">🛡 Shadowsocks</div>';
+            ss.forEach(it=>{html+=renderLinkItemMG(it)});
         }
         if(!items.length)html+='<div style="text-align:center;padding:16px;color:var(--t3);font-size:12px">Нет ссылок</div>';
         html+='<div class="modal-btns" style="margin-top:12px"><button class="btn btn-n" onclick="closeModal()">Закрыть</button></div>';
@@ -809,6 +815,7 @@ function showCreateModal(){
             <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600"><input type="checkbox" id="cProtoH2" checked value="hysteria2"> ⚡ Hysteria2</label>
             <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600"><input type="checkbox" id="cProtoWG" value="wireguard"> 🔒 WireGuard</label>
             <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600"><input type="checkbox" id="cProtoVLESS" value="vless"> 🌐 VLESS</label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600"><input type="checkbox" id="cProtoSS" value="shadowsocks"> 🛡 SS</label>
         </div>
     </div>
     <div class="field"><label>Дней</label><input type="number" id="cDays" value="30" min="1"></div>
@@ -817,7 +824,7 @@ function showCreateModal(){
     setTimeout(()=>$('cName')?.focus(),300);
 }
 async function doCreate(){const n=$('cName')?.value?.trim(),d=parseInt($('cDays')?.value)||30;
-    const protos=[];if($('cProtoH2')?.checked)protos.push('hysteria2');if($('cProtoWG')?.checked)protos.push('wireguard');if($('cProtoVLESS')?.checked)protos.push('vless');
+    const protos=[];if($('cProtoH2')?.checked)protos.push('hysteria2');if($('cProtoWG')?.checked)protos.push('wireguard');if($('cProtoVLESS')?.checked)protos.push('vless');if($('cProtoSS')?.checked)protos.push('shadowsocks');
     if(!n||n.length<2){showToast('Мин. 2 символа');return}
     if(!protos.length){showToast('Выберите протокол');return}
     await fetch('/api/miniapp/user/create?name='+encodeURIComponent(n)+'&days='+d+'&protocols='+protos.join(','),{method:'POST'}).then(r=>r.json()).then(d=>{if(d.id){showToast('Создан!');loadData();closeModal()}else showToast('Ошибка')})}

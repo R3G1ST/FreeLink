@@ -339,12 +339,20 @@ def get_user_link(uid, user):
                 server = user.get("vless_server") or os.environ.get("DOMAIN", "link.qmbox.ru")
                 port = user.get("vless_port", 443)
                 links.append(xray_mod.generate_vless_link(vless_uuid, user.get("name", uid), server, port))
+        elif proto == "shadowsocks":
+            ss_pass = user.get("ss_password", "")
+            if ss_pass:
+                import xray as xray_mod
+                server = os.environ.get("DOMAIN", "link.qmbox.ru")
+                port = user.get("ss_port", 8388)
+                method = user.get("ss_method", "2022-blake3-aes-128-gcm")
+                links.append(xray_mod.generate_ss_link(ss_pass, user.get("name", uid), server, port, method))
 
     return "\n".join(links) if links else ""
 
 
 def _add_extra_proto_links(plain_lines, user, username, nodes):
-    """Add WireGuard and VLESS links for all online nodes."""
+    """Add WireGuard, VLESS, and Shadowsocks links for all online nodes."""
     import wireguard
     protos = _get_protocols(user)
 
@@ -412,6 +420,15 @@ def _add_extra_proto_links(plain_lines, user, username, nodes):
                 node_name = node.get("name", node.get("region", "Нода"))
                 vless_link = xray_mod.generate_vless_link(user["vless_uuid"], node_name, node_server, node_port)
                 plain_lines.append(vless_link)
+
+    # Shadowsocks
+    if "shadowsocks" in protos and user.get("ss_password"):
+        import xray as xray_mod
+        domain = os.environ.get("DOMAIN", "link.qmbox.ru")
+        port = user.get("ss_port", 8388)
+        method = user.get("ss_method", "2022-blake3-aes-128-gcm")
+        ss_link = xray_mod.generate_ss_link(user["ss_password"], username, domain, port, method)
+        plain_lines.append(ss_link)
 
 
 def _get_protocols(user):
@@ -1005,6 +1022,13 @@ async def miniapp_create_user(name: str, days: int = 30, protocols: str = "hyste
         user_data["vless_server"] = os.environ.get("DOMAIN", "link.qmbox.ru")
         user_data["vless_port"] = 443
         xray_mod.add_user(vless_uuid, name)
+
+    if "shadowsocks" in proto_list:
+        ss_password = xray_mod.generate_ss_password()
+        user_data["ss_password"] = ss_password
+        user_data["ss_port"] = 8388
+        user_data["ss_method"] = "2022-blake3-aes-128-gcm"
+        xray_mod.add_ss_user(ss_password, name)
 
     save_user(uid, user_data)
     link = get_user_link(uid, user_data)
@@ -1619,11 +1643,18 @@ async def create_user(name: str, days: int = 30, protocols: str = "hysteria2"):
         user_data["vless_port"] = 443
         xray_mod.add_user(vless_uuid, name)
 
+    if "shadowsocks" in proto_list:
+        ss_password = xray_mod.generate_ss_password()
+        user_data["ss_password"] = ss_password
+        user_data["ss_port"] = 8388
+        user_data["ss_method"] = "2022-blake3-aes-128-gcm"
+        xray_mod.add_ss_user(ss_password, name)
+
     save_user(uid, user_data)
     link = get_user_link(uid, user_data)
     user_data["link"] = link
     save_user(uid, user_data)
-    return {"id": uid, "name": name, "expire_date": expire_date, "port": 8443, "link": link, "protocols": user_data["protocols"]}
+    return {"id": uid, "name": name, "expire_date": expire_date, "port": 443, "link": link, "protocols": user_data["protocols"]}
 
 @app.post("/api/user/toggle/{uid}")
 async def toggle_user(uid: str):
@@ -4465,6 +4496,17 @@ async def change_protocols(uid: str, protocols: str = "hysteria2"):
         if user.get("vless_uuid"):
             xray_mod.remove_user(user["vless_uuid"])
         user["vless_uuid"] = None
+
+    # Shadowsocks: add/remove
+    if "shadowsocks" in proto_list and "shadowsocks" not in old_protos:
+        ss_password = xray_mod.generate_ss_password()
+        user["ss_password"] = ss_password
+        user["ss_port"] = 8388
+        user["ss_method"] = "2022-blake3-aes-128-gcm"
+        xray_mod.add_ss_user(ss_password, user.get("name", uid))
+    elif "shadowsocks" not in proto_list and "shadowsocks" in old_protos:
+        xray_mod.remove_ss_user()
+        user["ss_password"] = None
 
     user["protocols"] = new_protos_str
     user["protocol"] = proto_list[0] if proto_list else "hysteria2"

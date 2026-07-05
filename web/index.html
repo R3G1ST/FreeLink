@@ -1612,6 +1612,7 @@ function showCreateUser(){
                 <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600"><input type="checkbox" id="cuProtoH2" checked value="hysteria2"> ⚡ Hysteria2</label>
                 <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600"><input type="checkbox" id="cuProtoWG" value="wireguard"> 🔒 WireGuard</label>
                 <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600"><input type="checkbox" id="cuProtoVLESS" value="vless"> 🌐 VLESS</label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600"><input type="checkbox" id="cuProtoSS" value="shadowsocks"> 🛡 SS</label>
             </div>
         </div>
         <div class="field"><label>${t('page_plans_title')}</label><select id="cuPlan"><option value="">— ${t('btn_edit')} —</option></select></div>
@@ -1619,7 +1620,7 @@ function showCreateUser(){
     `,'<button class="btn btn-n" onclick="closeModal()">'+t('btn_cancel')+'</button><button class="btn btn-g" id="cuBtn">'+t('btn_create')+'</button>');
     fetch('/api/plans').then(r=>r.json()).then(d=>{const sel=$('cuPlan');(d.plans||[]).forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=`${p.name} — ${p.days}дн`;sel.appendChild(o)})});
     $('cuBtn').onclick=async()=>{const n=$('cuName')?.value?.trim();if(!n||n.length<2){toast(t('msg_min_chars'));return}const pid=$('cuPlan')?.value;const d=parseInt($('cuDays')?.value)||30;
-        const protos=[];if($('cuProtoH2')?.checked)protos.push('hysteria2');if($('cuProtoWG')?.checked)protos.push('wireguard');if($('cuProtoVLESS')?.checked)protos.push('vless');
+        const protos=[];if($('cuProtoH2')?.checked)protos.push('hysteria2');if($('cuProtoWG')?.checked)protos.push('wireguard');if($('cuProtoVLESS')?.checked)protos.push('vless');if($('cuProtoSS')?.checked)protos.push('shadowsocks');
         if(!protos.length){toast('Выберите хотя бы один протокол');return}
         closeModal();
         if(pid){await fB('/api/user/create-with-plan',{name:n,plan_id:pid,protocols:protos.join(',')}).then(r=>r.json()).then(d=>{if(d.id)toast(t('msg_created'));else toast(t('msg_error'))})}
@@ -1769,6 +1770,7 @@ function renderUserModal(u){
         const hasH2=protos.includes('hysteria2');
         const hasWG=protos.includes('wireguard');
         const hasVLESS=protos.includes('vless');
+        const hasSS=protos.includes('shadowsocks');
         html=`
         <div class="um-section">
             <div class="um-section-title"><i class="fas fa-share-alt"></i> Подключение</div>
@@ -1789,6 +1791,9 @@ function renderUserModal(u){
                 </label>
                 <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px;border-radius:6px;background:${hasVLESS?'rgba(16,185,129,.12)':'var(--g2)'};border:1px solid ${hasVLESS?'#10b981':'transparent'}">
                     <input type="checkbox" ${hasVLESS?'checked':''} onchange="toggleProto('${CUid}','vless',this.checked)" style="accent-color:#10b981"> 🌐 VLESS (Xray)
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px;border-radius:6px;background:${hasSS?'rgba(245,158,11,.12)':'var(--g2)'};border:1px solid ${hasSS?'#f59e0b':'transparent'}">
+                    <input type="checkbox" ${hasSS?'checked':''} onchange="toggleProto('${CUid}','shadowsocks',this.checked)" style="accent-color:#f59e0b"> 🛡 Shadowsocks
                 </label>
             </div>
         </div>
@@ -1828,13 +1833,13 @@ function showAllLinks(){
         var lines=text.split('\n').filter(Boolean);
         var items=[];
         lines.forEach(function(l){
-            var proto=l.startsWith('wireguard')?'WireGuard':l.startsWith('vless://')?'VLESS':'Hysteria2';
+            var proto=l.startsWith('wireguard')?'WireGuard':l.startsWith('vless://')?'VLESS':l.startsWith('ss://')?'Shadowsocks':'Hysteria2';
             var region='Основной';
             var hashIdx=l.lastIndexOf('#');
             if(hashIdx>-1){try{region=decodeURIComponent(l.substring(hashIdx+1))}catch(e){region=l.substring(hashIdx+1)}}
             // Detect country from domain/IP
-        var icon=proto==='WireGuard'?'🔒':proto==='VLESS'?'🌐':'⚡';
-        var color=proto==='WireGuard'?'#3b82f6':proto==='VLESS'?'#10b981':'var(--ac)';
+        var icon=proto==='WireGuard'?'🔒':proto==='VLESS'?'🌐':proto==='Shadowsocks'?'🛡':'⚡';
+        var color=proto==='WireGuard'?'#3b82f6':proto==='VLESS'?'#10b981':proto==='Shadowsocks'?'#f59e0b':'var(--ac)';
             items.push({proto:proto,region:region,link:l,icon:icon,color:color});
         });
         // Group by protocol
@@ -1864,6 +1869,14 @@ function showAllLinks(){
         if(vl.length){
             html+='<div style="font-size:11px;color:#10b981;text-transform:uppercase;font-weight:700;margin:12px 0 6px">🌐 VLESS (Xray)</div>';
             vl.forEach(function(it){
+                html+=renderLinkItem(it);
+            });
+        }
+        // Shadowsocks section
+        var ss=items.filter(function(i){return i.proto==='Shadowsocks'});
+        if(ss.length){
+            html+='<div style="font-size:11px;color:#f59e0b;text-transform:uppercase;font-weight:700;margin:12px 0 6px">🛡 Shadowsocks</div>';
+            ss.forEach(function(it){
                 html+=renderLinkItem(it);
             });
         }
