@@ -72,7 +72,7 @@ sudo DOMAIN=link.qmbox.ru TG_TOKEN=your_token ./install.sh install
 
 ### Add Remote Node
 ```bash
-sudo ./install.sh node 217.147.15.11 root_password "Latvia"
+sudo ./install.sh node YOUR_SERVER_IP YOUR_SSH_PASSWORD "НодаИмя"
 ```
 
 ### Update
@@ -261,7 +261,7 @@ sudo DOMAIN=link.qmbox.ru TG_TOKEN=your_token ./install.sh install
 
 ### Добавление удалённой ноды
 ```bash
-sudo ./install.sh node 217.147.15.11 root_password "Latvia"
+sudo ./install.sh node YOUR_SERVER_IP YOUR_SSH_PASSWORD "НодаИмя"
 ```
 
 ### Обновление
