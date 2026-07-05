@@ -1,28 +1,37 @@
-const CACHE_NAME = 'hysteria2-v2';
+const CACHE_NAME = 'freelink-v4';
 const STATIC_ASSETS = [
   '/web/telegram-web-app.js',
   '/web/chart.umd.min.js',
   '/web/font-awesome.min.css',
   '/web/inter.css',
-  '/web/icon-192.svg'
+  '/web/icon-192.png',
+  '/web/icon-512.png',
+  '/web/favicon.svg',
+  '/web/icon-192.svg',
+  '/web/fonts/inter-400.ttf',
+  '/web/fonts/inter-500.ttf',
+  '/web/fonts/inter-600.ttf',
+  '/web/fonts/inter-700.ttf',
+  '/web/fonts/inter-800.ttf'
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(STATIC_ASSETS)));
-  self.skipWaiting();
+  e.waitUntil(
+    caches.open(CACHE_NAME).then(c => c.addAll(STATIC_ASSETS)).then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys => Promise.all(
       keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
-    ))
+    )).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
+  // Skip API and WebSocket requests
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/ws/')) {
     return;
   }

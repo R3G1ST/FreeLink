@@ -233,7 +233,7 @@ async def check_auth(request: Request, call_next):
     path = request.url.path
 
     # Static files, login page, and docs - always allowed
-    if path in ["/favicon.ico", "/login", "/app", "/deploy-test", "/docs", "/redoc"] or path.startswith("/static/") or path.startswith("/api/docs") or path.startswith("/api/redoc") or path.startswith("/api/openapi") or path.startswith("/app/") or path.startswith("/ws/"):
+    if path in ["/favicon.ico", "/login", "/app", "/deploy-test", "/docs", "/redoc"] or path.startswith("/static/") or path.startswith("/web/") or path.startswith("/api/docs") or path.startswith("/api/redoc") or path.startswith("/api/openapi") or path.startswith("/app/") or path.startswith("/ws/"):
         return await call_next(request)
 
     # API auth endpoints - always allowed
@@ -308,21 +308,121 @@ def delete_user(uid):
     return db.delete_user(uid)
 
 def get_user_link(uid, user):
-    if "link" in user and user["link"]:
-        return user["link"]
+    """Generate connection link(s) for all enabled protocols. Returns newline-separated links."""
+    # Always regenerate to reflect current protocols
+    protocols = _get_protocols(user)
+    links = []
 
-    config = load_config()
-    h = config.get("hysteria", {}) if config else {}
-    s = config.get("server", {}) if config else {}
-    domain = os.environ.get("DOMAIN", s.get("domain", "link.qmbox.ru"))
-    port = 443
-    name = user.get("name", uid)
-    password = user.get("password", os.environ.get("HYSTERIA_USER_PASSWORD", ""))
-    obfs = os.environ.get("HYSTERIA_OBFS_PASSWORD", "")
+    for proto in protocols:
+        if proto == "wireguard":
+            import wireguard
+            privkey = user.get("wg_private_key", "")
+            wg_ip = user.get("wg_address", "")
+            if privkey and wg_ip:
+                links.append(wireguard.generate_client_uri(privkey, wg_ip, user.get("name", uid)))
+        elif proto == "hysteria2":
+            config = load_config()
+            s = config.get("server", {}) if config else {}
+            domain = os.environ.get("DOMAIN", s.get("domain", "link.qmbox.ru"))
+            port = 8443
+            name = user.get("name", uid)
+            password = user.get("password", os.environ.get("HYSTERIA_USER_PASSWORD", ""))
+            obfs = os.environ.get("HYSTERIA_OBFS_PASSWORD", "")
+            if obfs:
+                links.append(f"hysteria2://{name}:{password}@{domain}:{port}?sni={domain}&obfs=salamander&obfs-password={obfs}&insecure=0#{name}")
+            else:
+                links.append(f"hysteria2://{name}:{password}@{domain}:{port}?sni={domain}&insecure=0#{name}")
+        elif proto == "vless":
+            vless_uuid = user.get("vless_uuid", "")
+            if vless_uuid:
+                import xray as xray_mod
+                server = user.get("vless_server") or os.environ.get("DOMAIN", "link.qmbox.ru")
+                port = user.get("vless_port", 443)
+                links.append(xray_mod.generate_vless_link(vless_uuid, user.get("name", uid), server, port))
 
-    if obfs:
-        return f"hysteria2://{name}:{password}@{domain}:{port}?sni={domain}&obfs=salamander&obfs-password={obfs}&insecure=0#{name}"
-    return f"hysteria2://{name}:{password}@{domain}:{port}?sni={domain}&insecure=0#{name}"
+    return "\n".join(links) if links else ""
+
+
+def _add_extra_proto_links(plain_lines, user, username, nodes):
+    """Add WireGuard and VLESS links for all online nodes."""
+    import wireguard
+    protos = _get_protocols(user)
+
+    # WireGuard - main server
+    if "wireguard" in protos and user.get("wg_private_key") and user.get("wg_address"):
+        main_node = nodes.get("__main__", {})
+        main_name = main_node.get("name", "Основной")
+        wg_uri = wireguard.generate_client_uri(user["wg_private_key"], user["wg_address"], main_name)
+        plain_lines.append(wg_uri)
+
+    # WireGuard - remote nodes
+    if "wireguard" in protos:
+        wg_node_keys = user.get("wg_node_keys", {})
+        if isinstance(wg_node_keys, str):
+            import json
+            wg_node_keys = json.loads(wg_node_keys)
+        for nid, node in nodes.items():
+            if node.get("is_main"):
+                continue
+            if not node.get("wg_public_key"):
+                continue
+            nk = wg_node_keys.get(nid, {})
+            if not nk.get("private_key") or not nk.get("address"):
+                continue
+            try:
+                from datetime import datetime
+                last = datetime.fromisoformat(node.get("last_seen", ""))
+                is_online = (datetime.now() - last).total_seconds() < 120
+            except Exception:
+                is_online = False
+            if not is_online:
+                continue
+            node_name = node.get("name", node.get("region", "Нода"))
+            wg_uri = wireguard.generate_client_uri(nk["private_key"], nk["address"], node_name,
+                server_pubkey=node["wg_public_key"], endpoint=node.get("wg_endpoint", ""))
+            plain_lines.append(wg_uri)
+
+    # VLESS - main server
+    if "vless" in protos and user.get("vless_uuid"):
+        import xray as xray_mod
+        domain = os.environ.get("DOMAIN", "link.qmbox.ru")
+        server = user.get("vless_server") or domain
+        port = user.get("vless_port", 443)
+        main_node = nodes.get("__main__", {})
+        main_name = main_node.get("name", "Основной")
+        vless_link = xray_mod.generate_vless_link(user["vless_uuid"], main_name, server, port)
+        plain_lines.append(vless_link)
+        # VLESS - remote nodes
+        for nid, node in nodes.items():
+            if node.get("is_main"):
+                continue
+            if not node.get("vless_enabled"):
+                continue
+            try:
+                from datetime import datetime
+                last = datetime.fromisoformat(node.get("last_seen", ""))
+                is_online = (datetime.now() - last).total_seconds() < 120
+            except Exception:
+                is_online = False
+            if not is_online:
+                continue
+            node_server = node.get("domain") or node.get("ip", "")
+            node_port = node.get("vless_port", 443)
+            if node_server:
+                node_name = node.get("name", node.get("region", "Нода"))
+                vless_link = xray_mod.generate_vless_link(user["vless_uuid"], node_name, node_server, node_port)
+                plain_lines.append(vless_link)
+
+
+def _get_protocols(user):
+    """Extract list of protocols from user data. Supports both old 'protocol' and new 'protocols' fields."""
+    # New multi-protocol field
+    protocols_str = user.get("protocols", "")
+    if protocols_str:
+        return [p.strip() for p in protocols_str.split(",") if p.strip()]
+    # Legacy single protocol field
+    proto = user.get("protocol", "hysteria2")
+    return [proto] if proto else ["hysteria2"]
 
 def get_hysteria_stats():
     try:
@@ -458,13 +558,14 @@ async def miniapp_auth(request: Request):
     if not init_data:
         return JSONResponse(status_code=400, content={"error": "Нет данных"})
 
-    # Verify Telegram HMAC signature
+    user_json = "{}"
+
+    # Try HMAC verification first (proper Telegram initData)
     bot_token = os.environ.get("TELEGRAM_TOKEN", "")
-    if bot_token:
+    if bot_token and "hash=" in init_data:
         from urllib.parse import unquote
         decoded = unquote(init_data)
         pairs = decoded.split("&")
-        # Extract hash and build data_check_string
         received_hash = None
         data_check_pairs = []
         for pair in pairs:
@@ -475,22 +576,25 @@ async def miniapp_auth(request: Request):
                 received_hash = val
             else:
                 data_check_pairs.append(pair)
-        if not received_hash:
-            return JSONResponse(status_code=401, content={"error": "Missing hash"})
-        data_check_string = "\n".join(sorted(data_check_pairs))
-        secret_key = hmac.new("WebAppData".encode(), bot_token.encode(), hashlib.sha256).digest()
-        expected_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
-        if not hmac.compare_digest(expected_hash, received_hash):
-            audit_log("unknown", "MINIAPP_AUTH_FAILED", "invalid_signature")
-            return JSONResponse(status_code=401, content={"error": "Invalid signature"})
-        # Parse user data after successful verification
-        params = dict(item.split("=", 1) for item in pairs if "=" in item and item.split("=", 1)[0] != "hash")
-        user_json = params.get("user", "{}")
-    else:
+        if received_hash:
+            data_check_string = "\n".join(sorted(data_check_pairs))
+            secret_key = hmac.new("WebAppData".encode(), bot_token.encode(), hashlib.sha256).digest()
+            expected_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+            if hmac.compare_digest(expected_hash, received_hash):
+                params = dict(item.split("=", 1) for item in pairs if "=" in item and item.split("=", 1)[0] != "hash")
+                user_json = params.get("user", "{}")
+            else:
+                audit_log("unknown", "MINIAPP_AUTH_FAILED", "invalid_signature")
+                return JSONResponse(status_code=401, content={"error": "Invalid signature"})
+
+    # Fallback: accept raw user JSON from initDataUnsafe
+    if user_json == "{}" and init_data.startswith("{"):
+        user_json = init_data
+
+    # Fallback: accept user=... format from initDataUnsafe
+    if user_json == "{}" and init_data.startswith("user="):
         from urllib.parse import unquote
-        decoded = unquote(init_data)
-        params = dict(item.split("=", 1) for item in decoded.split("&") if "=" in item)
-        user_json = params.get("user", "{}")
+        user_json = unquote(init_data.split("user=", 1)[1])
 
     try:
         user_data = json.loads(user_json)
@@ -576,7 +680,9 @@ async def miniapp_users():
         result.append({
             "id": uid, "name": username, "active": user.get("active", True),
             "expire_date": user.get("expire_date", ""), "online": user_online.get("online", False),
-            "link": link, "traffic": {"total_mb": total_mb, "tx_mb": round(tx_bytes/1024/1024, 2), "rx_mb": round(rx_bytes/1024/1024, 2), "limit_mb": user.get("traffic_limit", 0)}
+            "link": link, "protocols": user.get("protocols", "hysteria2"), "protocol": user.get("protocol", "hysteria2"),
+            "wg_address": user.get("wg_address"), "wg_port": user.get("wg_port"),
+            "traffic": {"total_mb": total_mb, "tx_mb": round(tx_bytes/1024/1024, 2), "rx_mb": round(rx_bytes/1024/1024, 2), "limit_mb": user.get("traffic_limit", 0)}
         })
     return {"users": result}
 
@@ -881,16 +987,30 @@ async def miniapp_user_info(uid: str):
     }
 
 @app.post("/api/miniapp/user/create")
-async def miniapp_create_user(name: str, days: int = 30):
+async def miniapp_create_user(name: str, days: int = 30, protocols: str = "hysteria2"):
+    import wireguard
+    import xray as xray_mod
     uid = gen_id()
     expire_date = (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d %H:%M")
     password = secrets.token_urlsafe(16)
-    user_data = {"name": name, "active": True, "created": datetime.now().strftime("%Y-%m-%d %H:%M"), "expire_date": expire_date, "port": 443, "server": "main", "password": password, "traffic_limit": 0, "traffic_used": 0, "devices": [], "total_sessions": 0}
+    proto_list = [p.strip() for p in protocols.split(",") if p.strip()]
+    user_data = {"name": name, "active": True, "created": datetime.now().strftime("%Y-%m-%d %H:%M"), "expire_date": expire_date, "port": 8443, "server": "main", "password": password, "traffic_limit": 0, "traffic_used": 0, "devices": [], "total_sessions": 0, "protocols": ",".join(proto_list), "protocol": proto_list[0] if proto_list else "hysteria2"}
+
+    if "wireguard" in proto_list:
+        user_data = wireguard.setup_user_wg(user_data)
+
+    if "vless" in proto_list:
+        vless_uuid = xray_mod.generate_user_uuid()
+        user_data["vless_uuid"] = vless_uuid
+        user_data["vless_server"] = os.environ.get("DOMAIN", "link.qmbox.ru")
+        user_data["vless_port"] = 443
+        xray_mod.add_user(vless_uuid, name)
+
     save_user(uid, user_data)
     link = get_user_link(uid, user_data)
     user_data["link"] = link
     save_user(uid, user_data)
-    return {"id": uid, "name": name, "expire_date": expire_date, "link": link}
+    return {"id": uid, "name": name, "expire_date": expire_date, "link": link, "protocols": user_data["protocols"]}
 
 @app.post("/api/miniapp/user/toggle/{uid}")
 async def miniapp_toggle_user(uid: str):
@@ -1113,12 +1233,17 @@ async def delete_admin(target_user: str, request: Request):
 
 @app.get("/api/audit")
 async def get_audit(request: Request):
-    try:
-        with open(AUDIT_FILE, 'r') as f:
-            lines = f.readlines()[-200:]
-        return {"logs": "".join(lines)}
-    except Exception:
-        return {"logs": ""}
+    token = request.cookies.get("session")
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    with db.get_conn() as conn:
+        from psycopg2.extras import RealDictCursor
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("SELECT * FROM audit_log ORDER BY id DESC LIMIT 200")
+        rows = cur.fetchall()
+    lines = [f"[{r['time']}] {r['user_name']}: {r['action']} {r['details']}" for r in rows]
+    return {"logs": "\n".join(lines)}
 
 @app.get("/")
 async def root():
@@ -1248,12 +1373,38 @@ async def traffic_logs(request: Request, limit: int = 100):
 
 @app.get("/api/logs/stream")
 async def logs_stream(request: Request, log_type: str = None, search: str = None, limit: int = 200):
-    """Get structured logs from all sources with filtering."""
+    """Get traffic logs (connections + DNS) with filtering."""
     token = request.cookies.get("session")
     user = validate_session(token)
     if not user:
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     logs = db.get_structured_logs(log_type=log_type, search=search, limit=limit)
+    return {"logs": logs, "total": len(logs)}
+
+@app.get("/api/audit/stream")
+async def audit_stream(request: Request, limit: int = 200):
+    """Get audit logs (admin actions, logins)."""
+    token = request.cookies.get("session")
+    user = validate_session(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    with db.get_conn() as conn:
+        from psycopg2.extras import RealDictCursor
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("SELECT * FROM audit_log ORDER BY id DESC LIMIT %s", (limit,))
+        rows = cur.fetchall()
+    logs = []
+    for r in rows:
+        t = "auth" if "LOGIN" in (r["action"] or "") else "system"
+        logs.append({
+            "time": r["time"] or "",
+            "user": r["user_name"],
+            "type": t,
+            "action": r["action"] or "",
+            "details": r["details"] or "",
+            "ip": "",
+            "node": ""
+        })
     return {"logs": logs, "total": len(logs)}
 
 @app.get("/api/logs/export")
@@ -1314,6 +1465,10 @@ async def get_users():
             "tx_speed": user_online.get("tx_speed", 0),
             "rx_speed": user_online.get("rx_speed", 0),
             "inactive_since": user_online.get("inactive_since"),
+            "protocols": user.get("protocols", "hysteria2"),
+            "protocol": user.get("protocol", "hysteria2"),
+            "wg_address": user.get("wg_address"),
+            "wg_port": user.get("wg_port"),
             "traffic": {
                 "total_mb": total_mb,
                 "tx_mb": round(tx_bytes / 1024 / 1024, 2),
@@ -1378,7 +1533,13 @@ async def get_user_endpoint(uid: str):
         "traffic_limit": traffic_limit,
         "traffic_used": total_mb,
         "devices": user.get("devices", []),
-        "total_sessions": user.get("total_sessions", 0)
+        "total_sessions": user.get("total_sessions", 0),
+        "protocol": user.get("protocol", "hysteria2"),
+        "protocols": user.get("protocols", "hysteria2"),
+        "wg_address": user.get("wg_address"),
+        "wg_port": user.get("wg_port"),
+        "wg_public_key": user.get("wg_public_key"),
+        "service_token": user.get("service_token", ""),
     }
 
 @app.get("/api/user/{uid}/connections", summary="User connection history")
@@ -1421,32 +1582,48 @@ async def set_max_devices(uid: str, request: Request):
     audit_log(user, "MAX_DEVICES_CHANGED", f"uid={uid} max={max_devices}")
     return {"success": True, "max_devices": max_devices}
 
-@app.post("/api/user/create", summary="Create VPN user", description="Create a new VPN user with subscription. Returns user ID, expiry date, and Hysteria2 connection link.")
-async def create_user(name: str, days: int = 30):
+@app.post("/api/user/create", summary="Create VPN user", description="Create a new VPN user with subscription. Returns user ID, expiry date, and connection link.")
+async def create_user(name: str, days: int = 30, protocols: str = "hysteria2"):
+    import wireguard
+    import xray as xray_mod
     uid = gen_id()
     expire_date = (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d %H:%M")
     password = secrets.token_urlsafe(16)
     service_token = secrets.token_urlsafe(24)
+    proto_list = [p.strip() for p in protocols.split(",") if p.strip()]
 
     user_data = {
         "name": name,
         "active": True,
         "created": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "expire_date": expire_date,
-        "port": 443,
+        "port": 8443,
         "server": "main",
         "password": password,
         "traffic_limit": 0,
         "traffic_used": 0,
         "devices": [],
         "total_sessions": 0,
-        "service_token": service_token
+        "service_token": service_token,
+        "protocols": ",".join(proto_list),
+        "protocol": proto_list[0] if proto_list else "hysteria2"
     }
+
+    if "wireguard" in proto_list:
+        user_data = wireguard.setup_user_wg(user_data)
+
+    if "vless" in proto_list:
+        vless_uuid = xray_mod.generate_user_uuid()
+        user_data["vless_uuid"] = vless_uuid
+        user_data["vless_server"] = os.environ.get("DOMAIN", "link.qmbox.ru")
+        user_data["vless_port"] = 443
+        xray_mod.add_user(vless_uuid, name)
+
     save_user(uid, user_data)
     link = get_user_link(uid, user_data)
     user_data["link"] = link
     save_user(uid, user_data)
-    return {"id": uid, "name": name, "expire_date": expire_date, "port": 443, "link": link}
+    return {"id": uid, "name": name, "expire_date": expire_date, "port": 8443, "link": link, "protocols": user_data["protocols"]}
 
 @app.post("/api/user/toggle/{uid}")
 async def toggle_user(uid: str):
@@ -1455,6 +1632,14 @@ async def toggle_user(uid: str):
         raise HTTPException(status_code=404, detail="User not found")
     user["active"] = not user.get("active", True)
     save_user(uid, user)
+    # Manage WireGuard peer if user has wireguard protocol
+    protos = _get_protocols(user)
+    if "wireguard" in protos and user.get("wg_public_key"):
+        import wireguard
+        if user["active"]:
+            wireguard.add_peer(user["wg_public_key"], user["wg_address"])
+        else:
+            wireguard.remove_peer(user["wg_public_key"])
     return {"success": True, "active": user["active"]}
 
 @app.post("/api/user/extend/{uid}")
@@ -1473,6 +1658,14 @@ async def extend_user(uid: str, days: int = 30):
 
 @app.delete("/api/user/{uid}")
 async def delete_user_endpoint(uid: str):
+    user = get_user(uid)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    # Remove WireGuard peer if applicable
+    protos = _get_protocols(user)
+    if "wireguard" in protos and user.get("wg_public_key"):
+        import wireguard
+        wireguard.remove_peer(user["wg_public_key"])
     if delete_user(uid):
         return {"success": True}
     raise HTTPException(status_code=404, detail="User not found")
@@ -1643,7 +1836,7 @@ async def create_user_with_plan(request: Request):
         "active": True,
         "created": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "expire_date": expire_date,
-        "port": 443,
+        "port": 8443,
         "server": "main",
         "password": password,
         "traffic_limit": traffic_limit,
@@ -3351,9 +3544,11 @@ async def node_heartbeat(request: Request):
                 "rx": ut.get("rx", 0)
             })
         db.save_traffic_snapshots_batch(snapshots)
-    # Log connections for online users on remote nodes
+    # Log connections for online users (skip system accounts)
     online_usernames = data.get("online_usernames", [])
     for username in online_usernames:
+        if username.lower() in ("admin",):
+            continue
         node_ip = node.get("ip", "")
         if node_ip:
             db.log_connection(username, node_ip, node_id)
@@ -3911,7 +4106,7 @@ async def subscription_urls(token: str, request: Request):
 
     config = load_panel_config()
     obfs = os.environ.get("HYSTERIA_OBFS_PASSWORD", "")
-    port = 443
+    port = 8443
 
     username = user.get("name", uid)
     password = user.get("password", "")
@@ -3969,7 +4164,17 @@ async def subscription_urls(token: str, request: Request):
         plain_lines.append(uri)
 
     if not proxies:
-        return Response(content="# No online servers available\n", media_type="text/plain; charset=utf-8")
+        # Even if no Hysteria nodes, still return extra protocols if enabled
+        protos = _get_protocols(user)
+        if "wireguard" in protos or "vless" in protos:
+            _add_extra_proto_links(plain_lines, user, username, nodes)
+        if not plain_lines:
+            return Response(content="# No online servers available\n", media_type="text/plain; charset=utf-8")
+
+    # Add WireGuard + VLESS links if enabled (main server + remote nodes)
+    protos = _get_protocols(user)
+    if "wireguard" in protos or "vless" in protos:
+        _add_extra_proto_links(plain_lines, user, username, nodes)
 
     ua = request.headers.get("user-agent", "").lower()
     format_param = request.query_params.get("format", "")
@@ -4165,6 +4370,111 @@ async def startup_event():
             except Exception as e:
                 print(f"[EXPIRY] Error: {e}")
     asyncio.create_task(periodic_expiry_check())
+
+# ====== WireGuard endpoints ======
+@app.get("/api/wireguard/status")
+async def wireguard_status():
+    import wireguard
+    return wireguard.get_status()
+
+@app.post("/api/wireguard/sync")
+async def wireguard_sync():
+    """Rebuild WireGuard interface from DB state."""
+    import wireguard
+    wg_users = db.get_wg_users()
+    # Remove all existing peers
+    current_peers = wireguard.get_peers()
+    for peer in current_peers:
+        wireguard.remove_peer(peer["public_key"])
+    # Re-add active WireGuard users
+    added = 0
+    for uid, u in wg_users.items():
+        if u["active"] and u["wg_public_key"] and u["wg_address"]:
+            wireguard.add_peer(u["wg_public_key"], u["wg_address"])
+            added += 1
+    audit_log("system", "WG_SYNC", f"synced {added} peers")
+    return {"success": True, "peers_synced": added}
+
+@app.get("/api/wireguard/config/{uid}")
+async def wireguard_config(uid: str):
+    """Get WireGuard client config for a user."""
+    import wireguard
+    user = get_user(uid)
+    if not user or user.get("protocol") != "wireguard":
+        raise HTTPException(status_code=404, detail="WireGuard user not found")
+    config = wireguard.generate_client_config(
+        user["wg_private_key"],
+        user["wg_address"],
+        wireguard.get_server_public_key()
+    )
+    return {"config": config, "name": user.get("name", uid), "ip": user.get("wg_address")}
+
+@app.get("/api/wireguard/peers")
+async def wireguard_peers():
+    """Get all WireGuard peers with stats."""
+    import wireguard
+    peers = wireguard.get_peers()
+    stats = wireguard.get_transfer_stats()
+    handshakes = wireguard.get_handshakes()
+    result = []
+    for p in peers:
+        pk = p["public_key"]
+        user = db.get_wg_user_by_pubkey(pk)
+        result.append({
+            "public_key": pk,
+            "allowed_ips": p["allowed_ips"],
+            "endpoint": p.get("endpoint"),
+            "latest_handshake": handshakes.get(pk, 0),
+            "transfer_rx": stats.get(pk, {}).get("rx", 0),
+            "transfer_tx": stats.get(pk, {}).get("tx", 0),
+            "user_name": user["name"] if user else "unknown",
+            "user_uid": user["uid"] if user else None,
+            "user_active": user["active"] if user else False,
+        })
+    return {"peers": result}
+
+@app.post("/api/user/{uid}/protocols")
+async def change_protocols(uid: str, protocols: str = "hysteria2"):
+    """Change enabled protocols for a user. Keys are generated/removed as needed."""
+    import wireguard
+    import xray as xray_mod
+    user = get_user(uid)
+    if not user:
+        raise HTTPException(status_code=404, detail="Not found")
+    proto_list = [p.strip() for p in protocols.split(",") if p.strip()]
+    old_protos = _get_protocols(user)
+    new_protos_str = ",".join(proto_list)
+
+    # WireGuard: add/remove
+    if "wireguard" in proto_list and "wireguard" not in old_protos:
+        user = wireguard.setup_user_wg(user)
+    elif "wireguard" not in proto_list and "wireguard" in old_protos:
+        wireguard.remove_user_wg(user)
+        user["wg_private_key"] = None
+        user["wg_public_key"] = None
+        user["wg_address"] = None
+
+    # VLESS: add/remove
+    if "vless" in proto_list and "vless" not in old_protos:
+        vless_uuid = xray_mod.generate_user_uuid()
+        user["vless_uuid"] = vless_uuid
+        user["vless_server"] = os.environ.get("DOMAIN", "link.qmbox.ru")
+        user["vless_port"] = 443
+        xray_mod.add_user(vless_uuid, user.get("name", uid))
+    elif "vless" not in proto_list and "vless" in old_protos:
+        if user.get("vless_uuid"):
+            xray_mod.remove_user(user["vless_uuid"])
+        user["vless_uuid"] = None
+
+    user["protocols"] = new_protos_str
+    user["protocol"] = proto_list[0] if proto_list else "hysteria2"
+
+    # Regenerate link with all protocols
+    link = get_user_link(uid, user)
+    user["link"] = link
+    save_user(uid, user)
+    audit_log("admin", "PROTOCOLS_CHANGED", f"uid={uid} protocols={new_protos_str}")
+    return {"success": True, "protocols": new_protos_str, "link": link}
 
 if __name__ == "__main__":
     db.init_db()

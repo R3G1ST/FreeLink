@@ -3,22 +3,37 @@
   "short_name": "FreeLink",
   "description": "VPN Server Management Panel",
   "start_url": "/app",
+  "scope": "/app",
+  "id": "/app",
   "display": "standalone",
   "background_color": "#0a0e1a",
   "theme_color": "#8b5cf6",
   "orientation": "portrait",
+  "categories": ["utilities"],
   "icons": [
     {
-      "src": "/web/favicon.svg",
+      "src": "/web/icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/web/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/web/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/web/favicon.svg",
-      "sizes": "512x512",
+      "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "monochrome"
     }
   ]
 }

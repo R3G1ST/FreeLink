@@ -376,7 +376,7 @@ a{text-decoration:none;color:inherit}
 .modal-head .mh-icon.orange{background:var(--org);color:var(--or)}
 .modal-head h3{font-size:18px;font-weight:800;letter-spacing:-0.3px;margin-bottom:4px}
 .modal-head p{font-size:13px;color:var(--t3);line-height:1.5}
-.modal-body{padding:20px 24px}
+.modal-body{padding:20px 24px;overflow-y:auto;max-height:60vh}
 .modal-foot{padding:0 24px 24px;display:flex;gap:10px;justify-content:center}
 .modal-close{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:8px;border:1px solid var(--b1);background:var(--g2);color:var(--t3);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;font-size:12px;z-index:1}
 .modal-close:hover{border-color:var(--rd);color:var(--rd);background:var(--rdg)}
@@ -513,7 +513,7 @@ a{text-decoration:none;color:inherit}
     .notif-bell{width:32px;height:32px;font-size:13px}
     .modal{margin:8px;max-width:calc(100vw - 16px);border-radius:12px}
     .modal-head{padding:20px 16px 0}
-    .modal-body{padding:12px 14px}
+    .modal-body{padding:12px 14px;overflow-y:auto;max-height:60vh}
     .modal-foot{padding:0 16px 16px}
     .um-tabs{padding:0 10px;gap:0}
     .um-tab{padding:8px 8px;font-size:10px;gap:3px}
@@ -696,7 +696,6 @@ a{text-decoration:none;color:inherit}
                         <button class="fb on" onclick="filterLogs('all',this)">Все</button>
                         <button class="fb" onclick="filterLogs('connect',this)">Подключения</button>
                         <button class="fb" onclick="filterLogs('disconnect',this)">Отключения</button>
-                        <button class="fb" onclick="filterLogs('dns',this)">DNS</button>
                     </div>
                 </div>
                 <div class="card logs-container" id="lB" style="padding:0;max-height:500px;overflow-y:auto">
@@ -704,7 +703,7 @@ a{text-decoration:none;color:inherit}
                 </div>
             </div>
 
-            <!-- AUDIT (redirect to logs) -->
+            <!-- AUDIT -->
             <div class="pg" id="p-audit">
                 <div class="pg-title"><i class="fas fa-shield-alt"></i> <span data-i18n="page_audit">Аудит</span></div>
                 <div class="tbar"><button class="btn btn-n" onclick="lAudit()"><i class="fas fa-sync"></i> <span data-i18n="btn_refresh">Обновить</span></button></div>
@@ -1608,13 +1607,23 @@ function downloadReport(){window.open('/api/report?fmt=csv','_blank')}
 function showCreateUser(){
     setModal('user-plus','green',t('msg_new_user'),'',`
         <div class="field"><label>${t('table_name')}</label><input type="text" id="cuName" placeholder="ivan"></div>
+        <div class="field"><label>Протоколы</label>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600"><input type="checkbox" id="cuProtoH2" checked value="hysteria2"> ⚡ Hysteria2</label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600"><input type="checkbox" id="cuProtoWG" value="wireguard"> 🔒 WireGuard</label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600"><input type="checkbox" id="cuProtoVLESS" value="vless"> 🌐 VLESS</label>
+            </div>
+        </div>
         <div class="field"><label>${t('page_plans_title')}</label><select id="cuPlan"><option value="">— ${t('btn_edit')} —</option></select></div>
         <div class="field"><label>${t('time_day')}</label><input type="number" id="cuDays" value="30" min="1"></div>
     `,'<button class="btn btn-n" onclick="closeModal()">'+t('btn_cancel')+'</button><button class="btn btn-g" id="cuBtn">'+t('btn_create')+'</button>');
     fetch('/api/plans').then(r=>r.json()).then(d=>{const sel=$('cuPlan');(d.plans||[]).forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=`${p.name} — ${p.days}дн`;sel.appendChild(o)})});
-    $('cuBtn').onclick=async()=>{const n=$('cuName')?.value?.trim();if(!n||n.length<2){toast(t('msg_min_chars'));return}const pid=$('cuPlan')?.value;const d=parseInt($('cuDays')?.value)||30;closeModal();
-        if(pid){await fB('/api/user/create-with-plan',{name:n,plan_id:pid}).then(r=>r.json()).then(d=>{if(d.id)toast(t('msg_created'));else toast(t('msg_error'))})}
-        else{await fetch('/api/user/create?name='+encodeURIComponent(n)+'&days='+d,{method:'POST'}).then(r=>r.json()).then(d=>{if(d.id)toast(t('msg_created'));else toast(t('msg_error'))})}
+    $('cuBtn').onclick=async()=>{const n=$('cuName')?.value?.trim();if(!n||n.length<2){toast(t('msg_min_chars'));return}const pid=$('cuPlan')?.value;const d=parseInt($('cuDays')?.value)||30;
+        const protos=[];if($('cuProtoH2')?.checked)protos.push('hysteria2');if($('cuProtoWG')?.checked)protos.push('wireguard');if($('cuProtoVLESS')?.checked)protos.push('vless');
+        if(!protos.length){toast('Выберите хотя бы один протокол');return}
+        closeModal();
+        if(pid){await fB('/api/user/create-with-plan',{name:n,plan_id:pid,protocols:protos.join(',')}).then(r=>r.json()).then(d=>{if(d.id)toast(t('msg_created'));else toast(t('msg_error'))})}
+        else{await fetch('/api/user/create?name='+encodeURIComponent(n)+'&days='+d+'&protocols='+protos.join(','),{method:'POST'}).then(r=>r.json()).then(d=>{if(d.id)toast(t('msg_created'));else toast(t('msg_error'))})}
         loadAll()};
     setTimeout(()=>$('cuName')?.focus(),100);
 }
@@ -1644,14 +1653,21 @@ function renderUserModal(u){
 
     let html='';
     if(umTabCur==='info'){
+        const protos=_getProtos(u);
+        const protoBadges=protos.map(p=>p==='wireguard'?'🔒 WireGuard':'⚡ Hysteria2').join(', ');
+        const wgInfo=protos.includes('wireguard')?`<div class="um-info-item"><div class="um-label">WG IP</div><div class="um-value">${u.wg_address||'—'}</div></div><div class="um-info-item"><div class="um-label">WG Порт</div><div class="um-value">${u.wg_port||51820}</div></div>`:'';
         html=`
         <div class="um-status-grid">
             <div class="um-badge ${statusClass}"><span class="dot"></span>${statusText}</div>
             <div class="um-badge ${onlineClass}"><span class="dot"></span>${onlineText}</div>
         </div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">
+            ${protos.map(p=>`<div style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:600;background:${p==='wireguard'?'rgba(59,130,246,.12);color:#60a5fa':'rgba(139,92,246,.12);color:var(--ac2)'}">${p==='wireguard'?'🔒 WireGuard':'⚡ Hysteria2'}</div>`).join('')}
+        </div>
         <div class="um-info-grid">
             <div class="um-info-item"><div class="um-label">Создан</div><div class="um-value">${u.created||'—'}</div></div>
             <div class="um-info-item"><div class="um-label">Истекает</div><div class="um-value" style="color:${isEx?'var(--rd)':'inherit'}">${u.expire_date||'—'}</div></div>
+            ${wgInfo}
         </div>
         <div class="um-progress-wrap">
             <div class="um-progress-label"><span>Подписка</span><span>${daysText} — ${Math.round(sp)}%</span></div>
@@ -1749,13 +1765,31 @@ function renderUserModal(u){
             }).catch(()=>{$('connHistory').innerHTML='<div style="color:var(--rd)">Ошибка загрузки</div>'});
         },100);
     } else if(umTabCur==='actions'){
+        const protos=_getProtos(u);
+        const hasH2=protos.includes('hysteria2');
+        const hasWG=protos.includes('wireguard');
+        const hasVLESS=protos.includes('vless');
         html=`
         <div class="um-section">
             <div class="um-section-title"><i class="fas fa-share-alt"></i> Подключение</div>
             <div class="um-actions-grid">
                 <button class="btn btn-a btn-sm" onclick="copySubUrlAuto()"><i class="fas fa-share-alt"></i> Подписка</button>
-                <button class="btn btn-b btn-sm" onclick="copyUserLink()"><i class="fas fa-link"></i> Ссылка</button>
+                <button class="btn btn-b btn-sm" onclick="showAllLinks()"><i class="fas fa-link"></i> Ссылки</button>
                 <button class="btn btn-n btn-sm" onclick="showQRModal()"><i class="fas fa-qrcode"></i> QR-код</button>
+            </div>
+        </div>
+        <div class="um-section">
+            <div class="um-section-title"><i class="fas fa-exchange-alt"></i> Протоколы</div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px;border-radius:6px;background:${hasH2?'rgba(139,92,246,.12)':'var(--g2)'};border:1px solid ${hasH2?'var(--ac)':'transparent'}">
+                    <input type="checkbox" ${hasH2?'checked':''} onchange="toggleProto('${CUid}','hysteria2',this.checked)" style="accent-color:var(--ac)"> ⚡ Hysteria2
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px;border-radius:6px;background:${hasWG?'rgba(59,130,246,.12)':'var(--g2)'};border:1px solid ${hasWG?'#3b82f6':'transparent'}">
+                    <input type="checkbox" ${hasWG?'checked':''} onchange="toggleProto('${CUid}','wireguard',this.checked)" style="accent-color:#3b82f6"> 🔒 WireGuard
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px;border-radius:6px;background:${hasVLESS?'rgba(16,185,129,.12)':'var(--g2)'};border:1px solid ${hasVLESS?'#10b981':'transparent'}">
+                    <input type="checkbox" ${hasVLESS?'checked':''} onchange="toggleProto('${CUid}','vless',this.checked)" style="accent-color:#10b981"> 🌐 VLESS (Xray)
+                </label>
             </div>
         </div>
         <div class="um-section">
@@ -1770,11 +1804,119 @@ function renderUserModal(u){
     $('umBody').innerHTML=html;
     $('umFoot').innerHTML='';
 }
+function _getProtos(u){const s=u.protocols||u.protocol||'hysteria2';return s.split(',').map(p=>p.trim()).filter(Boolean)}
+function toggleProto(uid,proto,enabled){
+    const u=CU.find(x=>x.id===uid);if(!u)return;
+    let protos=_getProtos(u);
+    if(enabled&&!protos.includes(proto))protos.push(proto);
+    if(!enabled)protos=protos.filter(p=>p!==proto);
+    if(!protos.length){toast('Нужен хотя бы один протокол');refreshUserModal();return}
+    fetch('/api/user/'+uid+'/protocols?protocols='+protos.join(','),{method:'POST'}).then(r=>r.json()).then(d=>{if(d.success){toast('Протоколы обновлены');refreshUserModal()}else toast('Ошибка')});
+}
 function setLimit(mb){if(!CUid)return;fetch('/api/user/set-limit/'+CUid+'?limit_mb='+mb,{method:'POST'}).then(()=>{toast(t('traffic_limit')+': '+(mb?mb+' '+t('units_mb'):t('traffic_unlimited')));refreshUserModal()})}
 function setSpeed(mbps){if(!CUid)return;fetch('/api/user/speed-limit/'+CUid,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({speed_mbps:mbps})}).then(()=>{toast('Скорость: '+(mbps?mbps+' Мбит/с':'∞ Неограничена'));refreshUserModal()})}
 function setMaxDevices(n){if(!CUid)return;fetch('/api/user/'+CUid+'/max-devices',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({max_devices:n})}).then(()=>{toast('Лимит: '+(n>0?n+' устройств':'Без ограничений'));refreshUserModal()})}
 function resetTraffic(){if(!CUid)return;confirmModal(t('msg_confirm_reset'),()=>{fetch('/api/user/reset-traffic/'+CUid,{method:'POST'}).then(()=>{toast(t('msg_traffic_reset'));refreshUserModal()})})}
 function copyUserLink(){if(CUd?.link){navigator.clipboard.writeText(CUd.link).then(()=>toast(t('msg_copied')))}}
+function showAllLinks(){
+    if(!CUid||!CUd)return;
+    const serviceToken=CUd.service_token||'';
+    if(!serviceToken){toast('Нет токена');return}
+    const subUrl=location.origin+'/sub/'+serviceToken;
+    // Fetch from subscription endpoint which includes ALL nodes
+    fetch('/sub/'+serviceToken).then(function(r){return r.text()}).then(function(text){
+        var lines=text.split('\n').filter(Boolean);
+        var items=[];
+        lines.forEach(function(l){
+            var proto=l.startsWith('wireguard')?'WireGuard':l.startsWith('vless://')?'VLESS':'Hysteria2';
+            var region='Основной';
+            var hashIdx=l.lastIndexOf('#');
+            if(hashIdx>-1){try{region=decodeURIComponent(l.substring(hashIdx+1))}catch(e){region=l.substring(hashIdx+1)}}
+            // Detect country from domain/IP
+        var icon=proto==='WireGuard'?'🔒':proto==='VLESS'?'🌐':'⚡';
+        var color=proto==='WireGuard'?'#3b82f6':proto==='VLESS'?'#10b981':'var(--ac)';
+            items.push({proto:proto,region:region,link:l,icon:icon,color:color});
+        });
+        // Group by protocol
+        var h2=items.filter(function(i){return i.proto==='Hysteria2'});
+        var wg=items.filter(function(i){return i.proto==='WireGuard'});
+        var html='<div style="margin-bottom:16px">';
+        html+='<div style="font-size:11px;color:var(--t4);text-transform:uppercase;font-weight:700;margin-bottom:6px">Подписка (автообновление)</div>';
+        html+='<div style="background:var(--g2);padding:10px;border-radius:8px;font-size:10px;word-break:break-all;color:var(--t3);margin-bottom:8px">'+subUrl+'</div>';
+        html+='<button class="btn btn-n btn-sm" onclick="navigator.clipboard.writeText(\''+subUrl+'\').then(function(){toast(t(\'msg_copied\'))})"><i class="fas fa-copy"></i> Копировать подписку</button>';
+        html+='</div>';
+        // Hysteria2 section
+        if(h2.length){
+            html+='<div style="font-size:11px;color:var(--ac);text-transform:uppercase;font-weight:700;margin:12px 0 6px">⚡ Hysteria2</div>';
+            h2.forEach(function(it){
+                html+=renderLinkItem(it);
+            });
+        }
+        // WireGuard section
+        if(wg.length){
+            html+='<div style="font-size:11px;color:#3b82f6;text-transform:uppercase;font-weight:700;margin:12px 0 6px">🔒 WireGuard</div>';
+            wg.forEach(function(it){
+                html+=renderLinkItem(it);
+            });
+        }
+        // VLESS section
+        var vl=items.filter(function(i){return i.proto==='VLESS'});
+        if(vl.length){
+            html+='<div style="font-size:11px;color:#10b981;text-transform:uppercase;font-weight:700;margin:12px 0 6px">🌐 VLESS (Xray)</div>';
+            vl.forEach(function(it){
+                html+=renderLinkItem(it);
+            });
+        }
+        if(!items.length)html+='<div style="text-align:center;padding:20px;color:var(--t4)">Нет ссылок</div>';
+        setModal('link','blue','Ссылки подключения','',html,'<button class="btn btn-n" onclick="closeModal()">'+t('btn_close')+'</button>');
+    });
+}
+function renderLinkItem(it){
+    var safeLink=it.link.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    var encLink=encodeURIComponent(it.link);
+    var h='<div style="background:var(--g2);border-radius:8px;padding:10px;margin-bottom:6px">';
+    h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">';
+    h+='<span style="font-size:12px">'+it.icon+'</span>';
+    h+='<span style="font-size:11px;font-weight:700;color:'+it.color+'">'+it.proto+'</span>';
+    h+='<span style="font-size:10px;color:var(--t4);margin-left:auto">'+it.region+'</span>';
+    h+='</div>';
+    h+='<div style="display:flex;gap:6px">';
+    h+='<button class="btn btn-n btn-sm" style="flex:1;font-size:10px;padding:5px 8px" onclick="navigator.clipboard.writeText(\''+safeLink+'\').then(function(){toast(\''+it.proto+' скопировано!\')})"><i class="fas fa-copy"></i> Копировать</button>';
+    h+='<button class="btn btn-n btn-sm" style="font-size:10px;padding:5px 8px" onclick="showLinkQR(\''+encLink+'\',\''+it.proto+' — '+it.region+'\')"><i class="fas fa-qrcode"></i></button>';
+    h+='</div></div>';
+    return h;
+}
+function showLinkQR(encLink,title){
+    var link=decodeURIComponent(encLink);
+    var qrData=link;
+    // For WireGuard, convert to .conf format; VLESS uses standard URI
+    if(link.startsWith('wireguard://')){
+        qrData=wgUriToConf(link);
+    }
+    var encoded=encodeURIComponent(qrData);
+    var url='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encoded;
+    setModal('qrcode','purple',title,'','<div style="text-align:center"><img src="'+url+'" style="width:200px;height:200px;border-radius:8px;background:#fff;padding:8px"></div>','<button class="btn btn-n" onclick="closeModal()">'+t('btn_close')+'</button>');
+}
+function wgUriToConf(uri){
+    try{
+        var raw=uri.replace('wireguard://','');
+        var hashIdx=raw.lastIndexOf('#');
+        if(hashIdx>-1)raw=raw.substring(0,hashIdx);
+        var decoded=decodeURIComponent(raw);
+        var params={};
+        decoded.split('&').forEach(function(p){var kv=p.split('=');if(kv.length===2)params[kv[0]]=decodeURIComponent(kv[1])});
+        var conf='[Interface]\n';
+        conf+='PrivateKey = '+params.privateKey+'\n';
+        conf+='Address = '+params.address+'\n';
+        conf+='DNS = '+(params.dns||'1.1.1.1, 8.8.8.8')+'\n\n';
+        conf+='[Peer]\n';
+        conf+='PublicKey = '+params.publicKey+'\n';
+        conf+='Endpoint = '+params.endpoint+'\n';
+        conf+='AllowedIPs = '+(params.allowedIPs||'0.0.0.0/0')+'\n';
+        conf+='PersistentKeepalive = '+(params.persistentKeepalive||'25')+'\n';
+        return conf;
+    }catch(e){return uri}
+}
 function copySubUrl(url){if(!url){toast(t('msg_no_token'));return}navigator.clipboard.writeText(url).then(()=>toast(t('msg_sub_copied')))}
 function copySubUrlAuto(){
     if(!CUid)return;
@@ -2104,7 +2246,6 @@ function exportLogs(){
 const LOG_TYPES={
     connect:{cls:'cg',label:'Подкл.',icon:'fa-arrow-right'},
     disconnect:{cls:'cr',label:'Откл.',icon:'fa-arrow-left'},
-    dns:{cls:'cb',label:'DNS',icon:'fa-globe'},
     auth:{cls:'co',label:'Аудит',icon:'fa-shield-alt'},
     system:{cls:'cv',label:'Система',icon:'fa-cog'}
 };
@@ -2132,10 +2273,10 @@ function renderLogs(){
     if(autoScrollEnabled)el.scrollTop=0;
 }
 
-/* ===== AUDIT (redirect to logs) ===== */
+/* ===== AUDIT ===== */
 async function lAudit(){
     try{
-        const r=await fetch('/api/logs/stream?log_type=auth&limit=200');
+        const r=await fetch('/api/audit/stream?limit=200');
         const d=await r.json();
         const el=$('aB');
         const logs=d.logs||[];
@@ -2147,6 +2288,7 @@ async function lAudit(){
         el.scrollTop=0;
     }catch(e){console.error('lAudit error:',e)}
 }
+
 /* ===== UPDATE ===== */
 let updatePollTimer=null;
 async function checkUpdate(){

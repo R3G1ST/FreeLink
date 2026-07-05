@@ -149,6 +149,23 @@ def init_db():
             )
         """)
         cur.execute("CREATE INDEX IF NOT EXISTS idx_traffic_user_node ON traffic_snapshots (username, node_id, captured_at DESC)")
+        # WireGuard columns (added incrementally)
+        for col, typ, default in [
+            ("protocol", "TEXT", "'hysteria2'"),
+            ("protocols", "TEXT", "'hysteria2'"),
+            ("wg_public_key", "TEXT", "NULL"),
+            ("wg_private_key", "TEXT", "NULL"),
+            ("wg_address", "TEXT", "NULL"),
+            ("wg_port", "INTEGER", "51820"),
+            ("vless_uuid", "TEXT", "NULL"),
+            ("vless_server", "TEXT", "NULL"),
+            ("vless_port", "INTEGER", "8443"),
+        ]:
+            try:
+                cur.execute(f"ALTER TABLE users ADD COLUMN {col} {typ} DEFAULT {default}")
+                conn.commit()
+            except Exception:
+                conn.rollback()  # column already exists, reset transaction state
         cur.execute("""
             CREATE TABLE IF NOT EXISTS connection_log (
                 id SERIAL PRIMARY KEY,
@@ -213,8 +230,10 @@ def save_user(uid, user_data):
             INSERT INTO users (uid, name, active, created, expire_date, port, server, password,
                 traffic_limit, traffic_used, traffic_saved_tx, traffic_saved_rx,
                 traffic_saved_total_mb, traffic_saved_updated, devices, total_sessions,
-                link, service_token, plan, speed_limit_mbps, subscription_id, ip)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                link, service_token, plan, speed_limit_mbps, subscription_id, ip,
+                protocol, protocols, wg_public_key, wg_private_key, wg_address, wg_port,
+                wg_node_keys, vless_uuid, vless_server, vless_port)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             ON CONFLICT (uid) DO UPDATE SET
                 name=EXCLUDED.name, active=EXCLUDED.active, created=EXCLUDED.created,
                 expire_date=EXCLUDED.expire_date, port=EXCLUDED.port, server=EXCLUDED.server,
@@ -226,7 +245,13 @@ def save_user(uid, user_data):
                 devices=EXCLUDED.devices, total_sessions=EXCLUDED.total_sessions,
                 link=EXCLUDED.link, service_token=EXCLUDED.service_token,
                 plan=EXCLUDED.plan, speed_limit_mbps=EXCLUDED.speed_limit_mbps,
-                subscription_id=EXCLUDED.subscription_id, ip=EXCLUDED.ip
+                subscription_id=EXCLUDED.subscription_id, ip=EXCLUDED.ip,
+                protocol=EXCLUDED.protocol, protocols=EXCLUDED.protocols,
+                wg_public_key=EXCLUDED.wg_public_key, wg_private_key=EXCLUDED.wg_private_key,
+                wg_address=EXCLUDED.wg_address, wg_port=EXCLUDED.wg_port,
+                wg_node_keys=EXCLUDED.wg_node_keys,
+                vless_uuid=EXCLUDED.vless_uuid, vless_server=EXCLUDED.vless_server,
+                vless_port=EXCLUDED.vless_port
         """, (
             uid, user_data.get("name", uid), user_data.get("active", True),
             user_data.get("created", ""), user_data.get("expire_date", ""),
@@ -237,7 +262,13 @@ def save_user(uid, user_data):
             Json(user_data.get("devices", [])), user_data.get("total_sessions", 0),
             user_data.get("link", ""), user_data.get("service_token", ""),
             user_data.get("plan", ""), user_data.get("speed_limit_mbps", 0),
-            user_data.get("subscription_id", ""), user_data.get("ip", "")
+            user_data.get("subscription_id", ""), user_data.get("ip", ""),
+            user_data.get("protocol", "hysteria2"), user_data.get("protocols", "hysteria2"),
+            user_data.get("wg_public_key"), user_data.get("wg_private_key"),
+            user_data.get("wg_address"), user_data.get("wg_port", 51820),
+            Json(user_data.get("wg_node_keys", {})),
+            user_data.get("vless_uuid"), user_data.get("vless_server"),
+            user_data.get("vless_port", 8443)
         ))
 
 def delete_user(uid):
@@ -248,7 +279,8 @@ def delete_user(uid):
 
 ALLOWED_USER_FIELDS = {"name", "active", "expire_date", "password", "password_hash",
                        "traffic_limit", "traffic_used", "traffic_saved", "link",
-                       "created", "node_id", "note", "service_token", "max_devices"}
+                       "created", "node_id", "note", "service_token", "max_devices",
+                       "protocol", "wg_public_key", "wg_private_key", "wg_address", "wg_port"}
 
 def update_user_field(uid, field, value):
     if field not in ALLOWED_USER_FIELDS:
@@ -256,6 +288,63 @@ def update_user_field(uid, field, value):
     with get_conn() as conn:
         cur = conn.cursor()
         cur.execute(f"UPDATE users SET {field}=%s WHERE uid=%s", (value, uid))
+
+# ====== WireGuard helpers ======
+def get_wg_users():
+    """Get all WireGuard users."""
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT uid, name, wg_public_key, wg_address, active FROM users WHERE protocol='wireguard'")
+        return {row[0]: {"uid": row[0], "name": row[1], "wg_public_key": row[2], "wg_address": row[3], "active": row[4]} for row in cur.fetchall()}
+
+def get_wg_user_by_pubkey(pubkey):
+    """Find a WireGuard user by their public key."""
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT uid, name, wg_address, active FROM users WHERE wg_public_key=%s", (pubkey,))
+        row = cur.fetchone()
+        if row:
+            return {"uid": row[0], "name": row[1], "wg_address": row[2], "active": row[3]}
+        return None
+
+def get_used_wg_ips():
+    """Get all assigned WG IPs from database."""
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT wg_address FROM users WHERE wg_address IS NOT NULL AND protocol='wireguard'")
+        return {row[0] for row in cur.fetchall()}
+
+def get_used_wg_ips_node(node_id):
+    """Get all assigned WG IPs for a specific node from wg_node_keys JSONB."""
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT wg_node_keys FROM users WHERE wg_node_keys IS NOT NULL AND wg_node_keys != '{}'")
+        ips = set()
+        for row in cur.fetchall():
+            nk = row[0] or {}
+            if isinstance(nk, str):
+                import json
+                nk = json.loads(nk)
+            if node_id in nk:
+                addr = nk[node_id].get("address", "")
+                if addr:
+                    ips.add(addr)
+        return ips
+
+def update_user_traffic_wg_batch(traffic_dict):
+    """Batch update traffic for WireGuard users from wg show transfer."""
+    with get_conn() as conn:
+        cur = conn.cursor()
+        for pubkey, t in traffic_dict.items():
+            rx = t.get("rx", 0)
+            tx = t.get("tx", 0)
+            cur.execute("""UPDATE users SET
+                traffic_saved_tx = traffic_saved_tx + %s,
+                traffic_saved_rx = traffic_saved_rx + %s,
+                traffic_saved_total_mb = traffic_saved_total_mb + (%s + %s) / 1048576.0,
+                traffic_saved_updated = NOW()::text
+                WHERE wg_public_key = %s AND protocol='wireguard'""",
+                (tx, rx, tx, rx, pubkey))
 
 def update_user_traffic_batch(traffic_dict):
     """Batch update traffic for all users from Hysteria stats."""
@@ -428,74 +517,42 @@ def get_audit_log(limit=200):
         return "\n".join(reversed(lines))
 
 def get_structured_logs(log_type=None, search=None, limit=200):
-    """Get logs from all sources in unified format."""
+    """Get connection logs only (connect/disconnect)."""
     results = []
-    # 1. Connection logs
     with get_conn() as conn:
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT * FROM connection_log ORDER BY connected_at DESC LIMIT %s", (limit,))
+        cur.execute("""
+            SELECT username, client_ip, node_id,
+                   connected_at, disconnected_at, duration_seconds
+            FROM connection_log
+            WHERE username NOT IN ('admin', 'Admin')
+              AND connected_at > NOW() - INTERVAL '24 hours'
+            ORDER BY connected_at DESC
+            LIMIT %s
+        """, (limit,))
         for r in cur.fetchall():
             t = "disconnect" if r["disconnected_at"] else "connect"
-            if log_type and log_type != t:
+            if log_type and log_type not in (t, "connect", "disconnect"):
                 continue
+            dur = r["duration_seconds"] or 0
+            if dur >= 3600:
+                dur_str = f"{dur // 3600}ч {(dur % 3600) // 60}м"
+            elif dur >= 60:
+                dur_str = f"{dur // 60}м {dur % 60}с"
+            else:
+                dur_str = f"{dur}с"
             entry = {
                 "time": r["connected_at"].strftime("%Y-%m-%d %H:%M:%S") if r["connected_at"] else "",
                 "user": r["username"],
                 "type": t,
-                "action": f"→ {r['node_id']}" if t == "connect" else f"← {r['node_id']}",
-                "details": f"{r['client_ip']} · {r['duration_seconds'] or 0}с" if r["disconnected_at"] else r["client_ip"],
+                "action": f"→ {r['node_id']}",
+                "details": f"{r['client_ip']} · {dur_str}" if r["disconnected_at"] else r["client_ip"],
                 "ip": r["client_ip"],
                 "node": r["node_id"]
             }
             if search and search.lower() not in str(entry).lower():
                 continue
             results.append(entry)
-    # 2. Audit log
-    with get_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT * FROM audit_log ORDER BY id DESC LIMIT %s", (limit,))
-        for r in cur.fetchall():
-            t = "auth" if "LOGIN" in (r["action"] or "") else "system"
-            if log_type and log_type != t:
-                continue
-            entry = {
-                "time": r["time"] or "",
-                "user": r["user_name"],
-                "type": t,
-                "action": r["action"] or "",
-                "details": r["details"] or "",
-                "ip": "",
-                "node": ""
-            }
-            if search and search.lower() not in str(entry).lower():
-                continue
-            results.append(entry)
-    # 3. DNS logs from file
-    try:
-        import json as _json
-        dns_file = "/opt/freelink/dns_log.json"
-        if os.path.exists(dns_file):
-            with open(dns_file, 'r') as f:
-                dns_entries = _json.load(f)
-            for d in reversed(dns_entries):
-                if log_type and log_type != "dns":
-                    continue
-                entry = {
-                    "time": d.get("time", ""),
-                    "user": d.get("user", ""),
-                    "type": "dns",
-                    "action": d.get("domain", ""),
-                    "details": d.get("ip", ""),
-                    "ip": d.get("ip", ""),
-                    "node": d.get("node_id", "")
-                }
-                if search and search.lower() not in str(entry).lower():
-                    continue
-                results.append(entry)
-    except Exception:
-        pass
-    # Sort by time descending
-    results.sort(key=lambda x: x.get("time", ""), reverse=True)
     return results[:limit]
 
 # ===== HELPERS =====
@@ -520,7 +577,17 @@ def _row_to_user(row):
         "plan": row["plan"] or "", "speed_limit_mbps": row["speed_limit_mbps"] or 0,
         "subscription_id": row["subscription_id"] or "",
         "ip": row["ip"] or "",
-        "max_devices": row.get("max_devices") or 0
+        "max_devices": row.get("max_devices") or 0,
+        "protocol": row.get("protocol") or "hysteria2",
+        "protocols": row.get("protocols") or "hysteria2",
+        "wg_public_key": row.get("wg_public_key"),
+        "wg_private_key": row.get("wg_private_key"),
+        "wg_address": row.get("wg_address"),
+        "wg_port": row.get("wg_port") or 51820,
+        "wg_node_keys": row.get("wg_node_keys") or {},
+        "vless_uuid": row.get("vless_uuid"),
+        "vless_server": row.get("vless_server"),
+        "vless_port": row.get("vless_port") or 8443,
     }
 
 # ===== TRAFFIC SNAPSHOTS =====

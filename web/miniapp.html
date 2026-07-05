@@ -2,14 +2,16 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>FreeLink</title>
-    <link rel="icon" type="image/svg+xml" href="/web/favicon.svg">
     <meta name="theme-color" content="#8b5cf6">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FreeLink">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" type="image/svg+xml" href="/web/favicon.svg">
+    <link rel="apple-touch-icon" href="/web/icon-192.png">
     <link rel="manifest" href="/web/manifest.json">
-    <link rel="apple-touch-icon" href="/web/icon-192.svg">
     <script src="/web/telegram-web-app.js"></script>
     <link href="/web/inter.css" rel="stylesheet">
     <link rel="stylesheet" href="/web/font-awesome.min.css">
@@ -17,8 +19,34 @@
 <style>
 :root{--bg:#0a0e1a;--c1:#111827;--c2:#1f2937;--c3:#374151;--t1:#f9fafb;--t2:rgba(249,250,251,.7);--t3:rgba(249,250,251,.4);--ac:#8b5cf6;--ac2:#a78bfa;--acg:rgba(139,92,246,.12);--gn:#10b981;--gng:rgba(16,185,129,.1);--rd:#ef4444;--rdg:rgba(239,68,68,.1);--or:#f59e0b;--org:rgba(245,158,11,.1);--bl:#3b82f6;--R:12px;--R2:8px}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased;padding-bottom:env(safe-area-inset-bottom,0)}
+html{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;min-height:100dvh;overflow-x:hidden;-webkit-font-smoothing:antialiased;padding-top:env(safe-area-inset-top,0);padding-bottom:env(safe-area-inset-bottom,0);touch-action:pan-y;-webkit-text-size-adjust:100%}
+*{-webkit-touch-callout:none}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(139,92,246,.2);border-radius:2px}
+
+/* SPLASH */
+.splash{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .5s ease,visibility .5s ease}
+.splash.hide{opacity:0;visibility:hidden;pointer-events:none}
+.splash-logo{width:80px;height:80px;border-radius:22px;background:linear-gradient(135deg,#8b5cf6,#6d28d9);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 40px rgba(139,92,246,.5),0 0 80px rgba(139,92,246,.15);animation:splashPulse 2s ease-in-out infinite,splashFloat 3s ease-in-out infinite}
+.splash-logo svg{width:40px;height:40px;filter:drop-shadow(0 2px 8px rgba(255,255,255,.3))}
+.splash-name{font-size:28px;font-weight:800;margin-top:24px;letter-spacing:-.5px;animation:splashFadeUp .6s ease .3s both}
+.splash-name em{font-style:normal;color:var(--ac2)}
+.splash-sub{font-size:13px;color:var(--t3);margin-top:8px;animation:splashFadeUp .6s ease .5s both}
+.splash-dots{display:flex;gap:6px;margin-top:32px;animation:splashFadeUp .6s ease .7s both}
+.splash-dots span{width:6px;height:6px;border-radius:50%;background:var(--ac);animation:dotBounce 1.4s ease-in-out infinite}
+.splash-dots span:nth-child(2){animation-delay:.2s}
+.splash-dots span:nth-child(3){animation-delay:.4s}
+.splash-ring{position:absolute;width:200px;height:200px;border:2px solid rgba(139,92,246,.08);border-radius:50%;animation:splashRing 3s linear infinite}
+.splash-ring:nth-child(2){width:280px;height:280px;animation-duration:4s;animation-direction:reverse;border-color:rgba(139,92,246,.05)}
+@keyframes splashPulse{0%,100%{box-shadow:0 8px 40px rgba(139,92,246,.5),0 0 80px rgba(139,92,246,.15)}50%{box-shadow:0 8px 40px rgba(139,92,246,.7),0 0 120px rgba(139,92,246,.25)}}
+@keyframes splashFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes splashFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes dotBounce{0%,80%,100%{transform:scale(.6);opacity:.3}40%{transform:scale(1);opacity:1}}
+@keyframes splashRing{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@media(orientation:landscape) and (max-height:500px){.splash-logo{width:56px;height:56px;border-radius:16px}.splash-logo svg{width:28px;height:28px}.splash-name{font-size:22px;margin-top:16px}.splash-sub{margin-top:4px;font-size:11px}.splash-dots{margin-top:16px}.splash-ring{width:120px;height:120px}.splash-ring:nth-child(2){width:180px;height:180px}}
+@media(orientation:landscape) and (max-height:400px){.splash{padding:0}.splash-logo{width:48px;height:48px;border-radius:14px}.splash-logo svg{width:24px;height:24px}.splash-name{font-size:18px;margin-top:10px}.splash-sub{display:none}.splash-dots{margin-top:12px}.splash-ring{display:none}}
+@media(min-width:480px){.auth-box{max-width:400px}.auth-icon{width:72px;height:72px;border-radius:20px}.auth-icon svg{width:36px;height:36px}}
+@media(prefers-reduced-motion:reduce){.splash-logo,.splash-dots span,.splash-ring{animation:none!important}}
 
 /* AUTH */
 .auth{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
@@ -140,7 +168,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .filter.on{background:var(--acg);color:var(--ac2)}
 
 /* HEADER */
-.hdr{padding:12px 16px;display:flex;justify-content:space-between;align-items:center}
+.hdr{padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top,0));display:flex;justify-content:space-between;align-items:center}
 .hdr h1{font-size:18px;font-weight:800}
 .hdr h1 em{font-style:normal;color:var(--ac2)}
 .hdr .pill{font-size:11px;font-weight:600;padding:4px 10px;border-radius:12px;background:var(--c1);border:1px solid rgba(255,255,255,.06)}
@@ -184,24 +212,34 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 </style>
 </head>
 <body>
+<!-- SPLASH -->
+<div class="splash" id="splashScreen">
+    <div class="splash-ring"></div>
+    <div class="splash-ring"></div>
+    <div class="splash-logo"><svg viewBox="0 0 512 512" fill="none"><path d="M280 80 L180 280 L240 280 L200 432 L340 200 L270 200 Z" fill="white"/></svg></div>
+    <div class="splash-name"><em>Free</em>Link</div>
+    <div class="splash-sub">VPN Management</div>
+    <div class="splash-dots"><span></span><span></span><span></span></div>
+</div>
+
 <!-- AUTH -->
 <div class="auth" id="authPage">
     <div class="auth-box">
-        <div class="auth-icon"><i class="fas fa-bolt"></i></div>
+        <div class="auth-icon"><svg width="32" height="32" viewBox="0 0 512 512" fill="none"><path d="M280 80 L180 280 L240 280 L200 432 L340 200 L270 200 Z" fill="white"/></svg></div>
         <h1><em>Free</em>Link</h1>
         <p>Управление VPN-сервером</p>
-        <form method="POST" action="/form-login">
-            <input type="text" name="username" placeholder="Логин" required style="width:100%;padding:10px 12px;background:var(--c2);border:1px solid rgba(255,255,255,.06);border-radius:var(--R2);color:var(--t1);font-size:13px;outline:none;font-family:inherit;margin-bottom:8px">
-            <input type="password" name="password" placeholder="Пароль" required style="width:100%;padding:10px 12px;background:var(--c2);border:1px solid rgba(255,255,255,.06);border-radius:var(--R2);color:var(--t1);font-size:13px;outline:none;font-family:inherit;margin-bottom:12px">
-            <button type="submit" class="auth-btn" style="background:linear-gradient(135deg,#10b981,#059669)"><i class="fas fa-sign-in-alt"></i> Войти</button>
-        </form>
+        <button id="authBtn" class="auth-btn" onclick="doAuth()"><i class="fab fa-telegram-plane"></i> Войти через Telegram</button>
+        <p style="margin-top:16px;font-size:11px;color:var(--t3)">Только через Telegram</p>
     </div>
 </div>
 
 <!-- APP -->
 <div id="appPage" style="display:none">
     <div class="hdr">
-        <h1><em>Free</em>Link</h1>
+        <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#8b5cf6,#6d28d9);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="16" height="16" viewBox="0 0 512 512" fill="none"><path d="M280 80 L180 280 L240 280 L200 432 L340 200 L270 200 Z" fill="white"/></svg></div>
+            <h1><em>Free</em>Link</h1>
+        </div>
         <div style="display:flex;gap:8px;align-items:center">
             <div class="notif-wrap"><button class="theme-btn" onclick="toggleNotifs()"><i class="fas fa-bell"></i></button><div class="notif-dot" id="notifDot" style="display:none"></div></div>
             <button class="theme-btn" onclick="setLang(currentLang==='ru'?'en':'ru')" title="Language"><i class="fas fa-globe"></i></button>
@@ -356,8 +394,9 @@ function applyLang(){
 
 // ====== INIT ======
 applyLang();
-if(tg){tg.ready();tg.expand();tg.MainButton.hide();document.body.style.backgroundColor=tg.themeParams?.bg_color||'#0a0e1a';console.log('TG init:',tg.initData?'OK':'EMPTY')}
-else{console.log('No Telegram WebApp SDK')}
+setTimeout(function(){var s=document.getElementById('splashScreen');if(s)s.classList.add('hide');},1800);
+if(tg){tg.ready();tg.expand();tg.MainButton.hide();document.body.style.backgroundColor=tg.themeParams?.bg_color||'#0a0e1a';console.log('TG init: initData=',tg.initData?'len='+tg.initData.length:'EMPTY','unsafe=',tg.initDataUnsafe?.user?JSON.stringify(tg.initDataUnsafe.user):'none')}
+else{console.log('No Telegram WebApp SDK — window.Telegram=',window.Telegram?'exists':'undefined');var ab=document.querySelector('.auth-box');if(ab){var p=document.createElement('p');p.style.cssText='color:#f59e0b;font-size:11px;margin-top:8px';p.textContent='Откройте через Telegram (/start → 🚀 Панель → 📱 Mini App)';ab.appendChild(p)}}
 
 // Extract token from URL path /app/{token}
 var URL_TOKEN='';
@@ -373,6 +412,23 @@ var URL_TOKEN='';
 function api(path){
     var sep=path.includes('?')?'&':'?';
     return URL_TOKEN?path+sep+'_t='+encodeURIComponent(URL_TOKEN):path;
+}
+
+// ====== AUTH ======
+async function doAuth(){
+    const btn=document.getElementById('authBtn');
+    if(btn){btn.disabled=true;btn.textContent='Вход...'}
+    let initData='';
+    if(tg&&tg.initData&&tg.initData.length>10){initData=tg.initData}
+    else if(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user){const u=tg.initDataUnsafe.user;initData=JSON.stringify({id:u.id,username:u.username||'',first_name:u.first_name||''})}
+    if(!initData){console.log('doAuth: no initData');if(btn){btn.disabled=false;btn.innerHTML='<i class="fab fa-telegram-plane"></i> Войти через Telegram'}return}
+    try{
+        var x=new XMLHttpRequest();x.open('POST','/api/miniapp/auth',true);x.withCredentials=true;x.setRequestHeader('Content-Type','application/json');
+        x.onreadystatechange=function(){if(x.readyState===4){
+            if(x.status===200){try{var d=JSON.parse(x.responseText);if(d.success){document.getElementById('authPage').style.display='none';document.getElementById('appPage').style.display='block';loadData();return}}catch(e){}}
+            if(btn){btn.disabled=false;btn.innerHTML='<i class="fab fa-telegram-plane"></i> Войти через Telegram'}
+        }};x.send(JSON.stringify({initData:initData}));
+    }catch(e){if(btn){btn.disabled=false;btn.innerHTML='<i class="fab fa-telegram-plane"></i> Войти через Telegram'}}
 }
 
 // PWA
@@ -590,11 +646,26 @@ function restartSvc(n){if(!confirm('Перезапустить '+n+'?'))return;f
 
 // ====== USER MODAL ======
 function openUser(id){const u=CU.find(x=>x.id===id);if(!u)return;const isEx=u.expire_date&&new Date(u.expire_date)<new Date();const tr=u.traffic||{};const isUn=!u.traffic_limit;
+const protos=(u.protocols||u.protocol||'hysteria2').split(',').map(p=>p.trim()).filter(Boolean);
+const protoBadges=protos.map(p=>p==='wireguard'?'🔒 WG':p==='vless'?'🌐 VLESS':'⚡ H2').join(' + ');
+const wgInfo=protos.includes('wireguard')?`<div style="background:var(--c2);padding:10px;border-radius:var(--R2);margin-bottom:12px"><div style="font-size:10px;color:var(--t3);text-transform:uppercase;font-weight:600;margin-bottom:6px">WireGuard</div><div style="font-size:12px"><div>IP: <strong>${u.wg_address||'—'}</strong></div><div>Порт: <strong>${u.wg_port||51820}</strong></div></div></div>`:'';
+const vlessInfo=protos.includes('vless')?`<div style="background:var(--c2);padding:10px;border-radius:var(--R2);margin-bottom:12px"><div style="font-size:10px;color:var(--t3);text-transform:uppercase;font-weight:600;margin-bottom:6px">VLESS (Xray)</div><div style="font-size:12px"><div>UUID: <strong style="font-size:10px;word-break:break-all">${u.vless_uuid||'—'}</strong></div></div></div>`:'';
 const html=`<h3>${u.name}</h3>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px">
+    ${protos.map(p=>`<div style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:600;background:${p==='wireguard'?'rgba(59,130,246,.15);color:#60a5fa':'rgba(139,92,246,.15);color:var(--ac2)'}">${p==='wireguard'?'🔒 WireGuard':'⚡ Hysteria2'}</div>`).join('')}
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
 <div style="background:var(--c2);padding:10px;border-radius:var(--R2);text-align:center"><div style="font-size:10px;color:var(--t3)">Статус</div><div style="font-size:13px;font-weight:700;color:${isEx?'var(--or)':u.active?'var(--gn)':'var(--rd)'};margin-top:2px">${isEx?'Просрочен':u.active?'Активен':'Неакт.'}</div></div>
 <div style="background:var(--c2);padding:10px;border-radius:var(--R2);text-align:center"><div style="font-size:10px;color:var(--t3)">Онлайн</div><div style="font-size:13px;font-weight:700;color:${u.online?'var(--gn)':'#6b7280'};margin-top:2px">${u.online?'Да':'Нет'}</div></div>
 </div>
+${wgInfo}
+<div style="background:var(--c2);padding:10px;border-radius:var(--R2);margin-bottom:12px">
+<div style="font-size:10px;color:var(--t3);text-transform:uppercase;font-weight:600;margin-bottom:6px">Протоколы</div>
+<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600;margin-bottom:4px"><input type="checkbox" ${protos.includes('hysteria2')?'checked':''} onchange="toggleProtoMG('${u.id}','hysteria2',this.checked)" style="accent-color:var(--ac)"> ⚡ Hysteria2</label>
+<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600;margin-bottom:4px"><input type="checkbox" ${protos.includes('wireguard')?'checked':''} onchange="toggleProtoMG('${u.id}','wireguard',this.checked)" style="accent-color:#3b82f6"> 🔒 WireGuard</label>
+<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600"><input type="checkbox" ${protos.includes('vless')?'checked':''} onchange="toggleProtoMG('${u.id}','vless',this.checked)" style="accent-color:#10b981"> 🌐 VLESS</label>
+</div>
+${vlessInfo}
 <div style="background:var(--c2);padding:12px;border-radius:var(--R2);margin-bottom:12px">
 <div style="font-size:10px;color:var(--t3);text-transform:uppercase;font-weight:600;margin-bottom:6px">Трафик</div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px">
@@ -607,7 +678,7 @@ const html=`<h3>${u.name}</h3>
 <div>Создан: ${u.created||'—'}</div><div>До: ${u.expire_date||'—'}</div>
 </div>
 <div class="modal-btns">
-<button class="btn btn-g" onclick="copyLink('${u.id}')"><i class="fas fa-copy"></i> Копировать</button>
+<button class="btn btn-g" onclick="showLinks('${u.id}')"><i class="fas fa-link"></i> Ссылки</button>
 <button class="btn btn-a" onclick="showQR('${u.id}')"><i class="fas fa-qrcode"></i> QR</button>
 <button class="btn btn-a" onclick="extendUser('${u.id}')"><i class="fas fa-clock"></i> Продлить</button>
 </div>
@@ -618,8 +689,105 @@ const html=`<h3>${u.name}</h3>
 </div>`;
     openModal(html);
 }
+function toggleProtoMG(uid,proto,enabled){
+    const u=CU.find(x=>x.id===uid);if(!u)return;
+    let protos=(u.protocols||u.protocol||'hysteria2').split(',').map(p=>p.trim()).filter(Boolean);
+    if(enabled&&!protos.includes(proto))protos.push(proto);
+    if(!enabled)protos=protos.filter(p=>p!==proto);
+    if(!protos.length){showToast('Нужен хотя бы один протокол');openUser(uid);return}
+    fetch('/api/user/'+uid+'/protocols?protocols='+protos.join(','),{method:'POST'}).then(r=>r.json()).then(d=>{if(d.success){showToast('Обновлено');loadData().then(()=>openUser(uid))}else showToast('Ошибка')});
+}
 
 function copyLink(id){fetch('/api/miniapp/users').then(r=>r.json()).then(d=>{const u=d.users.find(x=>x.id===id);if(u?.link){navigator.clipboard.writeText(u.link).then(()=>showToast('Скопировано!')).catch(()=>{})}})}
+function showLinks(id){
+    const u=CU.find(x=>x.id===id);if(!u)return;
+    const serviceToken=u.service_token||'';
+    if(!serviceToken){showToast('Нет токена');return}
+    const subUrl=location.origin+'/sub/'+serviceToken;
+    // Fetch from subscription endpoint which includes ALL nodes
+    fetch('/sub/'+serviceToken).then(r=>r.text()).then(text=>{
+        const lines=text.split('\n').filter(Boolean);
+        let items=[];
+        lines.forEach(l=>{
+            const proto=l.startsWith('wireguard')?'WireGuard':l.startsWith('vless://')?'VLESS':'Hysteria2';
+            let region='Основной';
+            const hashIdx=l.lastIndexOf('#');
+            if(hashIdx>-1){try{region=decodeURIComponent(l.substring(hashIdx+1))}catch(e){region=l.substring(hashIdx+1)}}
+            const icon=proto==='WireGuard'?'🔒':proto==='VLESS'?'🌐':'⚡';
+            const color=proto==='WireGuard'?'#3b82f6':proto==='VLESS'?'#10b981':'var(--ac2)';
+            items.push({proto,region,link:l,icon,color});
+        });
+        const h2=items.filter(i=>i.proto==='Hysteria2');
+        const wg=items.filter(i=>i.proto==='WireGuard');
+        let html='<div style="margin-bottom:12px">';
+        html+='<div style="font-size:10px;color:var(--t3);text-transform:uppercase;font-weight:600;margin-bottom:6px">Подписка (автообновление)</div>';
+        html+='<div style="background:var(--c2);padding:8px;border-radius:var(--R2);font-size:9px;word-break:break-all;color:var(--t3);margin-bottom:8px">'+subUrl+'</div>';
+        html+='<button class="btn btn-n full-btn" style="font-size:10px;padding:6px" onclick="navigator.clipboard.writeText(\''+subUrl+'\').then(()=>showToast(\'Подписка скопирована!\'))"><i class="fas fa-copy"></i> Копировать подписку</button>';
+        html+='</div>';
+        if(h2.length){
+            html+='<div style="font-size:10px;color:var(--ac2);text-transform:uppercase;font-weight:700;margin:10px 0 4px">⚡ Hysteria2</div>';
+            h2.forEach(it=>{html+=renderLinkItemMG(it)});
+        }
+        if(wg.length){
+            html+='<div style="font-size:10px;color:#3b82f6;text-transform:uppercase;font-weight:700;margin:10px 0 4px">🔒 WireGuard</div>';
+            wg.forEach(it=>{html+=renderLinkItemMG(it)});
+        }
+        const vl=items.filter(i=>i.proto==='VLESS');
+        if(vl.length){
+            html+='<div style="font-size:10px;color:#10b981;text-transform:uppercase;font-weight:700;margin:10px 0 4px">🌐 VLESS (Xray)</div>';
+            vl.forEach(it=>{html+=renderLinkItemMG(it)});
+        }
+        if(!items.length)html+='<div style="text-align:center;padding:16px;color:var(--t3);font-size:12px">Нет ссылок</div>';
+        html+='<div class="modal-btns" style="margin-top:12px"><button class="btn btn-n" onclick="closeModal()">Закрыть</button></div>';
+        openModal(html);
+    });
+}
+function renderLinkItemMG(it){
+    const safeLink=it.link.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    const encLink=encodeURIComponent(it.link);
+    let h='<div style="background:var(--c2);border-radius:var(--R2);padding:8px;margin-bottom:6px">';
+    h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">';
+    h+='<span style="font-size:11px">'+it.icon+'</span>';
+    h+='<span style="font-size:11px;font-weight:700;color:'+it.color+'">'+it.proto+'</span>';
+    h+='<span style="font-size:9px;color:var(--t3);margin-left:auto">'+it.region+'</span>';
+    h+='</div>';
+    h+='<div style="display:flex;gap:6px">';
+    h+='<button class="btn btn-n" style="flex:1;font-size:9px;padding:5px" onclick="navigator.clipboard.writeText(\''+safeLink+'\').then(()=>showToast(\''+it.proto+' скопировано!\'))"><i class="fas fa-copy"></i> Копировать</button>';
+    h+='<button class="btn btn-n" style="font-size:9px;padding:5px 8px" onclick="showLinkQRMG(\''+encLink+'\',\''+it.proto+' — '+it.region+'\')"><i class="fas fa-qrcode"></i></button>';
+    h+='</div></div>';
+    return h;
+}
+function showLinkQRMG(encLink,title){
+    var link=decodeURIComponent(encLink);
+    var qrData=link;
+    if(link.startsWith('wireguard://')){
+        qrData=wgUriToConfMG(link);
+    }
+    var encoded=encodeURIComponent(qrData);
+    var url='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encoded;
+    const html='<h3>'+title+'</h3><div style="text-align:center"><img src="'+url+'" style="width:200px;height:200px;border-radius:var(--R2);background:#fff;padding:8px"></div><div class="modal-btns" style="margin-top:12px"><button class="btn btn-n" onclick="closeModal()">Закрыть</button></div>';
+    openModal(html);
+}
+function wgUriToConfMG(uri){
+    try{
+        var raw=uri.replace('wireguard://','');
+        var hashIdx=raw.lastIndexOf('#');
+        if(hashIdx>-1)raw=raw.substring(0,hashIdx);
+        var decoded=decodeURIComponent(raw);
+        var params={};
+        decoded.split('&').forEach(function(p){var kv=p.split('=');if(kv.length===2)params[kv[0]]=decodeURIComponent(kv[1])});
+        var conf='[Interface]\n';
+        conf+='PrivateKey = '+params.privateKey+'\n';
+        conf+='Address = '+params.address+'\n';
+        conf+='DNS = '+(params.dns||'1.1.1.1, 8.8.8.8')+'\n\n';
+        conf+='[Peer]\n';
+        conf+='PublicKey = '+params.publicKey+'\n';
+        conf+='Endpoint = '+params.endpoint+'\n';
+        conf+='AllowedIPs = '+(params.allowedIPs||'0.0.0.0/0')+'\n';
+        conf+='PersistentKeepalive = '+(params.persistentKeepalive||'25')+'\n';
+        return conf;
+    }catch(e){return uri}
+}
 function showQR(id){
     fetch('/api/miniapp/qr/'+id).then(r=>r.json()).then(d=>{
         if(d.qr){
@@ -636,13 +804,23 @@ function deleteUser(id){if(!confirm('Удалить?'))return;fetch('/api/miniap
 function showCreateModal(){
     const html=`<h3>Новый клиент</h3>
     <div class="field"><label>Имя</label><input type="text" id="cName" placeholder="ivan"></div>
+    <div class="field"><label>Протоколы</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600"><input type="checkbox" id="cProtoH2" checked value="hysteria2"> ⚡ Hysteria2</label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600"><input type="checkbox" id="cProtoWG" value="wireguard"> 🔒 WireGuard</label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600"><input type="checkbox" id="cProtoVLESS" value="vless"> 🌐 VLESS</label>
+        </div>
+    </div>
     <div class="field"><label>Дней</label><input type="number" id="cDays" value="30" min="1"></div>
     <div class="modal-btns"><button class="btn btn-n" onclick="closeModal()">Отмена</button><button class="btn btn-g" onclick="doCreate()">Создать</button></div>`;
     openModal(html);
     setTimeout(()=>$('cName')?.focus(),300);
 }
-async function doCreate(){const n=$('cName')?.value?.trim(),d=parseInt($('cDays')?.value)||30;if(!n||n.length<2){showToast('Мин. 2 символа');return}
-    await fetch('/api/miniapp/user/create?name='+encodeURIComponent(n)+'&days='+d,{method:'POST'}).then(r=>r.json()).then(d=>{if(d.id){showToast('Создан!');loadData();closeModal()}else showToast('Ошибка')})}
+async function doCreate(){const n=$('cName')?.value?.trim(),d=parseInt($('cDays')?.value)||30;
+    const protos=[];if($('cProtoH2')?.checked)protos.push('hysteria2');if($('cProtoWG')?.checked)protos.push('wireguard');if($('cProtoVLESS')?.checked)protos.push('vless');
+    if(!n||n.length<2){showToast('Мин. 2 символа');return}
+    if(!protos.length){showToast('Выберите протокол');return}
+    await fetch('/api/miniapp/user/create?name='+encodeURIComponent(n)+'&days='+d+'&protocols='+protos.join(','),{method:'POST'}).then(r=>r.json()).then(d=>{if(d.id){showToast('Создан!');loadData();closeModal()}else showToast('Ошибка')})}
 
 // ====== MODAL ======
 function openModal(html){const bg=document.createElement('div');bg.className='modal-bg open';bg.onclick=e=>{if(e.target===bg)bg.remove()};bg.innerHTML=`<div class="modal">${html}</div>`;document.body.appendChild(bg)}
@@ -735,7 +913,7 @@ function showToast(m){const e=document.querySelector('.toast');if(e)e.remove();c
 setInterval(()=>{if($('appPage').style.display!=='none')loadData()},30000);
 
 // ====== SERVICES ======
-const SVC_NAMES={'hysteria-server':'FreeLink VPN','freelink-api':'API','freelink-auth':t('svc_authorization'),'freelink-traffic':t('svc_traffic'),'freelink-bot':t('svc_telegram_bot'),'freelink-online':t('svc_online'),'freelink-history':t('svc_history'),'freelink-monitor':t('svc_monitor')};
+const SVC_NAMES={'hysteria-server':'FreeLink VPN','xray':'Xray (VLESS)','freelink-api':'API','freelink-auth':t('svc_authorization'),'freelink-traffic':t('svc_traffic'),'freelink-bot':t('svc_telegram_bot'),'freelink-online':t('svc_online'),'freelink-history':t('svc_history'),'freelink-monitor':t('svc_monitor')};
 async function loadServices(){
     const r=await fetch('/api/miniapp/services');const d=await r.json();
     $('serviceList').innerHTML=d.services.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04)">
@@ -818,5 +996,6 @@ function go(page,el){document.querySelectorAll('.page').forEach(p=>p.classList.r
     if(page==='nodes')loadNodes();
     if(page==='backups')loadBackups();
 }
+</script>
 </body>
 </html>

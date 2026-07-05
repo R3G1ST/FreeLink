@@ -16,7 +16,7 @@ ONLINE_FILE = "/opt/freelink/online_status.json"
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-NAME, EXPIRE = range(2)
+NAME, EXPIRE, PROTOCOL = range(3)
 
 def load_config():
     try:
@@ -59,10 +59,20 @@ def gen_link(uid):
     user = data.get("users", {}).get(uid)
     if not user:
         return ""
+    protocol = user.get("protocol", "hysteria2")
+
+    if protocol == "wireguard":
+        import wireguard
+        privkey = user.get("wg_private_key", "")
+        wg_ip = user.get("wg_address", "")
+        if privkey and wg_ip:
+            return wireguard.generate_client_uri(privkey, wg_ip, user.get("name", uid))
+        return ""
+
     h = config.get("hysteria", {}) if config else {}
     s = config.get("server", {}) if config else {}
     domain = os.environ.get("DOMAIN", s.get("domain", "link.qmbox.ru"))
-    port = 443
+    port = 8443
     name = user.get("name", uid)
     password = user.get("password", os.environ.get("HYSTERIA_USER_PASSWORD", ""))
     obfs = os.environ.get("HYSTERIA_OBFS_PASSWORD", "")
@@ -115,55 +125,31 @@ def check_hysteria():
 # ====== MAIN KEYBOARD ======
 
 def get_main_keyboard():
-    """Inline keyboard in message — reliable WebApp support."""
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📋 Список", callback_data="list"),
-         InlineKeyboardButton("➕ Создать", callback_data="create")],
-        [InlineKeyboardButton("📊 Статистика", callback_data="stats"),
-         InlineKeyboardButton("🖥 Сервер", callback_data="server")],
-        [InlineKeyboardButton("🚀 Открыть панель", web_app=WebAppInfo(url="https://link.qmbox.ru/app"))],
-        [InlineKeyboardButton("⚙️ Сервисы", callback_data="services"),
-         InlineKeyboardButton("🧹 Очистить", callback_data="clean")],
-        [InlineKeyboardButton("📋 Логи", callback_data="logs")],
-    ])
+    """Reply keyboard — bottom buttons on mobile."""
+    return ReplyKeyboardMarkup([
+        [KeyboardButton("📋 Список"), KeyboardButton("➕ Создать")],
+        [KeyboardButton("📊 Статистика"), KeyboardButton("🖥 Сервер")],
+        [KeyboardButton("🚀 Панель")],
+        [KeyboardButton("⚙️ Сервисы"), KeyboardButton("🧹 Очистить")],
+    ], resize_keyboard=True)
 
 # ====== COMMANDS ======
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    user_id = query.from_user.id if query else update.effective_user.id
+    user_id = update.effective_user.id
     if not is_admin(user_id):
-        if query:
-            await query.answer("⛔ Доступ запрещён", show_alert=True)
-        else:
-            await update.message.reply_text("⛔ Доступ запрещён.")
+        await update.message.reply_text("⛔ Доступ запрещён.")
         return
-    text = "⚡ <b>FreeLink Manager</b>\n\nВыберите действие на клавиатуре:"
-    kb = get_main_keyboard()
-    if query:
-        try:
-            await query.edit_message_text(text, parse_mode="HTML")
-        except Exception:
-            await query.answer()
-    else:
-        await update.message.reply_text(text, reply_markup=kb, parse_mode="HTML")
+    text = "⚡ <b>FreeLink Manager</b>\n\nВыберите действие:"
+    await update.message.reply_text(text, reply_markup=get_main_keyboard(), parse_mode="HTML")
 
 async def cmd_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    if query and not is_admin(query.from_user.id):
-        await query.answer("⛔ Доступ запрещён", show_alert=True)
-        return
-
     data = load_data()
     users = data.get("users", {})
     online = get_online_status()
 
     if not users:
-        msg = "📭 Нет пользователей."
-        if query:
-            await query.edit_message_text(msg)
-        else:
-            await update.message.reply_text(msg)
+        await update.message.reply_text("📭 Нет пользователей.", reply_markup=get_main_keyboard())
         return
 
     lines = []
@@ -176,19 +162,9 @@ async def cmd_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
         lines.append(f"{status} <b>{name}</b>{online_mark} | до {expire}")
 
     text = "👥 <b>Пользователи:</b>\n\n" + "\n".join(lines)
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🔙 Назад", callback_data="back")]
-    ])
-    if query:
-        try:
-            await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
-        except Exception:
-            await query.answer()
-    else:
-        await update.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
+    await update.message.reply_text(text, parse_mode="HTML", reply_markup=get_main_keyboard())
 
 async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
     data = load_data()
     users = data.get("users", {})
     active = sum(1 for u in users.values() if u.get("active", True))
@@ -204,30 +180,15 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Онлайн: {online_count}\n"
         f"Сервер: Польша (link.qmbox.ru)"
     )
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🔄 Обновить", callback_data="status")],
-        [InlineKeyboardButton("🔙 Назад", callback_data="back")]
-    ])
-    if query:
-        try:
-            await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
-        except Exception:
-            await query.answer()
-    else:
-        await update.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
+    await update.message.reply_text(text, parse_mode="HTML", reply_markup=get_main_keyboard())
 
 async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
     data = load_data()
     users = data.get("users", {})
     online = get_online_status()
 
     if not users:
-        msg = "📭 Нет данных."
-        if query:
-            await query.answer(msg, show_alert=True)
-        else:
-            await update.message.reply_text(msg)
+        await update.message.reply_text("📭 Нет данных.", reply_markup=get_main_keyboard())
         return
 
     total_tx = 0
@@ -250,27 +211,12 @@ async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"\n\n📊 <b>Итого:</b>\n⬆ TX: {format_traffic(total_tx)}\n⬇ RX: {format_traffic(total_rx)}\n"
         f"📦 Всего: {format_traffic(total_tx + total_rx)}"
     )
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🔄 Обновить", callback_data="stats")],
-        [InlineKeyboardButton("🔙 Назад", callback_data="back")]
-    ])
-    if query:
-        try:
-            await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
-        except Exception:
-            await query.answer()
-    else:
-        await update.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
+    await update.message.reply_text(text, parse_mode="HTML", reply_markup=get_main_keyboard())
 
 async def cmd_server(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
     info = get_server_info()
     if not info:
-        msg = "❌ Не удалось получить информацию о сервере"
-        if query:
-            await query.answer(msg, show_alert=True)
-        else:
-            await update.message.reply_text(msg)
+        await update.message.reply_text("❌ Не удалось получить информацию о сервере", reply_markup=get_main_keyboard())
         return
 
     def bar(pct):
@@ -286,20 +232,9 @@ async def cmd_server(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"💾 Диск: {info.get('disk_pct', 0)}% ({info.get('disk_used', 0)}/{info.get('disk_total', 0)} GB)\n"
         f"<code>{bar(info.get('disk_pct', 0))}</code>"
     )
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🔄 Обновить", callback_data="server")],
-        [InlineKeyboardButton("🔙 Назад", callback_data="back")]
-    ])
-    if query:
-        try:
-            await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
-        except Exception:
-            await query.answer()
-    else:
-        await update.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
+    await update.message.reply_text(text, parse_mode="HTML", reply_markup=get_main_keyboard())
 
 async def cmd_logs(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
     try:
         result = subprocess.run(
             ["/usr/bin/journalctl", "-u", "hysteria-server", "-n", "20", "--no-pager"],
@@ -314,17 +249,7 @@ async def cmd_logs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         text = f"❌ Ошибка: {e}"
 
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🔄 Обновить", callback_data="logs")],
-        [InlineKeyboardButton("🔙 Назад", callback_data="back")]
-    ])
-    if query:
-        try:
-            await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
-        except Exception:
-            await query.answer()
-    else:
-        await update.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
+    await update.message.reply_text(text, parse_mode="HTML", reply_markup=get_main_keyboard())
 
 # ====== CREATE USER ======
 
@@ -343,32 +268,84 @@ async def create_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ Имя слишком короткое (минимум 2 символа). Попробуйте ещё раз:")
         return NAME
     context.user_data["create_name"] = name
+    context.user_data["create_protos"] = ["hysteria2"]
     keyboard = [
-        [InlineKeyboardButton("7 дней", callback_data="days_7"),
-         InlineKeyboardButton("30 дней", callback_data="days_30")],
-        [InlineKeyboardButton("90 дней", callback_data="days_90"),
-         InlineKeyboardButton("365 дней", callback_data="days_365")],
-        [InlineKeyboardButton("♾ Безлимит", callback_data="days_36500")],
+        [InlineKeyboardButton("⚡ Hysteria2 ✅", callback_data="proto_hysteria2")],
+        [InlineKeyboardButton("🔒 WireGuard", callback_data="proto_wireguard")],
+        [InlineKeyboardButton("✅ Готово", callback_data="proto_done")],
     ]
     await update.message.reply_text(
-        f"👤 Имя: <b>{name}</b>\n📅 Выберите срок подписки:",
+        f"👤 Имя: <b>{name}</b>\n🔌 Выберите протоколы (нажмите для включения/выключения):",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="HTML"
     )
-    return EXPIRE
+    return PROTOCOL
+
+async def create_protocol_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+
+    if data == "proto_done":
+        protos = context.user_data.get("create_protos", ["hysteria2"])
+        if not protos:
+            protos = ["hysteria2"]
+        context.user_data["create_protocols"] = ",".join(protos)
+        proto_labels = []
+        for p in protos:
+            proto_labels.append("⚡ Hysteria2" if p == "hysteria2" else "🔒 WireGuard")
+        keyboard = [
+            [InlineKeyboardButton("7 дней", callback_data="days_7"),
+             InlineKeyboardButton("30 дней", callback_data="days_30")],
+            [InlineKeyboardButton("90 дней", callback_data="days_90"),
+             InlineKeyboardButton("365 дней", callback_data="days_365")],
+            [InlineKeyboardButton("♾ Безлимит", callback_data="days_36500")],
+        ]
+        await query.edit_message_text(
+            f"👤 Имя: <b>{context.user_data.get('create_name', '')}</b>\n"
+            f"🔌 Протоколы: <b>{' + '.join(proto_labels)}</b>\n"
+            f"📅 Выберите срок подписки:",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML"
+        )
+        return EXPIRE
+
+    # Toggle protocol
+    proto = data.replace("proto_", "")
+    protos = context.user_data.get("create_protos", ["hysteria2"])
+    if proto in protos:
+        protos.remove(proto)
+    else:
+        protos.append(proto)
+    if not protos:
+        protos = ["hysteria2"]
+    context.user_data["create_protos"] = protos
+
+    # Rebuild keyboard with checkmarks
+    h2_on = "✅" if "hysteria2" in protos else ""
+    wg_on = "✅" if "wireguard" in protos else ""
+    keyboard = [
+        [InlineKeyboardButton(f"⚡ Hysteria2 {h2_on}", callback_data="proto_hysteria2")],
+        [InlineKeyboardButton(f"🔒 WireGuard {wg_on}", callback_data="proto_wireguard")],
+        [InlineKeyboardButton("✅ Готово", callback_data="proto_done")],
+    ]
+    await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(keyboard))
+    return PROTOCOL
 
 async def create_days_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     days = int(query.data.split("_")[1])
     name = context.user_data.get("create_name", "unknown")
+    protocols = context.user_data.get("create_protocols", "hysteria2")
+    proto_list = [p.strip() for p in protocols.split(",") if p.strip()]
 
     data = load_data()
     uid = gen_id()
     password = secrets.token_urlsafe(16)
     expire_date = (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d %H:%M")
 
-    data["users"][uid] = {
+    user_data = {
         "name": name,
         "active": True,
         "created": datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -379,18 +356,33 @@ async def create_days_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         "traffic_limit": 0,
         "traffic_used": 0,
         "devices": [],
-        "total_sessions": 0
+        "total_sessions": 0,
+        "protocols": protocols,
+        "protocol": proto_list[0] if proto_list else "hysteria2"
     }
+
+    if "wireguard" in proto_list:
+        import wireguard
+        user_data = wireguard.setup_user_wg(user_data)
+
+    data["users"][uid] = user_data
     save_data(data)
     link = gen_link(uid)
     data["users"][uid]["link"] = link
     save_data(data)
 
+    proto_labels = []
+    for p in proto_list:
+        proto_labels.append("⚡ Hysteria2" if p == "hysteria2" else "🔒 WireGuard")
+    wg_info = ""
+    if "wireguard" in proto_list:
+        wg_info = f"\n🌐 WG IP: {user_data.get('wg_address', '')}"
     await query.edit_message_text(
         f"✅ <b>Пользователь создан!</b>\n\n"
         f"👤 Имя: {name}\n"
         f"🆔 ID: <code>{uid}</code>\n"
         f"📅 До: {expire_date}\n"
+        f"🔌 Протоколы: {' + '.join(proto_labels)}{wg_info}\n"
         f"🔗 Ссылка:\n<code>{link}</code>",
         parse_mode="HTML"
     )
@@ -406,6 +398,7 @@ async def create_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    print(f"[BOT] button_callback: data={query.data}, user_id={query.from_user.id}", flush=True)
     if not is_admin(query.from_user.id):
         await query.answer("⛔ Доступ запрещён", show_alert=True)
         return
@@ -451,7 +444,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cmd_services(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    services = ["hysteria-server", "freelink-api", "freelink-auth", "freelink-traffic", "freelink-bot", "freelink-online", "freelink-history", "freelink-monitor"]
+    services = ["hysteria-server", "xray", "wg-quick@wg0", "freelink-api", "freelink-auth", "freelink-traffic", "freelink-bot", "freelink-online", "freelink-history", "freelink-monitor"]
     lines = []
     for svc in services:
         try:
@@ -605,6 +598,7 @@ def main():
         ],
         states={
             NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, create_name)],
+            PROTOCOL: [CallbackQueryHandler(create_protocol_callback, pattern="^proto_")],
             EXPIRE: [CallbackQueryHandler(create_days_callback, pattern="^days_")],
         },
         fallbacks=[CommandHandler("cancel", create_cancel)],
@@ -616,6 +610,49 @@ def main():
     app_builder.add_handler(CommandHandler("server", cmd_server))
     app_builder.add_handler(CommandHandler("logs", cmd_logs))
     app_builder.add_handler(CallbackQueryHandler(button_callback))
+
+    # Reply keyboard text handler
+    async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        text = update.message.text if update.message else ""
+        user_id = update.effective_user.id
+        if not is_admin(user_id):
+            return
+        if text == "📋 Список":
+            await cmd_list(update, context)
+        elif text == "➕ Создать":
+            await create_start(update, context)
+        elif text == "📊 Статистика":
+            await cmd_stats(update, context)
+        elif text == "🖥 Сервер":
+            await cmd_server(update, context)
+        elif text == "🚀 Панель":
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("📱 Mini App", web_app=WebAppInfo(url="https://link.qmbox.ru/app"))],
+                [InlineKeyboardButton("🔗 Открыть в браузере", url="https://link.qmbox.ru/app")]
+            ])
+            await update.message.reply_text(
+                "Выберите способ открытия:",
+                reply_markup=keyboard
+            )
+        elif text == "⚙️ Сервисы":
+            await cmd_services(update, context)
+        elif text == "🧹 Очистить":
+            data = load_data()
+            deleted = 0
+            now = datetime.now()
+            for uid, user_data in list(data.get("users", {}).items()):
+                expire = user_data.get("expire_date", "")
+                if expire:
+                    try:
+                        if datetime.strptime(expire, "%Y-%m-%d %H:%M") < now:
+                            del data["users"][uid]
+                            deleted += 1
+                    except Exception:
+                        pass
+            save_data(data)
+            await update.message.reply_text(f"🧹 Удалено просроченных: {deleted}", reply_markup=get_main_keyboard())
+
+    app_builder.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
 
     # Notify about expiring users every 6 hours
     async def notify_expiring(context: ContextTypes.DEFAULT_TYPE):
