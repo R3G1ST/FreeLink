@@ -207,4 +207,150 @@ freelink/
 
 ---
 
-<p align="center">Made with care for the VPN community</p>
+<a id="русский"></a>
+
+# Русский
+
+> **БЕТА** — Активная разработка. API и функции могут изменяться.
+
+## Возможности
+
+| Возможность | Описание |
+|-------------|----------|
+| **Мульти-протокол** | Hysteria2 + WireGuard + VLESS + Shadowsocks в одной подписке |
+| **Мульти-сервер** | Основной сервер + неограниченные ноды |
+| **Подписки** | Одна ссылка на все протоколы и все ноды |
+| **Telegram Бот** | Управление пользователями, выбор протоколов, VPN-ссылки |
+| **Мини-апп** | Мобильная панель (PWA) для Telegram |
+| **Веб-панель** | Панель администратора с метриками в реальном времени |
+| **Авто-деплой** | Настройка сервера и нод в один клик через SSH |
+| **Учёт трафика** | Трафик по пользователям на всех нодах |
+| **Онлайн-детект** | Мониторинг по изменению трафика |
+| **Планы** | Подписки с авто-истечением |
+| **Ограничение скорости** | Контроль пропускной способности |
+| **Бэкапы** | Создание, восстановление, скачивание |
+
+### Протоколы
+
+| Протокол | Транспорт | Порт | Клиенты |
+|----------|-----------|------|---------|
+| **Hysteria2** | UDP + obfs | 443 | Hiddify, Clash, v2rayN, NekoBox |
+| **WireGuard** | UDP | 51820 | Все WireGuard клиенты |
+| **VLESS** | WS + TLS | 443 (nginx) | V2rayNG, NekoBox, Streisand, Hiddify |
+| **Shadowsocks** | TCP/UDP | 8388 | Clash, v2rayN, NekoBox, V2rayNG, Hiddify |
+
+Пользователь может включить несколько протоколов одновременно. Подписка автоматически включает все протоколы со всех онлайн-нод с названиями стран.
+
+---
+
+## Быстрый старт
+
+### Требования
+- Ubuntu 20.04+ / Debian 11+
+- Python 3.10+
+- PostgreSQL
+- Домен с DNS → сервер
+- Telegram Bot Token (от @BotFather)
+
+### Установка основного сервера
+```bash
+git clone https://github.com/R3G1ST/FreeLink.git /opt/freelink
+cd /opt/freelink
+sudo DOMAIN=link.qmbox.ru TG_TOKEN=your_token ./install.sh install
+```
+
+### Добавление удалённой ноды
+```bash
+sudo ./install.sh node 217.147.15.11 root_password "Latvia"
+```
+
+### Обновление
+```bash
+sudo ./install.sh update
+```
+
+---
+
+## Архитектура
+
+```
+                    ┌─────────────────┐
+                    │  Telegram Бот   │
+                    │    (bot.py)     │
+                    └────────┬────────┘
+                             │
+                    ┌────────v────────┐
+                    │     FastAPI      │
+     ┌──────────────│    (api.py)     │──────────────┐
+     │              └────────┬────────┘              │
+     │                       │                       │
+┌────v─────┐          ┌──────v──────┐         ┌──────v──────┐
+│ WireGuard│          │  PostgreSQL  │         │    Xray     │
+│  :51820  │          │   (db.py)    │         │ VLESS :10001│
+│          │          │              │         │ SS    :8388 │
+└────┬─────┘          └──────┬──────┘         └──────┬──────┘
+     │                       │                       │
+     │              ┌────────v────────┐              │
+     │              │   Hysteria 2    │              │
+     │              │     :443 UDP    │              │
+     │              └────────┬────────┘              │
+     │                       │                       │
+┌────v───────────────────────v───────────────────────v────┐
+│                     Nginx :443                           │
+│           Панель + VLESS WS Proxy + SSL                  │
+└─────────────────────────────────────────────────────────┘
+```
+
+## Сервисы
+
+| Сервис | Протокол | Порт | Описание |
+|--------|----------|------|----------|
+| `freelink-api` | TCP | 8000 | FastAPI бэкенд |
+| `freelink-bot` | - | - | Telegram бот |
+| `hysteria-server` | UDP | 443 | Hysteria2 VPN |
+| `xray` | TCP | 10001 (локал) | VLESS+WS + Shadowsocks |
+| `wg-quick@wg0` | UDP | 51820 | WireGuard VPN |
+| `nginx` | TCP | 443 | Панель + VLESS proxy |
+
+## Структура проекта
+
+```
+freelink/
+├── api.py              # FastAPI бэкенд (REST + WebSocket)
+├── bot.py              # Telegram бот (CRUD, выбор протоколов)
+├── db.py               # PostgreSQL слой
+├── wireguard.py        # Управление WireGuard
+├── xray.py             # Управление Xray (VLESS, Shadowsocks)
+├── auth.py             # Внешняя авторизация Hysteria
+├── node_agent.py       # Heartbeat удалённых нод
+├── online_detector.py  # Детект онлайн (опрос 2с)
+├── install.sh          # Установка сервера + нод
+├── config.yaml         # Конфиг панели
+├── .env                # Секреты (не в git)
+├── web/
+│   ├── index.html      # Веб-панель (полный функционал)
+│   ├── miniapp.html    # Telegram Mini App (PWA)
+│   └── client.html     # Клиентский портал
+└── venv/               # Python virtualenv
+```
+
+## Ключевые API
+
+| Эндпоинт | Метод | Описание |
+|----------|-------|----------|
+| `/api/user/create?protocols=hysteria2,wireguard,vless,shadowsocks` | POST | Создание с протоколами |
+| `/api/user/{uid}/protocols?protocols=...` | POST | Смена протоколов |
+| `/sub/{token}` | GET | Подписка (все протоколы, все ноды) |
+| `/api/wireguard/status` | GET | Статус WireGuard |
+| `/api/wireguard/sync` | POST | Синхронизация пиров |
+| `/api/wireguard/config/{uid}` | GET | WireGuard конфиг пользователя |
+
+---
+
+## Лицензия
+
+[MIT License](LICENSE)
+
+---
+
+<p align="center">Сделано с заботой для VPN-сообщества</p>
